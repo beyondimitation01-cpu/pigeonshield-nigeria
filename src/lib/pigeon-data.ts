@@ -265,8 +265,8 @@ function seedListings(): Listing[] {
   const out: Listing[] = [];
   const breeders = SEED_USERS;
   PIGEON_NAMES.forEach((name, i) => {
-    const breed = BREEDS_BY_CATEGORY.Pigeon[i % BREEDS_BY_CATEGORY.Pigeon.length];
-    const owner = breeders[i % breeders.length];
+    const breed = BREEDS_BY_CATEGORY.Pigeon[i % BREEDS_BY_CATEGORY.Pigeon.length]!;
+    const owner = breeders[i % breeders.length]!;
     const created = Date.now() - (i % 6) * DAY_MS;
     out.push({
       id: `lst_pg_${i}`,
@@ -280,7 +280,7 @@ function seedListings(): Listing[] {
       images: i % 2 === 0 ? [pigeonRacer] : i % 3 === 0 ? [pigeonFantail] : [],
       pedigree_json: pedigree(name, breed),
       vaccinated: true,
-      state: NIGERIAN_STATES[(i * 3) % NIGERIAN_STATES.length],
+      state: NIGERIAN_STATES[(i * 3) % NIGERIAN_STATES.length]!,
       description:
         "Loft-raised, fully feathered and flight tested. Escrow protected with 2FA pickup passcode verification.",
       batch_quantity: 1 + (i % 4),
@@ -302,7 +302,7 @@ function seedListings(): Listing[] {
     ["Horse", "Sudanour Stallion", "Sudanese Sudanour", 3200000, null],
   ];
   others.forEach(([cat, name, breed, price, img], i) => {
-    const owner = breeders[i % breeders.length];
+    const owner = breeders[i % breeders.length]!;
     const created = Date.now() - (i % 5) * DAY_MS;
     out.push({
       id: `lst_ot_${i}`,
@@ -316,7 +316,7 @@ function seedListings(): Listing[] {
       images: img ? [img] : [],
       pedigree_json: null,
       vaccinated: cat === "Dog",
-      state: NIGERIAN_STATES[(i * 5) % NIGERIAN_STATES.length],
+      state: NIGERIAN_STATES[(i * 5) % NIGERIAN_STATES.length]!,
       description: "Healthy, farm inspected and escrow protected. Delivery arranged with vetted logistics.",
       batch_quantity: 1 + (i % 3),
       commission_override: null,
