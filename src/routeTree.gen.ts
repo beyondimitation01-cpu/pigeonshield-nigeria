@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HowEscrowWorksRouteImport } from './routes/how-escrow-works'
+import { Route as ListingIdRouteImport } from './routes/listing.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HowEscrowWorksRoute = HowEscrowWorksRouteImport.update({
+  id: '/how-escrow-works',
+  path: '/how-escrow-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListingIdRoute = ListingIdRouteImport.update({
+  id: '/listing/$id',
+  path: '/listing/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/how-escrow-works' | '/listing/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/how-escrow-works' | '/listing/$id'
+  id: '__root__' | '/' | '/how-escrow-works' | '/listing/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HowEscrowWorksRoute: typeof HowEscrowWorksRoute
+  ListingIdRoute: typeof ListingIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/how-escrow-works': {
+      id: '/how-escrow-works'
+      path: '/how-escrow-works'
+      fullPath: '/how-escrow-works'
+      preLoaderRoute: typeof HowEscrowWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/listing/$id': {
+      id: '/listing/$id'
+      path: '/listing/$id'
+      fullPath: '/listing/$id'
+      preLoaderRoute: typeof ListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HowEscrowWorksRoute: HowEscrowWorksRoute,
+  ListingIdRoute: ListingIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
