@@ -1,24 +1,181 @@
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { ShieldCheck, Search, Flag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ListingCard } from "@/components/site/ListingCard";
+import { useStore, reportToAdmin } from "@/lib/store";
+import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
+import heroPigeon from "@/assets/pigeon-racer.jpg";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "PigeonShield Nigeria — Escrow-Protected Pigeon Marketplace" },
+      {
+        name: "description",
+        content:
+          "Buy and sell racing pigeons, chickens, guard dogs and horses anonymously in Nigeria with DOA-refund escrow and 2FA pickup verification.",
+      },
+      { property: "og:title", content: "PigeonShield Nigeria — Escrow-Protected Pigeon Marketplace" },
+      {
+        property: "og:description",
+        content: "Nigeria's anonymous livestock marketplace with delivery-fraud-proof escrow.",
+      },
+    ],
+  }),
+  component: Marketplace,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Marketplace() {
+  const { db } = useStore();
+  const [tab, setTab] = useState<"pigeons" | "others">("pigeons");
+  const [state, setState] = useState("All states");
+  const [breed, setBreed] = useState("All breeds");
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+
+  const pool = useMemo(
+    () =>
+      db.listings.filter(
+        (l) =>
+          isVisible(l) &&
+          (tab === "pigeons" ? l.category_type === "Pigeon" : l.category_type !== "Pigeon"),
+      ),
+    [db.listings, tab],
+  );
+
+  const breeds = useMemo(
+    () => Array.from(new Set(pool.map((l) => l.breed_type))).sort(),
+    [pool],
+  );
+
+  const filtered = useMemo(
+    () =>
+      pool.filter(
+        (l) =>
+          (state === "All states" || l.state === state) &&
+          (breed === "All breeds" || l.breed_type === breed) &&
+          (q.trim() === "" ||
+            `${l.custom_bird_name} ${l.breed_type}`.toLowerCase().includes(q.toLowerCase())),
+      ),
+    [pool, state, breed, q],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const current = Math.min(page, pageCount);
+  const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
+
+  function switchTab(next: "pigeons" | "others") {
+    setTab(next);
+    setBreed("All breeds");
+    setPage(1);
+  }
+
+  const categoriesInOthers: Category[] = ["Chicken", "Dog", "Horse"];
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div>
+      <section className="relative overflow-hidden border-b border-border">
+        <img
+          src={heroPigeon}
+          alt="Racing homer pigeon in a Nigerian loft"
+          width={1024}
+          height={768}
+          className="absolute inset-0 size-full object-cover opacity-25"
+        />
+        <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
+          <Badge variant="secondary" className="mb-4 gap-1">
+            <ShieldCheck className="size-3" /> Delivery-fraud-proof escrow
+          </Badge>
+          <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-primary md:text-5xl">
+            Nigeria's anonymous pigeon marketplace, guarded by escrow.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
+            Funds are held until you confirm safe delivery with your 2FA pickup passcode. Dead on Arrival?
+            Upload proof and the payout freezes instantly.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex flex-wrap gap-2">
+          <Button variant={tab === "pigeons" ? "default" : "outline"} onClick={() => switchTab("pigeons")}>
+            Pigeons (Flagship)
+          </Button>
+          <Button variant={tab === "others" ? "default" : "outline"} onClick={() => switchTab("others")}>
+            Other Livestock &amp; Guard Animals
+          </Button>
+        </div>
+
+        {tab === "others" ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Secondary categories unlocked: {categoriesInOthers.join(", ")}.
+          </p>
+        ) : null}
+
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setPage(1); }}
+              placeholder="Search bird name or breed"
+              className="pl-9"
+            />
+          </div>
+          <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectItem value="All states">All states</SelectItem>
+              {NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={breed} onValueChange={(v) => { setBreed(v); setPage(1); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent className="max-h-64">
+              <SelectItem value="All breeds">All breeds</SelectItem>
+              {breeds.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {filtered.length} active listing{filtered.length === 1 ? "" : "s"} · 7-Day Expiry Window enforced
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10"
+            onClick={() => reportToAdmin("Marketplace feed report")}
+          >
+            <Flag className="size-4" /> Report Scam or Issue to Admin
+          </Button>
+        </div>
+
+        <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {rows.map((l) => <ListingCard key={l.id} listing={l} />)}
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="py-16 text-center text-muted-foreground">No live listings match these filters.</p>
+        ) : null}
+
+        {pageCount > 1 ? (
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <Button variant="outline" disabled={current === 1} onClick={() => setPage(current - 1)}>
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">Page {current} of {pageCount}</span>
+            <Button variant="outline" disabled={current === pageCount} onClick={() => setPage(current + 1)}>
+              Next
+            </Button>
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
