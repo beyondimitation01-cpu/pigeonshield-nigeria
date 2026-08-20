@@ -422,6 +422,7 @@ export function seedState(): DBState {
     messages: [],
     sellers: {},
     referrals: [],
+    feedback: [],
     broadcast: null,
     commission_pct: 7,
     whatsapp_alert_number: ADMIN_WHATSAPP,
