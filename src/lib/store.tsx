@@ -14,6 +14,7 @@ import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole 
 import {
   makeHandle,
   makePasscode,
+  makeOrderReference,
   AUTO_RELEASE_HOURS,
   LISTING_LIFESPAN_DAYS,
   DAY_MS,
@@ -105,13 +106,31 @@ interface StoreValue {
       price_ngn?: number;
       batch_quantity?: number;
       state?: string;
+      category_type?: Category;
+      description?: string;
+      images?: string[];
     },
   ) => Promise<void>;
+  /** Persists a new photo set for a listing (owner in their dashboard, or an admin). */
+  setListingImages: (id: string, images: string[]) => Promise<string | null>;
+  submitFeedback: (input: {
+    name: string;
+    contact: string;
+    category: string;
+    rating: number;
+    message: string;
+  }) => Promise<string | null>;
+  setFeedbackStatus: (id: string, status: "Pending" | "Resolved") => Promise<void>;
+  deleteFeedback: (id: string) => Promise<void>;
+  verifyPayment: (txId: string) => Promise<void>;
 
   applyReferral: (code: string) => Promise<string | null>;
   setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
-  buyListing: (l: Listing) => Promise<EscrowTransaction | null>;
+  buyListing: (
+    l: Listing,
+    payment: { reference: string; receiptUrl: string },
+  ) => Promise<EscrowTransaction | null>;
   confirmDelivery: (txId: string) => Promise<void>;
   reportDOA: (txId: string, fileName: string) => Promise<void>;
   submitBreederProof: (txId: string, driverPhone: string, waybill: string) => Promise<void>;
@@ -131,6 +150,7 @@ const EMPTY: DBState = {
   messages: [],
   sellers: {},
   referrals: [],
+  feedback: [],
   broadcast: null,
   commission_pct: 12,
   whatsapp_alert_number: ADMIN_WHATSAPP,
@@ -187,7 +207,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals] = await Promise.all([
+    const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals, feedback] = await Promise.all([
       supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
       supabase
         .from("listings")
@@ -210,6 +230,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .order("created_at", { ascending: false })
         .limit(1),
       uid ? supabase.from("referrals").select("*") : Promise.resolve({ data: [] as never[] }),
+      uid
+        ? supabase.from("app_feedback").select("*").order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as never[] }),
     ]);
 
     const sellerMap: Record<string, PublicSeller> = {};
@@ -301,6 +324,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         is_active: l["is_active"] === true,
         is_featured: l["is_featured"] === true,
         is_verified_seller: l["is_verified_seller"] === true,
+        is_mock: l["is_mock"] === true,
         creation_timestamp: ms(String(l["creation_timestamp"])),
         expiry_date: ms(String(l["expiry_date"])),
       })),
@@ -321,7 +345,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         proof_file_name: (t["proof_file_name"] as string | null) ?? null,
         dispute_status: String(t["dispute_status"]) as DisputeStatus,
         status: String(t["status"]) as TxStatus,
+        payment_reference: (t["payment_reference"] as string | null) ?? null,
+        receipt_url: (t["receipt_url"] as string | null) ?? null,
+        receipt_uploaded_at: t["receipt_uploaded_at"] ? ms(String(t["receipt_uploaded_at"])) : null,
         created_at: ms(String(t["created_at"])),
+      })),
+      feedback: ((feedback.data ?? []) as Record<string, unknown>[]).map((f) => ({
+        id: String(f["id"]),
+        user_id: f["user_id"] ? String(f["user_id"]) : null,
+        name: String(f["name"] ?? ""),
+        contact: String(f["contact"] ?? ""),
+        category: String(f["category"] ?? ""),
+        rating: Number(f["rating"] ?? 0),
+        message: String(f["message"] ?? ""),
+        status: String(f["status"] ?? "Pending"),
+        created_at: ms(String(f["created_at"])),
       })),
       messages: ((msgs.data ?? []) as Record<string, unknown>[]).map((m) => ({
         id: String(m["id"]),
@@ -622,6 +660,47 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
 
+    setListingImages: async (id, images) => {
+      const { error } = await supabase.from("listings").update({ images }).eq("id", id);
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    submitFeedback: async (input) => {
+      const message = input.message.trim();
+      if (!message) return "Write your message first.";
+      const { error } = await supabase.from("app_feedback").insert({
+        user_id: sessionRef.current?.user.id ?? null,
+        name: input.name.trim(),
+        contact: input.contact.trim(),
+        category: input.category,
+        rating: Math.min(5, Math.max(1, Math.round(input.rating))),
+        message,
+      });
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    setFeedbackStatus: async (id, status) => {
+      await supabase.from("app_feedback").update({ status }).eq("id", id);
+      await refresh();
+    },
+
+    deleteFeedback: async (id) => {
+      await supabase.from("app_feedback").delete().eq("id", id);
+      await refresh();
+    },
+
+    verifyPayment: async (txId) => {
+      await supabase
+        .from("transactions")
+        .update({ status: "Payment Verified / Processing" })
+        .eq("id", txId);
+      await refresh();
+    },
+
     applyReferral: async (code) => {
       if (!user) return "Log in first.";
       const clean = code.trim().toUpperCase();
@@ -653,7 +732,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     commissionFor,
 
-    buyListing: async (l) => {
+    buyListing: async (l, payment) => {
       if (!user) return null;
       const pct = l.commission_override ?? db.commission_pct;
       const now = Date.now();
@@ -668,6 +747,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           calculated_commission: Math.round((l.price_ngn * pct) / 100),
           delivery_marked_at: new Date(now).toISOString(),
           auto_release_at: new Date(now + AUTO_RELEASE_HOURS * 3600_000).toISOString(),
+          status: "Pending Verification",
+          payment_reference: payment.reference || makeOrderReference(),
+          receipt_url: payment.receiptUrl,
+          receipt_uploaded_at: new Date(now).toISOString(),
         })
         .select()
         .single();
@@ -697,7 +780,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         waybill_image_url: null,
         proof_file_name: null,
         dispute_status: "None",
-        status: "Escrow Funded",
+        status: "Pending Verification",
+        payment_reference: payment.reference,
+        receipt_url: payment.receiptUrl,
+        receipt_uploaded_at: now,
         created_at: now,
       };
     },
