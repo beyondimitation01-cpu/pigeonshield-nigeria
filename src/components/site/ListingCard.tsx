@@ -28,6 +28,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
               src={cover}
               alt={`${listing.breed_type} — ${listing.custom_bird_name}`}
               loading="lazy"
+              decoding="async"
               width={1024}
               height={768}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
