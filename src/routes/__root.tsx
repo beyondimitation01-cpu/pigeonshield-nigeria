@@ -17,6 +17,7 @@ import { AuthModal } from "@/components/site/AuthModal";
 import { AdminGesture } from "@/components/site/AdminGesture";
 import { BroadcastBanner } from "@/components/site/BroadcastBanner";
 import { InstallPrompt } from "@/components/site/InstallPrompt";
+import { OfflineBanner } from "@/components/site/OfflineBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { CanonicalHostGuard } from "@/components/site/CanonicalHostGuard";
 import { canonicalUrl } from "@/lib/site";
@@ -144,6 +145,7 @@ function RootComponent() {
       <CanonicalHostGuard>
       <StoreProvider>
         <Navbar />
+        <OfflineBanner />
         <BroadcastBanner />
         <div className="min-h-screen pt-16">
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
