@@ -2,6 +2,7 @@
   "name": "PigeonShield Nigeria",
   "short_name": "PigeonShield",
   "description": "Nigeria's #1 trusted marketplace for verified pigeon breeders and buyers, protected by PigeonShield Escrow.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -92,7 +92,20 @@ interface StoreValue {
   deleteListing: (id: string) => Promise<void>;
   setCommission: (pct: number) => Promise<void>;
   setWhatsappAlertNumber: (value: string) => Promise<void>;
-  setListingFlags: (id: string, patch: { is_featured?: boolean; is_verified_seller?: boolean }) => Promise<void>;
+  setListingFlags: (
+    id: string,
+    patch: {
+      is_featured?: boolean;
+      is_verified_seller?: boolean;
+      is_active?: boolean;
+      custom_bird_name?: string;
+      breed_type?: string;
+      price_ngn?: number;
+      batch_quantity?: number;
+      state?: string;
+    },
+  ) => Promise<void>;
+
   applyReferral: (code: string) => Promise<string | null>;
   setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
@@ -343,8 +356,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    // Live sync: any listing inserted/updated/deleted by any user shows up
+    // instantly (home feed and the admin console read the same state).
+    const channel = supabase
+      .channel("listings-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => {
+        void refresh();
+      })
+      .subscribe();
+
+    return () => {
+      sub.subscription.unsubscribe();
+      void supabase.removeChannel(channel);
+    };
   }, [refresh, ensureProfile]);
+
 
   const user = useMemo(
     () => db.users.find((u) => u.id === db.current_user_id) ?? null,

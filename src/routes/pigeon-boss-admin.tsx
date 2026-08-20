@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
+  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, MessageCircle, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/site/UserAvatar";
+import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,6 @@ function AdminPage() {
     lockAdmin,
     setCommission,
     setWhatsappAlertNumber,
-    setListingOverride,
-    setListingFlags,
-    deleteListing,
     adminRefund,
     adminRelease,
     bypassPasscode,
@@ -157,45 +155,8 @@ function AdminPage() {
       </Card>
 
 
-      <Card className="space-y-3 p-5">
-        <h2 className="flex items-center gap-2 font-semibold"><ListX className="size-4 text-primary" /> Listing control ({db.listings.length})</h2>
-        <div className="max-h-80 space-y-2 overflow-y-auto">
-          {db.listings.map((l) => (
-            <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{l.custom_bird_name}</p>
-                <p className="text-xs text-muted-foreground">{l.breeder_handle} · {ngn(l.price_ngn)}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="h-8 w-24"
-                  type="number"
-                  placeholder="% override"
-                  defaultValue={l.commission_override ?? ""}
-                  onBlur={(e) => setListingOverride(l.id, e.target.value === "" ? null : Number(e.target.value))}
-                />
-                <Button
-                  size="sm"
-                  variant={l.is_featured ? "default" : "outline"}
-                  onClick={() => setListingFlags(l.id, { is_featured: !l.is_featured })}
-                  title="Pin to top of home feed"
-                >
-                  <Star className="size-3" /> Featured
-                </Button>
-                <Button
-                  size="sm"
-                  variant={l.is_verified_seller ? "default" : "outline"}
-                  onClick={() => setListingFlags(l.id, { is_verified_seller: !l.is_verified_seller })}
-                >
-                  <ShieldCheck className="size-3" /> Verified
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => deleteListing(l.id)}>Delete</Button>
+      <AdminListingsTable />
 
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
 
       <Card className="space-y-3 p-5">
         <h2 className="flex items-center gap-2 font-semibold"><Gavel className="size-4 text-primary" /> Dispute intervention</h2>

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { referralLink } from "@/lib/site";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -296,7 +297,7 @@ function ReferBoost() {
   const { db, applyReferral } = useStore();
   const [code, setCode] = useState("");
   const link =
-    typeof window === "undefined" ? "" : `${window.location.origin}/ref/${db.referral_code}`;
+    referralLink(db.referral_code);
 
   async function copy() {
     try {
