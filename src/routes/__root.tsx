@@ -15,6 +15,8 @@ import { StoreProvider } from "@/lib/store";
 import { Navbar, Footer } from "@/components/site/Chrome";
 import { AuthModal } from "@/components/site/AuthModal";
 import { AdminGesture } from "@/components/site/AdminGesture";
+import { BroadcastBanner } from "@/components/site/BroadcastBanner";
+import { InstallPrompt } from "@/components/site/InstallPrompt";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -82,11 +84,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "PigeonShield Nigeria" },
+      {
+        name: "description",
+        content:
+          "Nigeria's trusted marketplace for verified pigeon breeders and buyers, protected by PigeonShield Escrow.",
+      },
+      { name: "author", content: "PigeonShield Nigeria" },
+      { name: "theme-color", content: "#1b4332" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "PigeonShield" },
+      { property: "og:title", content: "PigeonShield Nigeria" },
+      {
+        property: "og:description",
+        content: "Buy, sell and trade pigeons with 100% DOA protection through PigeonShield Escrow.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
@@ -96,7 +108,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/pwa-icon-192.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -126,6 +140,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
         <Navbar />
+        <BroadcastBanner />
         <div className="min-h-screen pt-16">
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
@@ -133,6 +148,7 @@ function RootComponent() {
         <Footer />
         <AuthModal />
         <AdminGesture />
+        <InstallPrompt />
         <Toaster />
       </StoreProvider>
     </QueryClientProvider>
