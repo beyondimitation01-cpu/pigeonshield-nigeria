@@ -199,11 +199,37 @@ function pedigree(name: string, breed: string): Pedigree {
   };
 }
 
+export interface PublicSeller {
+  id: string;
+  public_handle: string;
+  avatar_url: string;
+  is_verified_seller: boolean;
+  is_online: boolean;
+}
+
+export interface Broadcast {
+  id: string;
+  body: string;
+  created_at: number;
+}
+
+export interface ReferralRow {
+  id: string;
+  referrer_id: string;
+  referred_id: string;
+  referral_code: string;
+  credits: number;
+  created_at: number;
+}
+
 export interface DBState {
   users: NigerianUser[];
   listings: Listing[];
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
+  sellers: Record<string, PublicSeller>;
+  referrals: ReferralRow[];
+  broadcast: Broadcast | null;
   commission_pct: number;
   whatsapp_alert_number: string;
   referral_code: string;
@@ -212,6 +238,7 @@ export interface DBState {
   current_user_id: string | null;
   jwt: string | null;
 }
+
 
 const SEED_USERS: NigerianUser[] = [
   {
