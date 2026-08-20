@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX } from "lucide-react";
+import { Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
