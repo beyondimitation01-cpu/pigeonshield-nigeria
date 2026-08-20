@@ -372,37 +372,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Sync store data whenever the canonical AuthContext session changes.
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      sessionRef.current = next;
-      setSession(next);
+    if (authSession) {
       void ensureProfile().then(refresh);
-      if (next) {
-        void getAdminSession()
-          .then((r) => setAdminUnlocked(r.unlocked))
-          .catch(() => setAdminUnlocked(false));
-      } else {
-        setAdminUnlocked(false);
-      }
-    });
-
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        sessionRef.current = data.session;
-        setSession(data.session);
-        void ensureProfile().then(refresh);
-        if (data.session) {
-          void getAdminSession()
-            .then((r) => setAdminUnlocked(r.unlocked))
-            .catch(() => setAdminUnlocked(false));
-        }
-      })
-      .catch(() => {
-        sessionRef.current = null;
-        setSession(null);
-      })
-      .finally(() => setAuthReady(true));
+      void getAdminSession()
+        .then((r) => setAdminUnlocked(r.unlocked))
+        .catch(() => setAdminUnlocked(false));
+    } else {
+      setAdminUnlocked(false);
+      void refresh();
+    }
 
     // Live sync: any listing inserted/updated/deleted by any user shows up
     // instantly (home feed and the admin console read the same state).
@@ -414,10 +394,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => {
-      sub.subscription.unsubscribe();
       void supabase.removeChannel(channel);
     };
-  }, [refresh, ensureProfile]);
+  }, [authSession, refresh, ensureProfile]);
 
 
   const user = useMemo(
