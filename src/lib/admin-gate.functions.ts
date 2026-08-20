@@ -37,11 +37,15 @@ export const unlockAdminConsole = createServerFn({ method: "POST" })
 export const getAdminSession = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    return { unlocked: data === true };
+    // Read as the caller: RLS lets a user see only their own role rows.
+    const { data } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    return { unlocked: !!data };
+
   });
 
 /** Revokes the admin role for the current account. */
