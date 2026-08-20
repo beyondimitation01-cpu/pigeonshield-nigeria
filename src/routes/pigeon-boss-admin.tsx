@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX } from "lucide-react";
+import { Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +24,15 @@ export const Route = createFileRoute("/pigeon-boss-admin")({
 function AdminPage() {
   const {
     db,
+    isAuthed,
+    openAuth,
     adminUnlocked,
     unlockAdmin,
     lockAdmin,
     setCommission,
+    setWhatsappAlertNumber,
     setListingOverride,
+    setListingFlags,
     deleteListing,
     adminRefund,
     adminRelease,
@@ -37,8 +41,27 @@ function AdminPage() {
   } = useStore();
 
   const [pwd, setPwd] = useState("");
+  const [busy, setBusy] = useState(false);
   const [pct, setPct] = useState(String(db.commission_pct));
+  const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
+
+  async function attemptUnlock() {
+    if (!pwd.trim()) {
+      toast.error("Enter the master password.");
+      return;
+    }
+    if (!isAuthed) {
+      openAuth("login", "Sign in to your account first, then enter the master password.");
+      return;
+    }
+    setBusy(true);
+    const ok = await unlockAdmin(pwd.trim());
+    setBusy(false);
+    setPwd("");
+    if (ok) toast.success("God-mode unlocked.");
+    else toast.error("Incorrect master password.");
+  }
 
   if (!adminUnlocked) {
     return (
@@ -48,27 +71,35 @@ function AdminPage() {
             <Lock className="size-5 text-primary" /> Master Access Required
           </h1>
           <p className="text-sm text-muted-foreground">
-            You must be signed in to your account first. The master password is verified on the
-            server and grants the admin role to your account.
+            {isAuthed
+              ? "Enter the master password. It is verified on the server and grants the admin role to your account."
+              : "Sign in to your account first — the master password then upgrades that account to God-Mode."}
           </p>
+          {!isAuthed ? (
+            <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
+              Sign in to continue
+            </Button>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="master">Master password</Label>
-            <Input id="master" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
+            <Input
+              id="master"
+              type="password"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void attemptUnlock();
+              }}
+            />
           </div>
-          <Button
-            className="w-full"
-            onClick={async () => {
-              if (await unlockAdmin(pwd)) toast.success("God-mode unlocked.");
-              else toast.error("Incorrect master password, or you are not signed in.");
-            }}
-          >
-            Unlock console
+          <Button className="w-full" disabled={busy} onClick={() => void attemptUnlock()}>
+            {busy ? "Verifying…" : "Unlock console"}
           </Button>
-
         </Card>
       </main>
     );
   }
+
 
   const disputes = db.transactions.filter((t) => t.status === "Disputed");
   const gross = db.transactions.reduce((s, t) => s + t.calculated_commission, 0);
@@ -98,6 +129,38 @@ function AdminPage() {
       </Card>
 
       <Card className="space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <MessageCircle className="size-4 text-primary" /> WhatsApp alert number
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            value={whats}
+            onChange={(e) => setWhats(e.target.value)}
+            placeholder="2348139049440"
+            className="max-w-56"
+            inputMode="tel"
+          />
+          <Button
+            onClick={async () => {
+              await setWhatsappAlertNumber(whats);
+              toast.success("WhatsApp alert number updated.");
+            }}
+          >
+            Save
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={`https://wa.me/${db.whatsapp_alert_number}`} target="_blank" rel="noreferrer">
+              Test alert
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Dispute, DOA and scam reports are routed to WhatsApp {db.whatsapp_alert_number}.
+        </p>
+      </Card>
+
+
+      <Card className="space-y-3 p-5">
         <h2 className="flex items-center gap-2 font-semibold"><ListX className="size-4 text-primary" /> Listing control ({db.listings.length})</h2>
         <div className="max-h-80 space-y-2 overflow-y-auto">
           {db.listings.map((l) => (
@@ -114,7 +177,23 @@ function AdminPage() {
                   defaultValue={l.commission_override ?? ""}
                   onBlur={(e) => setListingOverride(l.id, e.target.value === "" ? null : Number(e.target.value))}
                 />
+                <Button
+                  size="sm"
+                  variant={l.is_featured ? "default" : "outline"}
+                  onClick={() => setListingFlags(l.id, { is_featured: !l.is_featured })}
+                  title="Pin to top of home feed"
+                >
+                  <Star className="size-3" /> Featured
+                </Button>
+                <Button
+                  size="sm"
+                  variant={l.is_verified_seller ? "default" : "outline"}
+                  onClick={() => setListingFlags(l.id, { is_verified_seller: !l.is_verified_seller })}
+                >
+                  <ShieldCheck className="size-3" /> Verified
+                </Button>
                 <Button size="sm" variant="destructive" onClick={() => deleteListing(l.id)}>Delete</Button>
+
               </div>
             </div>
           ))}

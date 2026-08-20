@@ -14,18 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_login_attempts: {
+        Row: {
+          failed_count: number
+          locked_until: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          failed_count?: number
+          locked_until?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          failed_count?: number
+          locked_until?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           commission_pct: number
           id: number
+          whatsapp_alert_number: string
         }
         Insert: {
           commission_pct?: number
           id?: number
+          whatsapp_alert_number?: string
         }
         Update: {
           commission_pct?: number
           id?: number
+          whatsapp_alert_number?: string
         }
         Relationships: []
       }
@@ -45,6 +69,8 @@ export type Database = {
           id: string
           images: string[]
           is_active: boolean
+          is_featured: boolean
+          is_verified_seller: boolean
           pedigree_json: Json | null
           price_ngn: number
           state: string
@@ -65,6 +91,8 @@ export type Database = {
           id?: string
           images?: string[]
           is_active?: boolean
+          is_featured?: boolean
+          is_verified_seller?: boolean
           pedigree_json?: Json | null
           price_ngn: number
           state: string
@@ -85,6 +113,8 @@ export type Database = {
           id?: string
           images?: string[]
           is_active?: boolean
+          is_featured?: boolean
+          is_verified_seller?: boolean
           pedigree_json?: Json | null
           price_ngn?: number
           state?: string
@@ -136,9 +166,11 @@ export type Database = {
           id: string
           is_banned: boolean
           is_online: boolean
+          is_verified_seller: boolean
           phone_number: string
           public_handle: string
           real_name: string
+          referral_code: string
         }
         Insert: {
           account_number?: string
@@ -148,9 +180,11 @@ export type Database = {
           id: string
           is_banned?: boolean
           is_online?: boolean
+          is_verified_seller?: boolean
           phone_number?: string
           public_handle: string
           real_name?: string
+          referral_code?: string
         }
         Update: {
           account_number?: string
@@ -160,9 +194,41 @@ export type Database = {
           id?: string
           is_banned?: boolean
           is_online?: boolean
+          is_verified_seller?: boolean
           phone_number?: string
           public_handle?: string
           real_name?: string
+          referral_code?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -274,7 +340,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      chat_threads: {
+        Row: {
+          last_message_at: string | null
+          listing_id: string | null
+          message_count: number | null
+          participant_a: string | null
+          participant_b: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_credit_totals: {
+        Row: {
+          referred_count: number | null
+          referrer_id: string | null
+          total_credits: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -284,6 +375,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"

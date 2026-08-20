@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bird, ImageOff, MapPin, Flag, Clock } from "lucide-react";
+import { Bird, ImageOff, MapPin, Flag, Clock, Star, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,9 +35,19 @@ export function ListingCard({ listing }: { listing: Listing }) {
           ) : (
             <MediaPlaceholder label={listing.category_type} className="size-full" />
           )}
-          <Badge className="absolute left-2 top-2" variant="secondary">
-            {listing.category_type}
-          </Badge>
+          <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
+            <Badge variant="secondary">{listing.category_type}</Badge>
+            {listing.is_featured ? (
+              <Badge className="gap-1 bg-amber-500 text-amber-950 hover:bg-amber-500">
+                <Star className="size-3" /> Featured
+              </Badge>
+            ) : null}
+            {listing.is_verified_seller ? (
+              <Badge className="gap-1">
+                <BadgeCheck className="size-3" /> Verified seller
+              </Badge>
+            ) : null}
+          </div>
           <Badge className="absolute right-2 top-2 gap-1" variant={days <= 2 ? "destructive" : "default"}>
             <Clock className="size-3" /> Days Remaining: {days}
           </Badge>

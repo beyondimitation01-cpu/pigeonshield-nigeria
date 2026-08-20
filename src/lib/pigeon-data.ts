@@ -114,6 +114,8 @@ export interface Listing {
   batch_quantity: number;
   commission_override: number | null;
   is_active: boolean;
+  is_featured?: boolean;
+  is_verified_seller?: boolean;
   creation_timestamp: number;
   expiry_date: number;
 }
@@ -203,6 +205,10 @@ export interface DBState {
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
   commission_pct: number;
+  whatsapp_alert_number: string;
+  referral_code: string;
+  referral_credits: number;
+  referred_count: number;
   current_user_id: string | null;
   jwt: string | null;
 }
@@ -334,6 +340,10 @@ export function seedState(): DBState {
     transactions: [],
     messages: [],
     commission_pct: 7,
+    whatsapp_alert_number: ADMIN_WHATSAPP,
+    referral_code: "",
+    referral_credits: 0,
+    referred_count: 0,
     current_user_id: null,
     jwt: null,
   };

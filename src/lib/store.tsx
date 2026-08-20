@@ -70,6 +70,9 @@ interface StoreValue {
   addListing: (input: NewListingInput) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
   setCommission: (pct: number) => Promise<void>;
+  setWhatsappAlertNumber: (value: string) => Promise<void>;
+  setListingFlags: (id: string, patch: { is_featured?: boolean; is_verified_seller?: boolean }) => Promise<void>;
+  applyReferral: (code: string) => Promise<string | null>;
   setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
   buyListing: (l: Listing) => Promise<EscrowTransaction | null>;
@@ -91,6 +94,10 @@ const EMPTY: DBState = {
   transactions: [],
   messages: [],
   commission_pct: 12,
+  whatsapp_alert_number: ADMIN_WHATSAPP,
+  referral_code: "",
+  referral_credits: 0,
+  referred_count: 0,
   current_user_id: null,
   jwt: null,
 };
@@ -138,13 +145,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs] = await Promise.all([
-      supabase.from("app_settings").select("commission_pct").eq("id", 1).maybeSingle(),
-      supabase.from("listings").select("*").order("creation_timestamp", { ascending: false }),
+    const [settings, listings, profiles, txs, passcodes, msgs, credits] = await Promise.all([
+      supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
+      supabase
+        .from("listings")
+        .select("*")
+        .order("is_featured", { ascending: false })
+        .order("is_verified_seller", { ascending: false })
+        .order("creation_timestamp", { ascending: false }),
       uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
+      uid
+        ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
+        : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
     ]);
 
     const codeFor = new Map(
@@ -154,8 +169,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]),
     );
 
+    const myProfile = ((profiles.data ?? []) as Record<string, unknown>[]).find(
+      (p) => String(p["id"]) === uid,
+    );
+
     setDb({
       commission_pct: Number(settings.data?.commission_pct ?? 12),
+      whatsapp_alert_number: String(settings.data?.whatsapp_alert_number ?? ADMIN_WHATSAPP),
+      referral_code: String(myProfile?.["referral_code"] ?? ""),
+      referral_credits: Number(credits.data?.total_credits ?? 0),
+      referred_count: Number(credits.data?.referred_count ?? 0),
       current_user_id: uid,
       jwt: null,
       users: ((profiles.data ?? []) as Record<string, unknown>[]).map((p) => ({
@@ -192,6 +215,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? null
             : Number(l["commission_override"]),
         is_active: l["is_active"] === true,
+        is_featured: l["is_featured"] === true,
+        is_verified_seller: l["is_verified_seller"] === true,
         creation_timestamp: ms(String(l["creation_timestamp"])),
         expiry_date: ms(String(l["expiry_date"])),
       })),
@@ -372,6 +397,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deleteListing: async (id) => {
       await supabase.from("listings").delete().eq("id", id);
       await refresh();
+    },
+
+    setWhatsappAlertNumber: async (value) => {
+      // Only accounts holding the admin role pass the database policy here.
+      await supabase
+        .from("app_settings")
+        .update({ whatsapp_alert_number: value.replace(/[^0-9+]/g, "").slice(0, 20) })
+        .eq("id", 1);
+      await refresh();
+    },
+
+    setListingFlags: async (id, patch) => {
+      await supabase.from("listings").update(patch).eq("id", id);
+      await refresh();
+    },
+
+    applyReferral: async (code) => {
+      if (!user) return "Log in first.";
+      const clean = code.trim().toUpperCase();
+      if (!clean) return "Enter a referral code.";
+      if (clean === db.referral_code) return "You cannot refer yourself.";
+      // The referrer is resolved server-side by a database trigger; the browser
+      // never gets to read other people's profiles.
+      const { error } = await supabase
+        .from("referrals")
+        .insert({ referrer_id: user.id, referred_id: user.id, referral_code: clean });
+      if (error) {
+        return error.message.includes("Unknown referral code")
+          ? "That referral code does not exist."
+          : "This account has already used a referral code.";
+      }
+      await refresh();
+      return null;
     },
 
     setCommission: async (pct) => {
