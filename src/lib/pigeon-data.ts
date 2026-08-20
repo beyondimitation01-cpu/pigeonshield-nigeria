@@ -5,7 +5,6 @@ import dogBoerboel from "@/assets/dog-boerboel.jpg";
 
 export const ADMIN_OPAY = "08139049440";
 export const ADMIN_WHATSAPP = "2348139049440";
-export const ADMIN_MASTER_PASSWORD = "PigeonMaster2026";
 export const LISTING_LIFESPAN_DAYS = 7;
 export const AUTO_RELEASE_HOURS = 48;
 export const PAGE_SIZE = 15;

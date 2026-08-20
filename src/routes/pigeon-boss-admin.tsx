@@ -53,8 +53,8 @@ function AdminPage() {
           </div>
           <Button
             className="w-full"
-            onClick={() => {
-              if (unlockAdmin(pwd)) toast.success("God-mode unlocked.");
+            onClick={async () => {
+              if (await unlockAdmin(pwd)) toast.success("God-mode unlocked.");
               else toast.error("Incorrect master password.");
             }}
           >
