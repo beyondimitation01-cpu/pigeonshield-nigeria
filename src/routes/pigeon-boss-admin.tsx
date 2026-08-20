@@ -24,10 +24,8 @@ export const Route = createFileRoute("/pigeon-boss-admin")({
 function AdminPage() {
   const {
     db,
-    isAuthed,
-    openAuth,
     adminUnlocked,
-    unlockAdmin,
+    masterUnlock,
     lockAdmin,
     setCommission,
     setWhatsappAlertNumber,
@@ -51,15 +49,11 @@ function AdminPage() {
       toast.error("Enter the master password.");
       return;
     }
-    if (!isAuthed) {
-      openAuth("login", "Sign in to your account first, then enter the master password.");
-      return;
-    }
     setBusy(true);
-    const ok = await unlockAdmin(pwd.trim());
+    const ok = await masterUnlock(pwd.trim());
     setBusy(false);
     setPwd("");
-    if (ok) toast.success("God-mode unlocked.");
+    if (ok) toast.success("Super Admin authenticated. God-mode unlocked.");
     else toast.error("Incorrect master password.");
   }
 
@@ -71,15 +65,9 @@ function AdminPage() {
             <Lock className="size-5 text-primary" /> Master Access Required
           </h1>
           <p className="text-sm text-muted-foreground">
-            {isAuthed
-              ? "Enter the master password. It is verified on the server and grants the admin role to your account."
-              : "Sign in to your account first — the master password then upgrades that account to God-Mode."}
+            Enter the master password to open God-Mode. No regular account is needed — the
+            password is verified on the server, which then signs you in as Super Admin.
           </p>
-          {!isAuthed ? (
-            <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
-              Sign in to continue
-            </Button>
-          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="master">Master password</Label>
             <Input
