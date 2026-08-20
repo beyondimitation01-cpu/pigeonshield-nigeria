@@ -3,7 +3,7 @@ import { Bird, ImageOff, MapPin, Flag, Clock, Star, BadgeCheck } from "lucide-re
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { reportToAdmin } from "@/lib/store";
+import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError } from "@/lib/listing-images";
 import { useStore } from "@/lib/store";
