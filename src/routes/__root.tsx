@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
 import { Navbar, Footer } from "@/components/site/Chrome";
 import { AuthModal } from "@/components/site/AuthModal";
+import { AdminGesture } from "@/components/site/AdminGesture";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -131,6 +132,7 @@ function RootComponent() {
         </div>
         <Footer />
         <AuthModal />
+        <AdminGesture />
         <Toaster />
       </StoreProvider>
     </QueryClientProvider>
