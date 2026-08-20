@@ -65,8 +65,7 @@ interface StoreValue {
   }) => Promise<string | null>;
   logout: () => Promise<void>;
   adminUnlocked: boolean;
-  unlockAdmin: (pwd: string) => Promise<AdminUnlockResult>;
-  verifyAdmin: () => Promise<boolean>;
+  unlockAdmin: (pwd: string) => Promise<boolean>;
   lockAdmin: () => void;
   addListing: (input: NewListingInput) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;

@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_login_attempts: {
-        Row: {
-          failed_count: number
-          locked_until: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          failed_count?: number
-          locked_until?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          failed_count?: number
-          locked_until?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       app_settings: {
         Row: {
           commission_pct: number
@@ -305,7 +284,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "user"
