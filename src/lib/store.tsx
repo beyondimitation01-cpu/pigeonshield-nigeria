@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
@@ -164,9 +165,8 @@ const EMPTY: DBState = {
 const ms = (value: string | null) => (value ? new Date(value).getTime() : 0);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { session: authSession, isLoading: authLoading } = useAuth();
   const [db, setDb] = useState<DBState>(EMPTY);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [authGate, setAuthGate] = useState<AuthGate>({
     open: false,
@@ -174,7 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     warning: null,
   });
   const sessionRef = useRef<Session | null>(null);
-  sessionRef.current = session;
+  sessionRef.current = authSession;
 
   /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
   const ensureProfile = useCallback(async () => {
@@ -372,37 +372,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Sync store data whenever the canonical AuthContext session changes.
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      sessionRef.current = next;
-      setSession(next);
+    if (authSession) {
       void ensureProfile().then(refresh);
-      if (next) {
-        void getAdminSession()
-          .then((r) => setAdminUnlocked(r.unlocked))
-          .catch(() => setAdminUnlocked(false));
-      } else {
-        setAdminUnlocked(false);
-      }
-    });
-
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        sessionRef.current = data.session;
-        setSession(data.session);
-        void ensureProfile().then(refresh);
-        if (data.session) {
-          void getAdminSession()
-            .then((r) => setAdminUnlocked(r.unlocked))
-            .catch(() => setAdminUnlocked(false));
-        }
-      })
-      .catch(() => {
-        sessionRef.current = null;
-        setSession(null);
-      })
-      .finally(() => setAuthReady(true));
+      void getAdminSession()
+        .then((r) => setAdminUnlocked(r.unlocked))
+        .catch(() => setAdminUnlocked(false));
+    } else {
+      setAdminUnlocked(false);
+      void refresh();
+    }
 
     // Live sync: any listing inserted/updated/deleted by any user shows up
     // instantly (home feed and the admin console read the same state).
@@ -414,10 +394,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .subscribe();
 
     return () => {
-      sub.subscription.unsubscribe();
       void supabase.removeChannel(channel);
     };
-  }, [refresh, ensureProfile]);
+  }, [authSession, refresh, ensureProfile]);
 
 
   const user = useMemo(
@@ -441,18 +420,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreValue = {
     db,
     user,
-    isAuthed: !!session && !!user,
-    authReady,
+    isAuthed: !!authSession && !!user,
+    authReady: !authLoading,
     authGate,
     openAuth: (mode = "login", warning = null) => setAuthGate({ open: true, mode, warning }),
     closeAuth: () => setAuthGate((g) => ({ ...g, open: false, warning: null })),
 
     login: async (email, password) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (error) return "No account matches that email and password.";
+      if (data.session) {
+        sessionRef.current = data.session;
+      }
       const { data: me } = await supabase.from("profiles").select("is_banned").maybeSingle();
       if (me?.is_banned) {
         await supabase.auth.signOut();
@@ -483,7 +465,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Email confirmation is disabled, so the session arrives immediately.
       if (!data.session) return "Account created. Log in to continue.";
       sessionRef.current = data.session;
-      setSession(data.session);
       await ensureProfile();
       const invite = (input.referral_code ?? "").trim().toUpperCase();
       if (invite) {
@@ -563,7 +544,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       // Reset the UI to guest mode immediately, without waiting for a refetch.
       sessionRef.current = null;
-      setSession(null);
       setAdminUnlocked(false);
       setAuthGate({ open: false, mode: "login", warning: null });
       setDb((prev) => ({ ...prev, current_user_id: null }));
@@ -589,7 +569,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // that account; otherwise the server mints a one-time token for the dedicated
       // Super Admin account and the browser exchanges it for a real session.
       try {
-        if (session) {
+        if (authSession) {
           const { ok } = await unlockAdminConsole({ data: { password: pwd } });
           setAdminUnlocked(ok);
           if (ok) await refresh();
