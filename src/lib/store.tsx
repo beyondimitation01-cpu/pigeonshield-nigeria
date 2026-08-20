@@ -92,7 +92,20 @@ interface StoreValue {
   deleteListing: (id: string) => Promise<void>;
   setCommission: (pct: number) => Promise<void>;
   setWhatsappAlertNumber: (value: string) => Promise<void>;
-  setListingFlags: (id: string, patch: { is_featured?: boolean; is_verified_seller?: boolean }) => Promise<void>;
+  setListingFlags: (
+    id: string,
+    patch: {
+      is_featured?: boolean;
+      is_verified_seller?: boolean;
+      is_active?: boolean;
+      custom_bird_name?: string;
+      breed_type?: string;
+      price_ngn?: number;
+      batch_quantity?: number;
+      state?: string;
+    },
+  ) => Promise<void>;
+
   applyReferral: (code: string) => Promise<string | null>;
   setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
