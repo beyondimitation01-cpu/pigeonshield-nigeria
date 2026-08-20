@@ -400,15 +400,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             home_state: input.home_state,
             bank_name: input.bank_name,
             account_number: input.account_number,
+            avatar_url: input.avatar_url ?? "",
           },
         },
       });
       if (error) return error.message;
-      if (!data.session) return "Account created. Check your inbox to confirm your email, then log in.";
+      // Email confirmation is disabled, so the session arrives immediately.
+      if (!data.session) return "Account created. Log in to continue.";
+      sessionRef.current = data.session;
+      setSession(data.session);
       await ensureProfile();
+      const invite = (input.referral_code ?? "").trim().toUpperCase();
+      if (invite) {
+        await supabase
+          .from("referrals")
+          .insert({ referrer_id: data.session.user.id, referred_id: data.session.user.id, referral_code: invite });
+      }
       await refresh();
       setAuthGate({ open: false, mode: "login", warning: null });
       return null;
+    },
+
+    updateProfile: async (patch) => {
+      if (!sessionRef.current?.user) return "Log in first.";
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", sessionRef.current.user.id);
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    sendBroadcast: async (body) => {
+      const text = body.trim();
+      if (!text) return "Write an announcement first.";
+      if (text.length > 500) return "Keep announcements under 500 characters.";
+      // Retire older announcements so exactly one banner shows platform-wide.
+      await supabase.from("broadcasts").update({ is_active: false }).eq("is_active", true);
+      const { error } = await supabase
+        .from("broadcasts")
+        .insert({ body: text, created_by: sessionRef.current?.user.id ?? null });
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    retireBroadcast: async (id) => {
+      await supabase.from("broadcasts").update({ is_active: false }).eq("id", id);
+      await refresh();
+    },
+
+    setUserFlags: async (userId, patch) => {
+      await supabase.from("profiles").update(patch).eq("id", userId);
+      // Verified badge mirrors onto that breeder's live listings.
+      if (patch.is_verified_seller !== undefined) {
+        await supabase
+          .from("listings")
+          .update({ is_verified_seller: patch.is_verified_seller })
+          .eq("breeder_id", userId);
+      }
+      await refresh();
+    },
+
+    releaseUserFunds: async (userId) => {
+      const held = db.transactions.filter(
+        (t) => t.breeder_id === userId && t.status !== "Completed" && t.status !== "Refunded to Buyer",
+      );
+      for (const t of held) {
+        await supabase
+          .from("transactions")
+          .update({ status: "Completed", dispute_status: "None" })
+          .eq("id", t.id);
+      }
+      await refresh();
+      return held.length;
     },
 
     logout: async () => {
