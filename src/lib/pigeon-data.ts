@@ -114,6 +114,8 @@ export interface Listing {
   batch_quantity: number;
   commission_override: number | null;
   is_active: boolean;
+  is_featured?: boolean;
+  is_verified_seller?: boolean;
   creation_timestamp: number;
   expiry_date: number;
 }
