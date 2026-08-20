@@ -109,6 +109,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<Session | null>(null);
   sessionRef.current = session;
 
+  /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
+  const ensureProfile = useCallback(async () => {
+    const authUser = sessionRef.current?.user;
+    if (!authUser) return;
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    if (existing) return;
+    const meta = (authUser.user_metadata ?? {}) as Record<string, string>;
+    await supabase.from("profiles").insert({
+      id: authUser.id,
+      real_name: meta["real_name"] ?? "",
+      phone_number: meta["phone_number"] ?? "",
+      public_handle: meta["public_handle"] ?? makeHandle(),
+      home_state: meta["home_state"] ?? "",
+      bank_name: meta["bank_name"] ?? "",
+      account_number: meta["account_number"] ?? "",
+    });
+  }, []);
+
   /**
    * Every row below is fetched through row-level security: the database decides
    * what this account may see. The browser cannot widen it.
@@ -207,7 +229,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       sessionRef.current = next;
       setSession(next);
-      void refresh();
+      void ensureProfile().then(refresh);
       if (next) {
         void getAdminSession()
           .then((r) => setAdminUnlocked(r.unlocked))
@@ -220,7 +242,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void supabase.auth.getSession().then(({ data }) => {
       sessionRef.current = data.session;
       setSession(data.session);
-      void refresh();
+      void ensureProfile().then(refresh);
       if (data.session) {
         void getAdminSession()
           .then((r) => setAdminUnlocked(r.unlocked))
@@ -229,7 +251,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
 
     return () => sub.subscription.unsubscribe();
-  }, [refresh]);
+  }, [refresh, ensureProfile]);
 
   const user = useMemo(
     () => db.users.find((u) => u.id === db.current_user_id) ?? null,
@@ -276,22 +298,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email: input.email.trim(),
         password: input.password,
-        options: { emailRedirectTo: `${window.location.origin}/` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            real_name: input.real_name,
+            phone_number: input.phone_number,
+            public_handle: makeHandle(),
+            home_state: input.home_state,
+            bank_name: input.bank_name,
+            account_number: input.account_number,
+          },
+        },
       });
       if (error) return error.message;
-      const newId = data.user?.id;
-      if (!newId) return "Check your inbox to confirm your email, then log in.";
-
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: newId,
-        real_name: input.real_name,
-        phone_number: input.phone_number,
-        public_handle: makeHandle(),
-        home_state: input.home_state,
-        bank_name: input.bank_name,
-        account_number: input.account_number,
-      });
-      if (profileError) return profileError.message;
+      if (!data.session) return "Account created. Check your inbox to confirm your email, then log in.";
+      await ensureProfile();
       await refresh();
       setAuthGate({ open: false, mode: "login", warning: null });
       return null;

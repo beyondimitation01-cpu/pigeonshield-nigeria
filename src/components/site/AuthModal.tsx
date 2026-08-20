@@ -133,7 +133,6 @@ export function AuthModal() {
               <button className="font-semibold text-primary underline" onClick={() => { setError(null); openAuth("register", authGate.warning); }}>
                 Register here
               </button>
-              <p className="mt-2 text-xs">Demo login: musa@example.ng / demo1234</p>
             </>
           ) : (
             <>
