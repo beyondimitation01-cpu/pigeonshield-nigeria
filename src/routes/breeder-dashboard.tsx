@@ -47,6 +47,7 @@ function BreederDashboard() {
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
   const [state, setState] = useState("Lagos");
   const [vaccinated, setVaccinated] = useState(true);
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
   if (!authed || !user) {
     return (
