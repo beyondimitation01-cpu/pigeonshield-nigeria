@@ -205,6 +205,10 @@ export interface DBState {
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
   commission_pct: number;
+  whatsapp_alert_number: string;
+  referral_code: string;
+  referral_credits: number;
+  referred_count: number;
   current_user_id: string | null;
   jwt: string | null;
 }
