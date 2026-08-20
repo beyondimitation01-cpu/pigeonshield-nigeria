@@ -32,7 +32,10 @@ export const unlockAdminConsole = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("user_roles")
       .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
-    if (error) return { ok: false as const };
+    if (error) {
+      console.error("[admin-gate] role grant failed", error);
+      return { ok: false as const };
+    }
     return { ok: true as const };
   });
 
