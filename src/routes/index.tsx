@@ -54,13 +54,21 @@ function Marketplace() {
 
   const filtered = useMemo(
     () =>
-      pool.filter(
-        (l) =>
-          (state === "All states" || l.state === state) &&
-          (breed === "All breeds" || l.breed_type === breed) &&
-          (q.trim() === "" ||
-            `${l.custom_bird_name} ${l.breed_type}`.toLowerCase().includes(q.toLowerCase())),
-      ),
+      pool
+        .filter(
+          (l) =>
+            (state === "All states" || l.state === state) &&
+            (breed === "All breeds" || l.breed_type === breed) &&
+            (q.trim() === "" ||
+              `${l.custom_bird_name} ${l.breed_type}`.toLowerCase().includes(q.toLowerCase())),
+        )
+        // Featured first, then verified sellers, then newest.
+        .sort(
+          (a, b) =>
+            Number(b.is_featured ?? false) - Number(a.is_featured ?? false) ||
+            Number(b.is_verified_seller ?? false) - Number(a.is_verified_seller ?? false) ||
+            b.creation_timestamp - a.creation_timestamp,
+        ),
     [pool, state, breed, q],
   );
 
