@@ -15,9 +15,15 @@ const NAV_LINKS = [
 ] as const;
 
 export function Navbar() {
-  const { isAuthed, user, openAuth, logout } = useStore();
+  const { isAuthed, authReady, user, openAuth, logout } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  const handleLogout = async () => {
+    setOpen(false);
+    await logout();
+    await navigate({ to: "/" });
+  };
 
   const links = NAV_LINKS.map((l) => (
     <Link
@@ -42,7 +48,10 @@ export function Navbar() {
         <div className="hidden items-center gap-6 lg:flex">{links}</div>
 
         <div className="flex items-center gap-2">
-          {isAuthed ? (
+          {!authReady ? (
+            // Never guess: no session-dependent button until getSession() resolves.
+            <div className="h-8 w-28 animate-pulse rounded-md bg-muted" aria-hidden />
+          ) : isAuthed ? (
             <>
               <Button
                 variant="secondary"
@@ -52,7 +61,7 @@ export function Navbar() {
               >
                 My Account Dashboard
               </Button>
-              <Button variant="outline" size="sm" onClick={logout} title={user?.public_handle}>
+              <Button variant="outline" size="sm" onClick={handleLogout} title={user?.public_handle}>
                 <LogOut className="size-4" /> Logout
               </Button>
             </>
