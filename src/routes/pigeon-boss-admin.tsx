@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
+import { formatNigerianPhone } from "@/lib/phone";
 
 export const Route = createFileRoute("/pigeon-boss-admin")({
   head: () => ({
@@ -151,7 +152,7 @@ function AdminPage() {
             Save
           </Button>
           <Button variant="outline" asChild>
-            <a href={`https://wa.me/${db.whatsapp_alert_number}`} target="_blank" rel="noreferrer">
+            <a href={`https://wa.me/${formatNigerianPhone(db.whatsapp_alert_number)}`} target="_blank" rel="noreferrer">
               Test alert
             </a>
           </Button>

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError, categoryFallback } from "@/lib/listing-images";
+import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 
 function statusOf(l: Listing) {
   if (!l.is_active) return { label: "Frozen", variant: "secondary" as const };
@@ -25,10 +26,11 @@ function statusOf(l: Listing) {
 }
 
 export function AdminListingsTable() {
-  const { db, setListingFlags, setListingOverride, deleteListing } = useStore();
+  const { db, user, setListingFlags, setListingOverride, deleteListing } = useStore();
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Listing | null>(null);
   const [draft, setDraft] = useState({ name: "", breed: "", price: "", qty: "", state: "" });
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -51,6 +53,7 @@ export function AdminListingsTable() {
       qty: String(l.batch_quantity),
       state: l.state,
     });
+    setPhotos(l.images.map((url) => ({ url, path: url })));
   }
 
   async function saveEdit() {
@@ -61,6 +64,8 @@ export function AdminListingsTable() {
       price_ngn: Math.max(0, Number(draft.price) || 0),
       batch_quantity: Math.max(0, Number(draft.qty) || 0),
       state: draft.state.trim(),
+      // Photo swaps persist straight into the listing row.
+      images: photos.map((p) => p.url),
     });
     setEditing(null);
     toast.success("Listing updated.");
@@ -199,6 +204,12 @@ export function AdminListingsTable() {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit listing</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {user ? (
+              <div className="space-y-1.5">
+                <Label>Listing photos</Label>
+                <PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} />
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="ed-name">Title</Label>
               <Input id="ed-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
