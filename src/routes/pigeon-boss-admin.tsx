@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star } from "lucide-react";
+import {
+  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
+} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { UserAvatar } from "@/components/site/UserAvatar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +40,10 @@ function AdminPage() {
     adminRelease,
     bypassPasscode,
     banUser,
+    sendBroadcast,
+    retireBroadcast,
+    setUserFlags,
+    releaseUserFunds,
   } = useStore();
 
   const [pwd, setPwd] = useState("");
@@ -43,6 +51,7 @@ function AdminPage() {
   const [pct, setPct] = useState(String(db.commission_pct));
   const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
+  const [announcement, setAnnouncement] = useState("");
 
   async function attemptUnlock() {
     if (!pwd.trim()) {
@@ -238,18 +247,173 @@ function AdminPage() {
       </Card>
 
       <Card className="space-y-3 p-5">
-        <h2 className="flex items-center gap-2 font-semibold"><Users className="size-4 text-primary" /> User management ({db.users.length})</h2>
-        {db.users.map((u) => (
-          <div key={u.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
-            <div className="min-w-0">
-              <p className="truncate font-medium">{u.public_handle}</p>
-              <p className="text-xs text-muted-foreground">{u.real_name} · {u.email} · {u.bank_name} {u.account_number}</p>
-            </div>
-            <Button size="sm" variant={u.is_banned ? "outline" : "destructive"} onClick={() => banUser(u.id)}>
-              {u.is_banned ? "Unban" : "Ban"}
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Megaphone className="size-4 text-primary" /> Admin broadcast
+        </h2>
+        <p className="text-xs text-muted-foreground">
+          The announcement pops up for every user on their next page load, then stays as a banner until
+          they dismiss it.
+        </p>
+        <Textarea
+          value={announcement}
+          maxLength={500}
+          rows={3}
+          placeholder="e.g. Escrow payouts run 9am–6pm today."
+          onChange={(e) => setAnnouncement(e.target.value)}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={async () => {
+              const err = await sendBroadcast(announcement);
+              if (err) toast.error(err);
+              else {
+                toast.success("Announcement sent to all users.");
+                setAnnouncement("");
+              }
+            }}
+          >
+            Send announcement to all users
+          </Button>
+          {db.broadcast ? (
+            <Button variant="outline" onClick={() => void retireBroadcast(db.broadcast!.id)}>
+              Clear live announcement
             </Button>
-          </div>
-        ))}
+          ) : null}
+        </div>
+        {db.broadcast ? (
+          <p className="rounded-md border border-border bg-muted/50 p-3 text-sm">
+            Live now: {db.broadcast.body}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">No live announcement.</p>
+        )}
+      </Card>
+
+      <Card className="space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Users className="size-4 text-primary" /> User &amp; breeder management ({db.users.length})
+        </h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead className="text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2">User</th>
+                <th className="p-2">Phone</th>
+                <th className="p-2">Email</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Referred by</th>
+                <th className="p-2">Escrow balance</th>
+                <th className="p-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {db.users.map((u) => {
+                const held = db.transactions
+                  .filter(
+                    (t) =>
+                      t.breeder_id === u.id && t.status !== "Completed" && t.status !== "Refunded to Buyer",
+                  )
+                  .reduce((sum, t) => sum + t.amount_naira, 0);
+                const invitedBy = db.referrals.find((r) => r.referred_id === u.id)?.referral_code ?? "—";
+                return (
+                  <tr key={u.id} className="border-t border-border align-top">
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <UserAvatar url={u.avatar_url} name={u.public_handle} size={32} />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{u.public_handle}</p>
+                          <p className="truncate text-xs text-muted-foreground">{u.real_name}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-2">{u.phone_number || "—"}</td>
+                    <td className="p-2">{u.email || "—"}</td>
+                    <td className="space-x-1 p-2">
+                      <Badge variant={u.is_verified_seller ? "default" : "outline"}>
+                        {u.is_verified_seller ? "Verified" : "Unverified"}
+                      </Badge>
+                      {u.is_frozen ? <Badge variant="destructive">Frozen</Badge> : null}
+                      {u.escrow_paused ? <Badge variant="secondary">Escrow paused</Badge> : null}
+                    </td>
+                    <td className="p-2">{invitedBy}</td>
+                    <td className="p-2 font-semibold">{ngn(held)}</td>
+                    <td className="p-2">
+                      <div className="flex flex-wrap gap-1">
+                        <Button
+                          size="sm"
+                          variant={u.is_verified_seller ? "default" : "outline"}
+                          onClick={async () => {
+                            await setUserFlags(u.id, { is_verified_seller: !u.is_verified_seller });
+                            toast.success("Verified status updated.");
+                          }}
+                        >
+                          <ShieldCheck className="size-3" /> Verified
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={u.is_frozen ? "destructive" : "outline"}
+                          onClick={async () => {
+                            await setUserFlags(u.id, { is_frozen: !u.is_frozen });
+                            toast.success(u.is_frozen ? "Account unfrozen." : "Account frozen.");
+                          }}
+                        >
+                          <Snowflake className="size-3" /> {u.is_frozen ? "Unfreeze" : "Freeze"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={u.escrow_paused ? "secondary" : "outline"}
+                          onClick={async () => {
+                            await setUserFlags(u.id, { escrow_paused: !u.escrow_paused });
+                            toast.success(u.escrow_paused ? "Escrow resumed." : "Escrow paused.");
+                          }}
+                        >
+                          <PauseCircle className="size-3" /> {u.escrow_paused ? "Resume" : "Pause escrow"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            const n = await releaseUserFunds(u.id);
+                            toast.success(n ? `Released ${n} payout(s).` : "No held funds for this user.");
+                          }}
+                        >
+                          <Banknote className="size-3" /> Release funds
+                        </Button>
+                        <Button size="sm" variant={u.is_banned ? "outline" : "destructive"} onClick={() => banUser(u.id)}>
+                          {u.is_banned ? "Unban" : "Ban"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card className="space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Gift className="size-4 text-primary" /> Referral tracking ({db.referrals.length})
+        </h2>
+        {db.referrals.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No referrals recorded yet.</p>
+        ) : (
+          db.referrals.map((r) => {
+            const referrer = db.users.find((u) => u.id === r.referrer_id);
+            const referred = db.users.find((u) => u.id === r.referred_id);
+            return (
+              <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
+                <span>
+                  <span className="font-medium">{referrer?.public_handle ?? r.referrer_id.slice(0, 8)}</span>{" "}
+                  referred{" "}
+                  <span className="font-medium">{referred?.public_handle ?? r.referred_id.slice(0, 8)}</span>
+                </span>
+                <Badge variant="outline">Code {r.referral_code} · {r.credits} credit</Badge>
+              </div>
+            );
+          })
+        )}
       </Card>
     </main>
   );
