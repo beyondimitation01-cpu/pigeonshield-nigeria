@@ -41,7 +41,7 @@ function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
   const { db, user, addListing, deleteListing } = useStore();
   const [category, setCategory] = useState<Category>("Pigeon");
-  const [breed, setBreed] = useState(BREEDS_BY_CATEGORY.Pigeon[0]);
+  const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
   const [state, setState] = useState("Lagos");
   const [vaccinated, setVaccinated] = useState(true);
@@ -103,7 +103,7 @@ function BreederDashboard() {
                   onValueChange={(v) => {
                     const c = v as Category;
                     setCategory(c);
-                    setBreed(BREEDS_BY_CATEGORY[c][0]);
+                    setBreed(BREEDS_BY_CATEGORY[c][0] ?? "");
                   }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
