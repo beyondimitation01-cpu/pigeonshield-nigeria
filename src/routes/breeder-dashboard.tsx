@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2, PlusCircle, Package, Share2, Copy, Gift } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,12 @@ function BreederDashboard() {
           <TabsTrigger value="refer">
             <Share2 className="size-4" /> Refer &amp; Boost
           </TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="account" className="mt-6">
+          <AccountPanel />
+        </TabsContent>
 
         <TabsContent value="refer" className="mt-6">
           <ReferBoost />
@@ -248,11 +254,49 @@ function BreederDashboard() {
   );
 }
 
+function AccountPanel() {
+  const { user, updateProfile } = useStore();
+  const [phone, setPhone] = useState(user?.phone_number ?? "");
+  if (!user) return null;
+  return (
+    <Card className="max-w-xl space-y-5 p-5">
+      <h2 className="font-semibold">Your profile</h2>
+      <AvatarUploader
+        userId={user.id}
+        value={user.avatar_url}
+        onChange={async (url) => {
+          const err = await updateProfile({ avatar_url: url });
+          if (err) toast.error(err);
+        }}
+        label="Change profile picture"
+      />
+      <div className="space-y-1.5">
+        <Label htmlFor="payout-phone">Payout phone number (OPay / MTN)</Label>
+        <div className="flex gap-2">
+          <Input id="payout-phone" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
+          <Button
+            onClick={async () => {
+              const err = await updateProfile({ phone_number: phone });
+              if (err) toast.error(err);
+              else toast.success("Payout phone number saved.");
+            }}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Public handle: <span className="font-medium text-foreground">{user.public_handle}</span>
+      </p>
+    </Card>
+  );
+}
+
 function ReferBoost() {
   const { db, applyReferral } = useStore();
   const [code, setCode] = useState("");
   const link =
-    typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${db.referral_code}`;
+    typeof window === "undefined" ? "" : `${window.location.origin}/ref/${db.referral_code}`;
 
   async function copy() {
     try {
@@ -302,11 +346,11 @@ function ReferBoost() {
         </h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">Referral credits</p>
+            <p className="text-xs text-muted-foreground">Referral credits earned</p>
             <p className="text-3xl font-bold text-primary">{db.referral_credits}</p>
           </div>
           <div className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">People referred</p>
+            <p className="text-xs text-muted-foreground">Total friends referred</p>
             <p className="text-3xl font-bold">{db.referred_count}</p>
           </div>
         </div>
