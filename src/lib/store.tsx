@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
@@ -164,9 +165,8 @@ const EMPTY: DBState = {
 const ms = (value: string | null) => (value ? new Date(value).getTime() : 0);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { session: authSession, isLoading: authLoading } = useAuth();
   const [db, setDb] = useState<DBState>(EMPTY);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authReady, setAuthReady] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [authGate, setAuthGate] = useState<AuthGate>({
     open: false,
@@ -174,7 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     warning: null,
   });
   const sessionRef = useRef<Session | null>(null);
-  sessionRef.current = session;
+  sessionRef.current = authSession;
 
   /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
   const ensureProfile = useCallback(async () => {
