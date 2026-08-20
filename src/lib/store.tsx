@@ -91,6 +91,10 @@ const EMPTY: DBState = {
   transactions: [],
   messages: [],
   commission_pct: 12,
+  whatsapp_alert_number: ADMIN_WHATSAPP,
+  referral_code: "",
+  referral_credits: 0,
+  referred_count: 0,
   current_user_id: null,
   jwt: null,
 };
