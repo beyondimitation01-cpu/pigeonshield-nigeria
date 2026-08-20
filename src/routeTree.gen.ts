@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BreederDashboardRouteImport } from './routes/breeder-dashboard'
 import { Route as HowEscrowWorksRouteImport } from './routes/how-escrow-works'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 
@@ -30,6 +31,11 @@ const HowEscrowWorksRoute = HowEscrowWorksRouteImport.update({
   path: '/how-escrow-works',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyOrdersRoute = MyOrdersRouteImport.update({
   id: '/my-orders',
   path: '/my-orders',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/listing/$id': typeof ListingIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/listing/$id': typeof ListingIdRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/listing/$id': typeof ListingIdRoute
 }
@@ -69,6 +78,7 @@ export interface FileRouteTypes {
     | '/'
     | '/breeder-dashboard'
     | '/how-escrow-works'
+    | '/messages'
     | '/my-orders'
     | '/listing/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -76,6 +86,7 @@ export interface FileRouteTypes {
     | '/'
     | '/breeder-dashboard'
     | '/how-escrow-works'
+    | '/messages'
     | '/my-orders'
     | '/listing/$id'
   id:
@@ -83,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/breeder-dashboard'
     | '/how-escrow-works'
+    | '/messages'
     | '/my-orders'
     | '/listing/$id'
   fileRoutesById: FileRoutesById
@@ -91,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BreederDashboardRoute: typeof BreederDashboardRoute
   HowEscrowWorksRoute: typeof HowEscrowWorksRoute
+  MessagesRoute: typeof MessagesRoute
   MyOrdersRoute: typeof MyOrdersRoute
   ListingIdRoute: typeof ListingIdRoute
 }
@@ -118,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HowEscrowWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-orders': {
       id: '/my-orders'
       path: '/my-orders'
@@ -139,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BreederDashboardRoute: BreederDashboardRoute,
   HowEscrowWorksRoute: HowEscrowWorksRoute,
+  MessagesRoute: MessagesRoute,
   MyOrdersRoute: MyOrdersRoute,
   ListingIdRoute: ListingIdRoute,
 }
