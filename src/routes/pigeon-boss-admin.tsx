@@ -177,7 +177,23 @@ function AdminPage() {
                   defaultValue={l.commission_override ?? ""}
                   onBlur={(e) => setListingOverride(l.id, e.target.value === "" ? null : Number(e.target.value))}
                 />
+                <Button
+                  size="sm"
+                  variant={l.is_featured ? "default" : "outline"}
+                  onClick={() => setListingFlags(l.id, { is_featured: !l.is_featured })}
+                  title="Pin to top of home feed"
+                >
+                  <Star className="size-3" /> Featured
+                </Button>
+                <Button
+                  size="sm"
+                  variant={l.is_verified_seller ? "default" : "outline"}
+                  onClick={() => setListingFlags(l.id, { is_verified_seller: !l.is_verified_seller })}
+                >
+                  <ShieldCheck className="size-3" /> Verified
+                </Button>
                 <Button size="sm" variant="destructive" onClick={() => deleteListing(l.id)}>Delete</Button>
+
               </div>
             </div>
           ))}
