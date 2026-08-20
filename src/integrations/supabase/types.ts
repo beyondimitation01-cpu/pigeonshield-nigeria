@@ -442,14 +442,6 @@ export type Database = {
       }
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      is_frozen: { Args: { _user_id: string }; Returns: boolean }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
