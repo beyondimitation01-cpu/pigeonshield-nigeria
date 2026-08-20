@@ -212,6 +212,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? null
             : Number(l["commission_override"]),
         is_active: l["is_active"] === true,
+        is_featured: l["is_featured"] === true,
+        is_verified_seller: l["is_verified_seller"] === true,
         creation_timestamp: ms(String(l["creation_timestamp"])),
         expiry_date: ms(String(l["expiry_date"])),
       })),
