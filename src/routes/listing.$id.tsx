@@ -99,8 +99,9 @@ function ListingDetail() {
             <Button size="lg" onClick={purchase} disabled={user?.id === listing.breeder_id}>
               Fund Escrow &amp; Buy
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate({ to: "/messages", search: { listing: listing.id } })}>
-              Message Breeder
+            <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} />
+            <Button size="lg" variant="ghost" onClick={() => navigate({ to: "/messages", search: { listing: listing.id } })}>
+              Open full inbox
             </Button>
             <Button size="lg" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => reportToAdmin(`Listing ID ${listing.id}`)}>
               <Flag className="size-4" /> Report Scam or Issue to Admin
