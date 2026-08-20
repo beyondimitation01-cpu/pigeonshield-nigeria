@@ -53,6 +53,33 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcasts: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       listings: {
         Row: {
           batch_quantity: number
@@ -160,11 +187,15 @@ export type Database = {
       profiles: {
         Row: {
           account_number: string
+          avatar_url: string
           bank_name: string
           created_at: string
+          email: string
+          escrow_paused: boolean
           home_state: string
           id: string
           is_banned: boolean
+          is_frozen: boolean
           is_online: boolean
           is_verified_seller: boolean
           phone_number: string
@@ -174,11 +205,15 @@ export type Database = {
         }
         Insert: {
           account_number?: string
+          avatar_url?: string
           bank_name?: string
           created_at?: string
+          email?: string
+          escrow_paused?: boolean
           home_state?: string
           id: string
           is_banned?: boolean
+          is_frozen?: boolean
           is_online?: boolean
           is_verified_seller?: boolean
           phone_number?: string
@@ -188,11 +223,15 @@ export type Database = {
         }
         Update: {
           account_number?: string
+          avatar_url?: string
           bank_name?: string
           created_at?: string
+          email?: string
+          escrow_paused?: boolean
           home_state?: string
           id?: string
           is_banned?: boolean
+          is_frozen?: boolean
           is_online?: boolean
           is_verified_seller?: boolean
           phone_number?: string
@@ -358,6 +397,30 @@ export type Database = {
           },
         ]
       }
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          id: string | null
+          is_online: boolean | null
+          is_verified_seller: boolean | null
+          public_handle: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          id?: string | null
+          is_online?: boolean | null
+          is_verified_seller?: boolean | null
+          public_handle?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          id?: string | null
+          is_online?: boolean | null
+          is_verified_seller?: boolean | null
+          public_handle?: string | null
+        }
+        Relationships: []
+      }
       referral_credit_totals: {
         Row: {
           referred_count: number | null
@@ -375,6 +438,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_frozen: { Args: { _user_id: string }; Returns: boolean }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
