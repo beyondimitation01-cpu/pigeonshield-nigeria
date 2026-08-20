@@ -24,11 +24,15 @@ export const Route = createFileRoute("/pigeon-boss-admin")({
 function AdminPage() {
   const {
     db,
+    isAuthed,
+    openAuth,
     adminUnlocked,
     unlockAdmin,
     lockAdmin,
     setCommission,
+    setWhatsappAlertNumber,
     setListingOverride,
+    setListingFlags,
     deleteListing,
     adminRefund,
     adminRelease,
@@ -37,8 +41,27 @@ function AdminPage() {
   } = useStore();
 
   const [pwd, setPwd] = useState("");
+  const [busy, setBusy] = useState(false);
   const [pct, setPct] = useState(String(db.commission_pct));
+  const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
+
+  async function attemptUnlock() {
+    if (!pwd.trim()) {
+      toast.error("Enter the master password.");
+      return;
+    }
+    if (!isAuthed) {
+      openAuth("login", "Sign in to your account first, then enter the master password.");
+      return;
+    }
+    setBusy(true);
+    const ok = await unlockAdmin(pwd.trim());
+    setBusy(false);
+    setPwd("");
+    if (ok) toast.success("God-mode unlocked.");
+    else toast.error("Incorrect master password.");
+  }
 
   if (!adminUnlocked) {
     return (
@@ -48,27 +71,35 @@ function AdminPage() {
             <Lock className="size-5 text-primary" /> Master Access Required
           </h1>
           <p className="text-sm text-muted-foreground">
-            You must be signed in to your account first. The master password is verified on the
-            server and grants the admin role to your account.
+            {isAuthed
+              ? "Enter the master password. It is verified on the server and grants the admin role to your account."
+              : "Sign in to your account first — the master password then upgrades that account to God-Mode."}
           </p>
+          {!isAuthed ? (
+            <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
+              Sign in to continue
+            </Button>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="master">Master password</Label>
-            <Input id="master" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
+            <Input
+              id="master"
+              type="password"
+              value={pwd}
+              onChange={(e) => setPwd(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void attemptUnlock();
+              }}
+            />
           </div>
-          <Button
-            className="w-full"
-            onClick={async () => {
-              if (await unlockAdmin(pwd)) toast.success("God-mode unlocked.");
-              else toast.error("Incorrect master password, or you are not signed in.");
-            }}
-          >
-            Unlock console
+          <Button className="w-full" disabled={busy} onClick={() => void attemptUnlock()}>
+            {busy ? "Verifying…" : "Unlock console"}
           </Button>
-
         </Card>
       </main>
     );
   }
+
 
   const disputes = db.transactions.filter((t) => t.status === "Disputed");
   const gross = db.transactions.reduce((s, t) => s + t.calculated_commission, 0);
