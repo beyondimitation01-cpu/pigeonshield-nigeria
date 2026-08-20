@@ -85,7 +85,20 @@ function BreederDashboard() {
         Trading as <span className="font-semibold text-primary">{user.public_handle}</span>
       </p>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+      <Tabs defaultValue="inventory" className="mt-8">
+        <TabsList>
+          <TabsTrigger value="inventory">Inventory &amp; Sales</TabsTrigger>
+          <TabsTrigger value="refer">
+            <Share2 className="size-4" /> Refer &amp; Boost
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="refer" className="mt-6">
+          <ReferBoost />
+        </TabsContent>
+
+        <TabsContent value="inventory" className="mt-6">
+      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
         <Card className="p-5">
           <h2 className="flex items-center gap-2 font-semibold">
             <PlusCircle className="size-4 text-primary" /> Create new listing
