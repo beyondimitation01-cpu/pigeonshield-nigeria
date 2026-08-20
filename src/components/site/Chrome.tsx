@@ -65,7 +65,7 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-2">
-                  <UserAvatar url={user?.avatar_url} name={user?.public_handle} size={22} />
+                  <UserAvatar url={user?.avatar_url ?? null} name={user?.public_handle ?? ""} size={22} />
                   <span className="max-w-28 truncate">{user?.public_handle ?? "My Account"}</span>
                 </Button>
               </DropdownMenuTrigger>
