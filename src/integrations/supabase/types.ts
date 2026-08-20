@@ -14,16 +14,279 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          commission_pct: number
+          id: number
+        }
+        Insert: {
+          commission_pct?: number
+          id?: number
+        }
+        Update: {
+          commission_pct?: number
+          id?: number
+        }
+        Relationships: []
+      }
+      listings: {
+        Row: {
+          batch_quantity: number
+          breed_type: string
+          breeder_handle: string
+          breeder_id: string | null
+          category_type: string
+          commission_override: number | null
+          creation_timestamp: string
+          custom_bird_name: string
+          description: string
+          expiry_date: string
+          gender: string
+          id: string
+          images: string[]
+          is_active: boolean
+          pedigree_json: Json | null
+          price_ngn: number
+          state: string
+          vaccinated: boolean
+        }
+        Insert: {
+          batch_quantity?: number
+          breed_type: string
+          breeder_handle: string
+          breeder_id?: string | null
+          category_type: string
+          commission_override?: number | null
+          creation_timestamp?: string
+          custom_bird_name: string
+          description?: string
+          expiry_date?: string
+          gender: string
+          id?: string
+          images?: string[]
+          is_active?: boolean
+          pedigree_json?: Json | null
+          price_ngn: number
+          state: string
+          vaccinated?: boolean
+        }
+        Update: {
+          batch_quantity?: number
+          breed_type?: string
+          breeder_handle?: string
+          breeder_id?: string | null
+          category_type?: string
+          commission_override?: number | null
+          creation_timestamp?: string
+          custom_bird_name?: string
+          description?: string
+          expiry_date?: string
+          gender?: string
+          id?: string
+          images?: string[]
+          is_active?: boolean
+          pedigree_json?: Json | null
+          price_ngn?: number
+          state?: string
+          vaccinated?: boolean
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          from_id: string
+          id: string
+          listing_id: string | null
+          to_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          from_id: string
+          id?: string
+          listing_id?: string | null
+          to_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          from_id?: string
+          id?: string
+          listing_id?: string | null
+          to_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          account_number: string
+          bank_name: string
+          created_at: string
+          home_state: string
+          id: string
+          is_banned: boolean
+          is_online: boolean
+          phone_number: string
+          public_handle: string
+          real_name: string
+        }
+        Insert: {
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          home_state?: string
+          id: string
+          is_banned?: boolean
+          is_online?: boolean
+          phone_number?: string
+          public_handle: string
+          real_name?: string
+        }
+        Update: {
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          home_state?: string
+          id?: string
+          is_banned?: boolean
+          is_online?: boolean
+          phone_number?: string
+          public_handle?: string
+          real_name?: string
+        }
+        Relationships: []
+      }
+      transaction_passcodes: {
+        Row: {
+          buyer_id: string
+          passcode: string
+          transaction_id: string
+        }
+        Insert: {
+          buyer_id: string
+          passcode: string
+          transaction_id: string
+        }
+        Update: {
+          buyer_id?: string
+          passcode?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_passcodes_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          amount_naira: number
+          auto_release_at: string
+          breeder_id: string | null
+          buyer_id: string
+          calculated_commission: number
+          created_at: string
+          delivery_marked_at: string
+          dispute_status: string
+          driver_phone: string | null
+          id: string
+          listing_id: string | null
+          listing_name: string
+          proof_file_name: string | null
+          status: string
+          waybill_image_url: string | null
+        }
+        Insert: {
+          amount_naira: number
+          auto_release_at?: string
+          breeder_id?: string | null
+          buyer_id: string
+          calculated_commission?: number
+          created_at?: string
+          delivery_marked_at?: string
+          dispute_status?: string
+          driver_phone?: string | null
+          id?: string
+          listing_id?: string | null
+          listing_name: string
+          proof_file_name?: string | null
+          status?: string
+          waybill_image_url?: string | null
+        }
+        Update: {
+          amount_naira?: number
+          auto_release_at?: string
+          breeder_id?: string | null
+          buyer_id?: string
+          calculated_commission?: number
+          created_at?: string
+          delivery_marked_at?: string
+          dispute_status?: string
+          driver_phone?: string | null
+          id?: string
+          listing_id?: string | null
+          listing_name?: string
+          proof_file_name?: string | null
+          status?: string
+          waybill_image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +413,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
