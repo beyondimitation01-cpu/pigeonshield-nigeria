@@ -234,6 +234,98 @@ function BreederDashboard() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
     </main>
+  );
+}
+
+function ReferBoost() {
+  const { db, applyReferral } = useStore();
+  const [code, setCode] = useState("");
+  const link =
+    typeof window === "undefined" ? "" : `${window.location.origin}/?ref=${db.referral_code}`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Referral link copied.");
+    } catch {
+      toast.error("Copy failed — select the link manually.");
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card className="space-y-4 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Share2 className="size-4 text-primary" /> Your share link
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Every breeder or buyer who joins with your code earns you 1 boost credit. Credits push your
+          listings higher in the marketplace feed.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="reflink">Share link</Label>
+          <div className="flex gap-2">
+            <Input id="reflink" readOnly value={link} />
+            <Button variant="outline" onClick={copy} aria-label="Copy referral link">
+              <Copy className="size-4" />
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Join me on PigeonShield Nigeria — escrow-protected pigeon trading. ${link}`)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Share on WhatsApp
+            </a>
+          </Button>
+          <Badge variant="outline">Referral code: {db.referral_code || "—"}</Badge>
+        </div>
+      </Card>
+
+      <Card className="space-y-4 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <Gift className="size-4 text-primary" /> Boost credits
+        </h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">Referral credits</p>
+            <p className="text-3xl font-bold text-primary">{db.referral_credits}</p>
+          </div>
+          <div className="rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">People referred</p>
+            <p className="text-3xl font-bold">{db.referred_count}</p>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="refcode">Were you referred? Enter their code</Label>
+          <div className="flex gap-2">
+            <Input
+              id="refcode"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="ABCD1234"
+            />
+            <Button
+              onClick={async () => {
+                const err = await applyReferral(code);
+                if (err) toast.error(err);
+                else {
+                  toast.success("Referral credited to your inviter.");
+                  setCode("");
+                }
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 }
