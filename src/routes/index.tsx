@@ -9,6 +9,7 @@ import { ListingCard } from "@/components/site/ListingCard";
 import { useStore, reportToAdmin } from "@/lib/store";
 import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
+import { onImageError } from "@/lib/listing-images";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -92,6 +93,7 @@ function Marketplace() {
           alt="Racing homer pigeon in a Nigerian loft"
           width={1024}
           height={768}
+          onError={onImageError()}
           className="absolute inset-0 size-full object-cover opacity-25"
         />
         <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">

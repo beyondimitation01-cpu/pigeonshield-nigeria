@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { reportToAdmin } from "@/lib/store";
 import { daysRemaining, ngn, type Listing } from "@/lib/pigeon-data";
+import { listingCover, onImageError } from "@/lib/listing-images";
 
 export function MediaPlaceholder({ label, className }: { label: string; className?: string }) {
   return (
@@ -17,25 +18,22 @@ export function MediaPlaceholder({ label, className }: { label: string; classNam
 
 export function ListingCard({ listing }: { listing: Listing }) {
   const days = daysRemaining(listing.expiry_date);
-  const cover = listing.images[0];
+  const cover = listingCover(listing);
 
   return (
     <Card className="group overflow-hidden p-0 transition-shadow hover:shadow-lg">
       <Link to="/listing/$id" params={{ id: listing.id }} className="block">
         <div className="relative aspect-[4/3] w-full overflow-hidden">
-          {cover ? (
-            <img
+          <img
               src={cover}
               alt={`${listing.breed_type} — ${listing.custom_bird_name}`}
               loading="lazy"
               decoding="async"
               width={1024}
               height={768}
+              onError={onImageError()}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
-          ) : (
-            <MediaPlaceholder label={listing.category_type} className="size-full" />
-          )}
           <div className="absolute left-2 top-2 flex flex-col items-start gap-1">
             <Badge variant="secondary">{listing.category_type}</Badge>
             {listing.is_featured ? (

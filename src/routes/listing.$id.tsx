@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { MediaPlaceholder } from "@/components/site/ListingCard";
 import { useStore, reportToAdmin } from "@/lib/store";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
+import { listingGallery, onImageError } from "@/lib/listing-images";
 
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({
@@ -36,7 +36,8 @@ function ListingDetail() {
 
   const seller = db.users.find((u) => u.id === listing.breeder_id);
   const pct = commissionFor(listing);
-  const cover = listing.images[active];
+  const gallery = listingGallery(listing);
+  const cover = gallery[active] ?? gallery[0]!;
 
   async function purchase() {
     if (!isAuthed) {
@@ -55,17 +56,22 @@ function ListingDetail() {
       <div className="grid gap-8 lg:grid-cols-2">
         <div>
           <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-border">
-            {cover ? (
-              <img src={cover} alt={listing.custom_bird_name} width={1024} height={768} className="size-full object-cover" />
-            ) : (
-              <MediaPlaceholder label={listing.category_type} className="size-full" />
-            )}
+            <img
+              src={cover}
+              alt={listing.custom_bird_name}
+              width={1024}
+              height={768}
+              loading="lazy"
+              decoding="async"
+              onError={onImageError()}
+              className="size-full object-cover"
+            />
           </div>
-          {listing.images.length > 1 ? (
+          {gallery.length > 1 ? (
             <div className="mt-3 flex gap-2">
-              {listing.images.map((img, i) => (
+              {gallery.map((img, i) => (
                 <button key={img + i} onClick={() => setActive(i)} className={`size-16 overflow-hidden rounded-md border ${i === active ? "border-primary" : "border-border"}`}>
-                  <img src={img} alt="" loading="lazy" className="size-full object-cover" />
+                  <img src={img} alt="" loading="lazy" decoding="async" onError={onImageError()} className="size-full object-cover" />
                 </button>
               ))}
             </div>
