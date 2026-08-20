@@ -399,6 +399,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
 
+    setWhatsappAlertNumber: async (value) => {
+      // Only accounts holding the admin role pass the database policy here.
+      await supabase
+        .from("app_settings")
+        .update({ whatsapp_alert_number: value.replace(/[^0-9+]/g, "").slice(0, 20) })
+        .eq("id", 1);
+      await refresh();
+    },
+
+    setListingFlags: async (id, patch) => {
+      await supabase.from("listings").update(patch).eq("id", id);
+      await refresh();
+    },
+
+    applyReferral: async (code) => {
+      if (!user) return "Log in first.";
+      const clean = code.trim().toUpperCase();
+      if (!clean) return "Enter a referral code.";
+      if (clean === db.referral_code) return "You cannot refer yourself.";
+      const { data: referrer } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("referral_code", clean)
+        .maybeSingle();
+      if (!referrer) return "That referral code does not exist.";
+      const { error } = await supabase
+        .from("referrals")
+        .insert({ referrer_id: referrer.id, referred_id: user.id, referral_code: clean });
+      if (error) return "This account has already used a referral code.";
+      await refresh();
+      return null;
+    },
+
     setCommission: async (pct) => {
       await supabase.from("app_settings").update({ commission_pct: pct }).eq("id", 1);
       await refresh();
