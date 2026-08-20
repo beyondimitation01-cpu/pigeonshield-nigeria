@@ -493,7 +493,6 @@ export type Database = {
       }
     }
     Functions: {
-      purge_mock_listings: { Args: never; Returns: number }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
