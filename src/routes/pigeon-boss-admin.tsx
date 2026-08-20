@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, ListX, MessageCircle, Star, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
+  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, MessageCircle, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/site/UserAvatar";
+import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,6 @@ function AdminPage() {
     lockAdmin,
     setCommission,
     setWhatsappAlertNumber,
-    setListingOverride,
-    setListingFlags,
-    deleteListing,
     adminRefund,
     adminRelease,
     bypassPasscode,
