@@ -241,6 +241,41 @@ export type Database = {
         }
         Relationships: []
       }
+      public_profiles: {
+        Row: {
+          avatar_url: string
+          id: string
+          is_online: boolean
+          is_verified_seller: boolean
+          public_handle: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string
+          id: string
+          is_online?: boolean
+          is_verified_seller?: boolean
+          public_handle?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string
+          id?: string
+          is_online?: boolean
+          is_verified_seller?: boolean
+          public_handle?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           created_at: string
@@ -396,30 +431,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      public_profiles: {
-        Row: {
-          avatar_url: string | null
-          id: string | null
-          is_online: boolean | null
-          is_verified_seller: boolean | null
-          public_handle: string | null
-        }
-        Insert: {
-          avatar_url?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          is_verified_seller?: boolean | null
-          public_handle?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          id?: string | null
-          is_online?: boolean | null
-          is_verified_seller?: boolean | null
-          public_handle?: string | null
-        }
-        Relationships: []
       }
       referral_credit_totals: {
         Row: {
