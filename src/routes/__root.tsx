@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider } from "@/context/AuthContext";
 import { StoreProvider } from "@/lib/store";
 import { Navbar, Footer } from "@/components/site/Chrome";
 import { AuthModal } from "@/components/site/AuthModal";
@@ -143,20 +144,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <CanonicalHostGuard>
-      <StoreProvider>
-        <Navbar />
-        <OfflineBanner />
-        <BroadcastBanner />
-        <div className="min-h-screen pt-16">
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </div>
-        <Footer />
-        <AuthModal />
-        <AdminGesture />
-        <InstallPrompt />
-        <Toaster />
-      </StoreProvider>
+        <AuthProvider>
+          <StoreProvider>
+            <Navbar />
+            <OfflineBanner />
+            <BroadcastBanner />
+            <div className="min-h-screen pt-16">
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+            </div>
+            <Footer />
+            <AuthModal />
+            <AdminGesture />
+            <InstallPrompt />
+            <Toaster />
+          </StoreProvider>
+        </AuthProvider>
       </CanonicalHostGuard>
     </QueryClientProvider>
   );
