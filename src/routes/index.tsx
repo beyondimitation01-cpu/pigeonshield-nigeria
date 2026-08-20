@@ -10,6 +10,7 @@ import { useStore, reportToAdmin } from "@/lib/store";
 import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
 import { onImageError } from "@/lib/listing-images";
+import { SITE_URL, canonicalUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -25,7 +26,11 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Nigeria's anonymous livestock marketplace with delivery-fraud-proof escrow.",
       },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: SITE_URL },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: canonicalUrl("/") }],
   }),
   component: Marketplace,
 });
