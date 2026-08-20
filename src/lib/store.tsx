@@ -420,18 +420,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value: StoreValue = {
     db,
     user,
-    isAuthed: !!session && !!user,
-    authReady,
+    isAuthed: !!authSession && !!user,
+    authReady: !authLoading,
     authGate,
     openAuth: (mode = "login", warning = null) => setAuthGate({ open: true, mode, warning }),
     closeAuth: () => setAuthGate((g) => ({ ...g, open: false, warning: null })),
 
     login: async (email, password) => {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (error) return "No account matches that email and password.";
+      if (data.session) {
+        sessionRef.current = data.session;
+      }
       const { data: me } = await supabase.from("profiles").select("is_banned").maybeSingle();
       if (me?.is_banned) {
         await supabase.auth.signOut();
@@ -462,7 +465,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Email confirmation is disabled, so the session arrives immediately.
       if (!data.session) return "Account created. Log in to continue.";
       sessionRef.current = data.session;
-      setSession(data.session);
       await ensureProfile();
       const invite = (input.referral_code ?? "").trim().toUpperCase();
       if (invite) {
@@ -542,7 +544,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       // Reset the UI to guest mode immediately, without waiting for a refetch.
       sessionRef.current = null;
-      setSession(null);
       setAdminUnlocked(false);
       setAuthGate({ open: false, mode: "login", warning: null });
       setDb((prev) => ({ ...prev, current_user_id: null }));
@@ -568,7 +569,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // that account; otherwise the server mints a one-time token for the dedicated
       // Super Admin account and the browser exchanges it for a real session.
       try {
-        if (session) {
+        if (authSession) {
           const { ok } = await unlockAdminConsole({ data: { password: pwd } });
           setAdminUnlocked(ok);
           if (ok) await refresh();
