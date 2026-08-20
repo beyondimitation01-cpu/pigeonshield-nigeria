@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ngn, type Listing } from "@/lib/pigeon-data";
-import { listingCover, handleImageError } from "@/lib/listing-images";
+import { listingCover, onImageError, categoryFallback } from "@/lib/listing-images";
 
 function statusOf(l: Listing) {
   if (!l.is_active) return { label: "Frozen", variant: "secondary" as const };
@@ -108,7 +108,7 @@ export function AdminListingsTable() {
                     <div className="flex items-center gap-2">
                       <img
                         src={listingCover(l)}
-                        onError={handleImageError(l)}
+                        onError={onImageError(categoryFallback(l.category_type, l.id))}
                         alt={l.custom_bird_name}
                         loading="lazy"
                         className="size-12 shrink-0 rounded-md object-cover"
