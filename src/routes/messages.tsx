@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { QUICK_INQUIRIES } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/messages")({
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/messages")({
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
   const { listing: listingParam } = Route.useSearch();
-  const { db, user, sendMessage } = useStore();
+  const { db, user, sendMessage, authReady } = useStore();
   const [active, setActive] = useState<string | null>(listingParam ?? null);
   const [body, setBody] = useState("");
 
@@ -53,13 +54,9 @@ function MessagesPage() {
     });
   }, [db.messages, db.listings, user, listingParam]);
 
+  if (!authReady) return <AuthPending />;
   if (!authed || !user) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold">Messages</h1>
-        <p className="mt-2 text-muted-foreground">Log in to open your inbox.</p>
-      </main>
-    );
+    return <AuthRequired title="Messages" description="Log in to open your inbox." />;
   }
 
   const current = threads.find((t) => t.listingId === active) ?? threads[0];

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { AUTO_RELEASE_HOURS, ngn, type EscrowTransaction } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/my-orders")({
@@ -117,14 +118,12 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
 
 function MyOrders() {
   const authed = useRequireAuth("My Orders area");
-  const { db, user } = useStore();
+  const { db, user, authReady } = useStore();
 
+  if (!authReady) return <AuthPending />;
   if (!authed || !user) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold">My Orders</h1>
-        <p className="mt-2 text-muted-foreground">Log in to view your escrow orders.</p>
-      </main>
+      <AuthRequired title="My Orders" description="Log in to view your escrow orders." />
     );
   }
 

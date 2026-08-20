@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { NIGERIAN_STATES, TERMS_TEXT } from "@/lib/pigeon-data";
 
 export function AuthModal() {
   const { authGate, closeAuth, openAuth, login, register, user, updateProfile } = useStore();
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [state, setState] = useState("Lagos");
@@ -34,7 +36,10 @@ export function AuthModal() {
     if (mode === "login") {
       const err = await login(email, password);
       setError(err);
-      if (!err) toast.success("Session restored — you stay logged in through refreshes.");
+      if (!err) {
+        toast.success("Session restored — you stay logged in through refreshes.");
+        goToIntendedRoute();
+      }
       return;
     }
     if (!agreed) {
@@ -56,6 +61,21 @@ export function AuthModal() {
       toast.success("Account created — you are signed in instantly.");
       setPhotoStep(true);
     }
+  }
+
+  /** Client-side transition back to where the guest was blocked — never a hard reload. */
+  function goToIntendedRoute() {
+    let target = "/";
+    if (typeof window !== "undefined") {
+      try {
+        const saved = window.sessionStorage.getItem("ps_redirect_after_login");
+        window.sessionStorage.removeItem("ps_redirect_after_login");
+        if (saved && saved.startsWith("/")) target = saved;
+      } catch {
+        // Private-mode storage failure is non-fatal.
+      }
+    }
+    void navigate({ to: target });
   }
 
   return (
@@ -85,6 +105,7 @@ export function AuthModal() {
               onClick={() => {
                 setPhotoStep(false);
                 closeAuth();
+                goToIntendedRoute();
               }}
             >
               Continue to marketplace

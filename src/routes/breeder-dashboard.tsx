@@ -16,6 +16,7 @@ import { referralLink } from "@/lib/site";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import {
   BREEDS_BY_CATEGORY,
   CATEGORY_OPTIONS,
@@ -43,7 +44,7 @@ export const Route = createFileRoute("/breeder-dashboard")({
 
 function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
-  const { db, user, addListing, deleteListing } = useStore();
+  const { db, user, addListing, deleteListing, authReady } = useStore();
   const [editingPhotos, setEditingPhotos] = useState<string | null>(null);
   const [category, setCategory] = useState<Category>("Pigeon");
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
@@ -52,12 +53,10 @@ function BreederDashboard() {
   const [vaccinated, setVaccinated] = useState(true);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
+  if (!authReady) return <AuthPending />;
   if (!authed || !user) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold">Breeder Dashboard</h1>
-        <p className="mt-2 text-muted-foreground">Log in to manage your listings.</p>
-      </main>
+      <AuthRequired title="Breeder Dashboard" description="Log in to manage your listings." />
     );
   }
 

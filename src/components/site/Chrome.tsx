@@ -1,7 +1,16 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Menu, LogOut, ShieldCheck } from "lucide-react";
+import { Menu, LogOut, ShieldCheck, LayoutDashboard, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { UserAvatar } from "@/components/site/UserAvatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY } from "@/lib/pigeon-data";
@@ -53,19 +62,30 @@ export function Navbar() {
             // Never guess: no session-dependent button until getSession() resolves.
             <div className="h-8 w-28 animate-pulse rounded-md bg-muted" aria-hidden />
           ) : isAuthed ? (
-            <>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="hidden sm:inline-flex"
-                onClick={() => navigate({ to: "/breeder-dashboard" })}
-              >
-                My Account Dashboard
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleLogout} title={user?.public_handle}>
-                <LogOut className="size-4" /> Logout
-              </Button>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-2">
+                  <UserAvatar url={user?.avatar_url ?? null} name={user?.public_handle ?? ""} size={22} />
+                  <span className="max-w-28 truncate">{user?.public_handle ?? "My Account"}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="truncate">
+                  Signed in as {user?.public_handle}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => navigate({ to: "/breeder-dashboard" })}>
+                  <LayoutDashboard className="size-4" /> My Account Dashboard
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => navigate({ to: "/my-orders" })}>
+                  <Package className="size-4" /> My Orders
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleLogout()}>
+                  <LogOut className="size-4" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button size="sm" onClick={() => openAuth("login")}>
               Register / Log In
