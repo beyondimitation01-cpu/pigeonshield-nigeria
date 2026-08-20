@@ -142,13 +142,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs] = await Promise.all([
-      supabase.from("app_settings").select("commission_pct").eq("id", 1).maybeSingle(),
-      supabase.from("listings").select("*").order("creation_timestamp", { ascending: false }),
+    const [settings, listings, profiles, txs, passcodes, msgs, credits] = await Promise.all([
+      supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
+      supabase
+        .from("listings")
+        .select("*")
+        .order("is_featured", { ascending: false })
+        .order("is_verified_seller", { ascending: false })
+        .order("creation_timestamp", { ascending: false }),
       uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
+      uid
+        ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
+        : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
     ]);
 
     const codeFor = new Map(
@@ -158,8 +166,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ]),
     );
 
+    const myProfile = ((profiles.data ?? []) as Record<string, unknown>[]).find(
+      (p) => String(p["id"]) === uid,
+    );
+
     setDb({
       commission_pct: Number(settings.data?.commission_pct ?? 12),
+      whatsapp_alert_number: String(settings.data?.whatsapp_alert_number ?? ADMIN_WHATSAPP),
+      referral_code: String(myProfile?.["referral_code"] ?? ""),
+      referral_credits: Number(credits.data?.total_credits ?? 0),
+      referred_count: Number(credits.data?.referred_count ?? 0),
       current_user_id: uid,
       jwt: null,
       users: ((profiles.data ?? []) as Record<string, unknown>[]).map((p) => ({
