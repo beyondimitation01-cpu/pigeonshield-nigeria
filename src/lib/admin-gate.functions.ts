@@ -17,6 +17,7 @@ export const unlockAdminConsole = createServerFn({ method: "POST" })
     return { password };
   })
   .handler(async ({ data, context }) => {
+    console.log("[admin-gate] unlock attempt for", context.userId, "secret set:", !!process.env["ADMIN_MASTER_PASSWORD"]);
     const expected = process.env["ADMIN_MASTER_PASSWORD"];
     if (!expected) return { ok: false as const };
 
