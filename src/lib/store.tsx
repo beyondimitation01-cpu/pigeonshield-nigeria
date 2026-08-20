@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { getAdminSession, lockAdminConsole, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   seedState,
   uid,
@@ -62,7 +63,7 @@ interface StoreValue {
   }) => string | null;
   logout: () => void;
   adminUnlocked: boolean;
-  unlockAdmin: (pwd: string) => boolean;
+  unlockAdmin: (pwd: string) => Promise<boolean>;
   lockAdmin: () => void;
   addListing: (input: NewListingInput) => void;
   deleteListing: (id: string) => void;
@@ -106,7 +107,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Persistent session: restore on mount so hard refreshes never log the user out.
   useEffect(() => {
     setDb(load());
-    setAdminUnlocked(window.sessionStorage.getItem("ps_admin") === "1");
+    void getAdminSession().then((r) => setAdminUnlocked(r.unlocked));
     setHydrated(true);
   }, []);
 
@@ -217,17 +218,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }));
     },
     adminUnlocked,
-    unlockAdmin: (pwd) => {
-      const ok = pwd === "PigeonMaster2026";
-      if (ok) {
-        setAdminUnlocked(true);
-        window.sessionStorage.setItem("ps_admin", "1");
+    unlockAdmin: async (pwd) => {
+      // Verified server-side against a secret env var; the password is never in the bundle.
+      try {
+        const { ok } = await unlockAdminConsole({ data: { password: pwd } });
+        setAdminUnlocked(ok);
+        return ok;
+      } catch {
+        setAdminUnlocked(false);
+        return false;
       }
-      return ok;
     },
     lockAdmin: () => {
       setAdminUnlocked(false);
-      window.sessionStorage.removeItem("ps_admin");
+      void lockAdminConsole();
     },
     addListing: (input) => {
       if (!user) return;

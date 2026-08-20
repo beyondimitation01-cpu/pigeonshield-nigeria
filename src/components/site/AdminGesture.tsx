@@ -48,8 +48,8 @@ export function AdminGesture() {
 
   if (!open) return null;
 
-  function submit() {
-    if (unlockAdmin(pwd)) {
+  async function submit() {
+    if (await unlockAdmin(pwd)) {
       setOpen(false);
       setPwd("");
       toast.success("God-mode unlocked.");
