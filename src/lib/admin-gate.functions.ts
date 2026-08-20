@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { SUPER_ADMIN_EMAIL, timingSafeMatch } from "@/lib/admin-hash";
 
 /**
  * God-Mode is a real, server-enforced role.
@@ -10,16 +11,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * authorised by row-level security using that role — never by browser state.
  */
 
-const SUPER_ADMIN_EMAIL = "superadmin@pigeonshield.app";
-
-async function timingSafeMatch(input: string, expected: string) {
-  const enc = new TextEncoder();
-  const ha = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(input)));
-  const hb = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(expected)));
-  let diff = 0;
-  for (let i = 0; i < ha.length; i += 1) diff |= (ha[i] ?? 0) ^ (hb[i] ?? 0);
-  return diff === 0;
-}
 
 export const unlockAdminConsole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
