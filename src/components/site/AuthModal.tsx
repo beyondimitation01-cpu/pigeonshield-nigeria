@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { NIGERIAN_STATES, TERMS_TEXT } from "@/lib/pigeon-data";
 
 export function AuthModal() {
-  const { authGate, closeAuth, openAuth, login, register } = useStore();
+  const { authGate, closeAuth, openAuth, login, register, user, updateProfile } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [state, setState] = useState("Lagos");
+  const [invite, setInvite] = useState("");
+  const [photoStep, setPhotoStep] = useState(false);
   const mode = authGate.mode;
+
+  // A visitor who arrived through /ref/CODE has the inviter code stashed.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setInvite(window.localStorage.getItem("pigeonshield.ref") ?? "");
+  }, [authGate.open]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,9 +49,13 @@ export function AuthModal() {
       home_state: state,
       bank_name: String(f.get("bank_name") ?? ""),
       account_number: String(f.get("account_number") ?? ""),
+      referral_code: invite,
     });
     setError(err);
-    if (!err) toast.success("Anonymous breeder handle generated. Welcome to PigeonShield.");
+    if (!err) {
+      toast.success("Account created — you are signed in instantly.");
+      setPhotoStep(true);
+    }
   }
 
   return (
@@ -55,6 +68,30 @@ export function AuthModal() {
           </DialogTitle>
         </DialogHeader>
 
+        {photoStep && user ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Add a profile picture so buyers recognise you. You can skip and add it later.
+            </p>
+            <AvatarUploader
+              userId={user.id}
+              value={user.avatar_url}
+              onChange={async (url) => {
+                await updateProfile({ avatar_url: url });
+              }}
+            />
+            <Button
+              className="w-full"
+              onClick={() => {
+                setPhotoStep(false);
+                closeAuth();
+              }}
+            >
+              Continue to marketplace
+            </Button>
+          </div>
+        ) : (
+        <>
         {authGate.warning ? (
           <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             <ShieldAlert className="mt-0.5 size-4 shrink-0" />
@@ -107,6 +144,16 @@ export function AuthModal() {
                 </div>
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="referral_code">Referral code (optional)</Label>
+                <Input
+                  id="referral_code"
+                  value={invite}
+                  onChange={(e) => setInvite(e.target.value.toUpperCase())}
+                  placeholder="ABC12345"
+                />
+              </div>
+
               <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
                 <Checkbox
                   checked={agreed}
@@ -143,6 +190,8 @@ export function AuthModal() {
             </>
           )}
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
