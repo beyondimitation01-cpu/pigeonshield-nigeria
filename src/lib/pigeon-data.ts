@@ -244,6 +244,25 @@ export interface ReferralRow {
   created_at: number;
 }
 
+export interface FeedbackRow {
+  id: string;
+  user_id: string | null;
+  name: string;
+  contact: string;
+  category: string;
+  rating: number;
+  message: string;
+  status: string;
+  created_at: number;
+}
+
+export const FEEDBACK_CATEGORIES = [
+  "Bug Report",
+  "Feature Suggestion",
+  "General Complaint",
+  "App Review",
+] as const;
+
 export interface DBState {
   users: NigerianUser[];
   listings: Listing[];
@@ -251,6 +270,7 @@ export interface DBState {
   messages: ChatMessage[];
   sellers: Record<string, PublicSeller>;
   referrals: ReferralRow[];
+  feedback: FeedbackRow[];
   broadcast: Broadcast | null;
   commission_pct: number;
   whatsapp_alert_number: string;
