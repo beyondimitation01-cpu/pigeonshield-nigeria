@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getAdminSession, lockAdminConsole, unlockAdminConsole } from "@/lib/admin-gate.functions";
+import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
   makePasscode,
@@ -66,6 +66,7 @@ interface StoreValue {
   logout: () => Promise<void>;
   adminUnlocked: boolean;
   unlockAdmin: (pwd: string) => Promise<boolean>;
+  masterUnlock: (pwd: string) => Promise<boolean>;
   lockAdmin: () => void;
   addListing: (input: NewListingInput) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
@@ -358,6 +359,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setAdminUnlocked(ok);
         if (ok) await refresh();
         return ok;
+      } catch {
+        setAdminUnlocked(false);
+        return false;
+      }
+    },
+    masterUnlock: async (pwd) => {
+      // Works from any state. When already signed in, the master password upgrades
+      // that account; otherwise the server mints a one-time token for the dedicated
+      // Super Admin account and the browser exchanges it for a real session.
+      try {
+        if (session) {
+          const { ok } = await unlockAdminConsole({ data: { password: pwd } });
+          setAdminUnlocked(ok);
+          if (ok) await refresh();
+          return ok;
+        }
+        const res = await superAdminLogin({ data: { password: pwd } });
+        if (!res.ok) return false;
+        const { error } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: res.tokenHash,
+        });
+        if (error) return false;
+        setAdminUnlocked(true);
+        await refresh();
+        return true;
       } catch {
         setAdminUnlocked(false);
         return false;
