@@ -340,7 +340,10 @@ export function seedState(): DBState {
     transactions: [],
     messages: [],
     commission_pct: 7,
-    current_user_id: null,
+    whatsapp_alert_number: ADMIN_WHATSAPP,
+    referral_code: "",
+    referral_credits: 0,
+    referred_count: 0,
     jwt: null,
   };
 }
