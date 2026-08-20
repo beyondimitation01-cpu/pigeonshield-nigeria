@@ -418,16 +418,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const clean = code.trim().toUpperCase();
       if (!clean) return "Enter a referral code.";
       if (clean === db.referral_code) return "You cannot refer yourself.";
-      const { data: referrer } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("referral_code", clean)
-        .maybeSingle();
-      if (!referrer) return "That referral code does not exist.";
+      // The referrer is resolved server-side by a database trigger; the browser
+      // never gets to read other people's profiles.
       const { error } = await supabase
         .from("referrals")
-        .insert({ referrer_id: referrer.id, referred_id: user.id, referral_code: clean });
-      if (error) return "This account has already used a referral code.";
+        .insert({ referrer_id: user.id, referred_id: user.id, referral_code: clean });
+      if (error) {
+        return error.message.includes("Unknown referral code")
+          ? "That referral code does not exist."
+          : "This account has already used a referral code.";
+      }
       await refresh();
       return null;
     },
