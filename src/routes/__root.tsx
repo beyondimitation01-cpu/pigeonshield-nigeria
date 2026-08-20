@@ -18,6 +18,8 @@ import { AdminGesture } from "@/components/site/AdminGesture";
 import { BroadcastBanner } from "@/components/site/BroadcastBanner";
 import { InstallPrompt } from "@/components/site/InstallPrompt";
 import { Toaster } from "@/components/ui/sonner";
+import { CanonicalHostGuard } from "@/components/site/CanonicalHostGuard";
+import { canonicalUrl } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -111,6 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/pwa-icon-192.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "canonical", href: canonicalUrl("/") },
     ],
   }),
   shellComponent: RootShell,
@@ -138,6 +141,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <CanonicalHostGuard>
       <StoreProvider>
         <Navbar />
         <BroadcastBanner />
@@ -151,6 +155,7 @@ function RootComponent() {
         <InstallPrompt />
         <Toaster />
       </StoreProvider>
+      </CanonicalHostGuard>
     </QueryClientProvider>
   );
 }
