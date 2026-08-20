@@ -4,13 +4,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { getAdminSession, lockAdminConsole, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
-  seedState,
-  uid,
   makeHandle,
   makePasscode,
   AUTO_RELEASE_HOURS,
@@ -19,13 +20,14 @@ import {
   ADMIN_OPAY,
   ADMIN_WHATSAPP,
   type DBState,
+  type Category,
   type Listing,
   type NigerianUser,
   type EscrowTransaction,
+  type Pedigree,
   type DisputeStatus,
+  type TxStatus,
 } from "./pigeon-data";
-
-const STORAGE_KEY = "pigeonshield_ng_state_v1";
 
 type NewListingInput = Omit<
   Listing,
@@ -51,7 +53,7 @@ interface StoreValue {
   authGate: AuthGate;
   openAuth: (mode?: "login" | "register", warning?: string | null) => void;
   closeAuth: () => void;
-  login: (email: string, password: string) => string | null;
+  login: (email: string, password: string) => Promise<string | null>;
   register: (input: {
     real_name: string;
     email: string;
@@ -60,94 +62,196 @@ interface StoreValue {
     home_state: string;
     bank_name: string;
     account_number: string;
-  }) => string | null;
-  logout: () => void;
+  }) => Promise<string | null>;
+  logout: () => Promise<void>;
   adminUnlocked: boolean;
   unlockAdmin: (pwd: string) => Promise<boolean>;
   lockAdmin: () => void;
-  addListing: (input: NewListingInput) => void;
-  deleteListing: (id: string) => void;
-  setCommission: (pct: number) => void;
-  setListingOverride: (id: string, pct: number | null) => void;
+  addListing: (input: NewListingInput) => Promise<void>;
+  deleteListing: (id: string) => Promise<void>;
+  setCommission: (pct: number) => Promise<void>;
+  setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
-  buyListing: (l: Listing) => EscrowTransaction | null;
-  confirmDelivery: (txId: string) => void;
-  reportDOA: (txId: string, fileName: string) => void;
-  submitBreederProof: (txId: string, driverPhone: string, waybill: string) => void;
-  adminRefund: (txId: string) => void;
-  adminRelease: (txId: string) => void;
+  buyListing: (l: Listing) => Promise<EscrowTransaction | null>;
+  confirmDelivery: (txId: string) => Promise<void>;
+  reportDOA: (txId: string, fileName: string) => Promise<void>;
+  submitBreederProof: (txId: string, driverPhone: string, waybill: string) => Promise<void>;
+  adminRefund: (txId: string) => Promise<void>;
+  adminRelease: (txId: string) => Promise<void>;
   bypassPasscode: (txId: string, code: string) => boolean;
-  banUser: (userId: string) => void;
-  sendMessage: (listingId: string, toId: string, body: string) => void;
+  banUser: (userId: string) => Promise<void>;
+  sendMessage: (listingId: string, toId: string, body: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-function load(): DBState {
-  if (typeof window === "undefined") return seedState();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...seedState(), ...(JSON.parse(raw) as DBState) };
-  } catch {
-    /* ignore corrupt storage */
-  }
-  return seedState();
-}
+const EMPTY: DBState = {
+  users: [],
+  listings: [],
+  transactions: [],
+  messages: [],
+  commission_pct: 12,
+  current_user_id: null,
+  jwt: null,
+};
+
+const ms = (value: string | null) => (value ? new Date(value).getTime() : 0);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<DBState>(() => seedState());
-  const [hydrated, setHydrated] = useState(false);
+  const [db, setDb] = useState<DBState>(EMPTY);
+  const [session, setSession] = useState<Session | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [authGate, setAuthGate] = useState<AuthGate>({
     open: false,
     mode: "login",
     warning: null,
   });
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
 
-  // Persistent session: restore on mount so hard refreshes never log the user out.
-  useEffect(() => {
-    setDb(load());
-    void getAdminSession().then((r) => setAdminUnlocked(r.unlocked));
-    setHydrated(true);
+  /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
+  const ensureProfile = useCallback(async () => {
+    const authUser = sessionRef.current?.user;
+    if (!authUser) return;
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    if (existing) return;
+    const meta = (authUser.user_metadata ?? {}) as Record<string, string>;
+    await supabase.from("profiles").insert({
+      id: authUser.id,
+      real_name: meta["real_name"] ?? "",
+      phone_number: meta["phone_number"] ?? "",
+      public_handle: meta["public_handle"] ?? makeHandle(),
+      home_state: meta["home_state"] ?? "",
+      bank_name: meta["bank_name"] ?? "",
+      account_number: meta["account_number"] ?? "",
+    });
+  }, []);
+
+  /**
+   * Every row below is fetched through row-level security: the database decides
+   * what this account may see. The browser cannot widen it.
+   */
+  const refresh = useCallback(async () => {
+    const uid = sessionRef.current?.user.id ?? null;
+
+    const [settings, listings, profiles, txs, passcodes, msgs] = await Promise.all([
+      supabase.from("app_settings").select("commission_pct").eq("id", 1).maybeSingle(),
+      supabase.from("listings").select("*").order("creation_timestamp", { ascending: false }),
+      uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
+    ]);
+
+    const codeFor = new Map(
+      ((passcodes.data ?? []) as { transaction_id: string; passcode: string }[]).map((p) => [
+        p.transaction_id,
+        p.passcode,
+      ]),
+    );
+
+    setDb({
+      commission_pct: Number(settings.data?.commission_pct ?? 12),
+      current_user_id: uid,
+      jwt: null,
+      users: ((profiles.data ?? []) as Record<string, unknown>[]).map((p) => ({
+        id: String(p["id"]),
+        real_name: String(p["real_name"] ?? ""),
+        email: uid === String(p["id"]) ? (sessionRef.current?.user.email ?? "") : "",
+        password: "",
+        phone_number: String(p["phone_number"] ?? ""),
+        public_handle: String(p["public_handle"] ?? ""),
+        home_state: String(p["home_state"] ?? ""),
+        bank_name: String(p["bank_name"] ?? ""),
+        account_number: String(p["account_number"] ?? ""),
+        is_online: p["is_online"] === true,
+        is_banned: p["is_banned"] === true,
+        created_at: ms(String(p["created_at"])),
+      })),
+      listings: ((listings.data ?? []) as Record<string, unknown>[]).map((l) => ({
+        id: String(l["id"]),
+        category_type: String(l["category_type"]) as Category,
+        breeder_id: l["breeder_id"] ? String(l["breeder_id"]) : "",
+        breeder_handle: String(l["breeder_handle"] ?? ""),
+        custom_bird_name: String(l["custom_bird_name"] ?? ""),
+        breed_type: String(l["breed_type"] ?? ""),
+        gender: String(l["gender"]) as Listing["gender"],
+        price_ngn: Number(l["price_ngn"] ?? 0),
+        images: (l["images"] as string[] | null) ?? [],
+        pedigree_json: (l["pedigree_json"] as Pedigree | null) ?? null,
+        vaccinated: l["vaccinated"] === true,
+        state: String(l["state"] ?? ""),
+        description: String(l["description"] ?? ""),
+        batch_quantity: Number(l["batch_quantity"] ?? 0),
+        commission_override:
+          l["commission_override"] === null || l["commission_override"] === undefined
+            ? null
+            : Number(l["commission_override"]),
+        is_active: l["is_active"] === true,
+        creation_timestamp: ms(String(l["creation_timestamp"])),
+        expiry_date: ms(String(l["expiry_date"])),
+      })),
+      transactions: ((txs.data ?? []) as Record<string, unknown>[]).map((t) => ({
+        id: String(t["id"]),
+        listing_id: t["listing_id"] ? String(t["listing_id"]) : "",
+        listing_name: String(t["listing_name"] ?? ""),
+        buyer_id: String(t["buyer_id"]),
+        breeder_id: t["breeder_id"] ? String(t["breeder_id"]) : "",
+        amount_naira: Number(t["amount_naira"] ?? 0),
+        calculated_commission: Number(t["calculated_commission"] ?? 0),
+        // Only the buyer (and admins) can read this row from the database.
+        pickup_passcode: codeFor.get(String(t["id"])) ?? "Hidden — buyer only",
+        delivery_marked_at: ms(String(t["delivery_marked_at"])),
+        auto_release_at: ms(String(t["auto_release_at"])),
+        driver_phone: (t["driver_phone"] as string | null) ?? null,
+        waybill_image_url: (t["waybill_image_url"] as string | null) ?? null,
+        proof_file_name: (t["proof_file_name"] as string | null) ?? null,
+        dispute_status: String(t["dispute_status"]) as DisputeStatus,
+        status: String(t["status"]) as TxStatus,
+        created_at: ms(String(t["created_at"])),
+      })),
+      messages: ((msgs.data ?? []) as Record<string, unknown>[]).map((m) => ({
+        id: String(m["id"]),
+        listing_id: String(m["listing_id"] ?? ""),
+        from_id: String(m["from_id"]),
+        to_id: String(m["to_id"]),
+        body: String(m["body"] ?? ""),
+        created_at: ms(String(m["created_at"])),
+      })),
+    });
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  }, [db, hydrated]);
-
-  // Static (non-polling) safety-net sweep: runs on mount and on every state action.
-  const sweep = useCallback((state: DBState): DBState => {
-    const now = Date.now();
-    let changed = false;
-    const transactions = state.transactions.map((t) => {
-      if (t.status === "Escrow Funded" && t.dispute_status === "None" && t.auto_release_at <= now) {
-        changed = true;
-        console.log(
-          `[AUTO-RELEASE] 48h window elapsed for ${t.id}. Releasing ${t.amount_naira - t.calculated_commission} to breeder. Commission ${t.calculated_commission} routed to Admin OPay ${ADMIN_OPAY}.`,
-        );
-        return { ...t, status: "Completed" as const };
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      sessionRef.current = next;
+      setSession(next);
+      void ensureProfile().then(refresh);
+      if (next) {
+        void getAdminSession()
+          .then((r) => setAdminUnlocked(r.unlocked))
+          .catch(() => setAdminUnlocked(false));
+      } else {
+        setAdminUnlocked(false);
       }
-      return t;
     });
-    const listings = state.listings.map((l) => {
-      if (l.is_active && (l.expiry_date <= now || l.batch_quantity <= 0)) {
-        changed = true;
-        return { ...l, is_active: false };
+
+    void supabase.auth.getSession().then(({ data }) => {
+      sessionRef.current = data.session;
+      setSession(data.session);
+      void ensureProfile().then(refresh);
+      if (data.session) {
+        void getAdminSession()
+          .then((r) => setAdminUnlocked(r.unlocked))
+          .catch(() => setAdminUnlocked(false));
       }
-      return l;
     });
-    return changed ? { ...state, transactions, listings } : state;
-  }, []);
 
-  useEffect(() => {
-    if (hydrated) setDb((s) => sweep(s));
-  }, [hydrated, sweep]);
-
-  const update = useCallback(
-    (fn: (s: DBState) => DBState) => setDb((s) => sweep(fn(s))),
-    [sweep],
-  );
+    return () => sub.subscription.unsubscribe();
+  }, [refresh, ensureProfile]);
 
   const user = useMemo(
     () => db.users.find((u) => u.id === db.current_user_id) ?? null,
@@ -155,74 +259,79 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const commissionFor = useCallback(
-    (l: Listing) => (l.commission_override ?? db.commission_pct),
+    (l: Listing) => l.commission_override ?? db.commission_pct,
     [db.commission_pct],
+  );
+
+  const updateTx = useCallback(
+    async (txId: string, patch: Record<string, string | null>) => {
+      await supabase.from("transactions").update(patch as never).eq("id", txId);
+      await refresh();
+    },
+    [refresh],
   );
 
   const value: StoreValue = {
     db,
     user,
-    isAuthed: !!user,
+    isAuthed: !!session && !!user,
     authGate,
     openAuth: (mode = "login", warning = null) => setAuthGate({ open: true, mode, warning }),
     closeAuth: () => setAuthGate((g) => ({ ...g, open: false, warning: null })),
-    login: (email, password) => {
-      const found = db.users.find(
-        (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password,
-      );
-      if (!found) return "No account matches that email and password.";
-      if (found.is_banned) return "This account has been suspended by the administrator.";
-      update((s) => ({
-        ...s,
-        current_user_id: found.id,
-        jwt: `mock.jwt.${btoa(found.id)}.${Date.now()}`,
-        users: s.users.map((u) => (u.id === found.id ? { ...u, is_online: true } : u)),
-      }));
+
+    login: async (email, password) => {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) return "No account matches that email and password.";
+      const { data: me } = await supabase.from("profiles").select("is_banned").maybeSingle();
+      if (me?.is_banned) {
+        await supabase.auth.signOut();
+        return "This account has been suspended by the administrator.";
+      }
       setAuthGate({ open: false, mode: "login", warning: null });
       return null;
     },
-    register: (input) => {
-      if (db.users.some((u) => u.email.toLowerCase() === input.email.trim().toLowerCase()))
-        return "An account already exists with that email.";
-      const newUser: NigerianUser = {
-        id: uid("usr"),
-        real_name: input.real_name,
+
+    register: async (input) => {
+      const { data, error } = await supabase.auth.signUp({
         email: input.email.trim(),
         password: input.password,
-        phone_number: input.phone_number,
-        public_handle: makeHandle(),
-        home_state: input.home_state,
-        bank_name: input.bank_name,
-        account_number: input.account_number,
-        is_online: true,
-        is_banned: false,
-        created_at: Date.now(),
-      };
-      update((s) => ({
-        ...s,
-        users: [...s.users, newUser],
-        current_user_id: newUser.id,
-        jwt: `mock.jwt.${btoa(newUser.id)}.${Date.now()}`,
-      }));
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            real_name: input.real_name,
+            phone_number: input.phone_number,
+            public_handle: makeHandle(),
+            home_state: input.home_state,
+            bank_name: input.bank_name,
+            account_number: input.account_number,
+          },
+        },
+      });
+      if (error) return error.message;
+      if (!data.session) return "Account created. Check your inbox to confirm your email, then log in.";
+      await ensureProfile();
+      await refresh();
       setAuthGate({ open: false, mode: "login", warning: null });
       return null;
     },
-    logout: () => {
-      update((s) => ({
-        ...s,
-        users: s.users.map((u) =>
-          u.id === s.current_user_id ? { ...u, is_online: false } : u,
-        ),
-        current_user_id: null,
-        jwt: null,
-      }));
+
+    logout: async () => {
+      if (user) await supabase.from("profiles").update({ is_online: false }).eq("id", user.id);
+      await supabase.auth.signOut();
+      setAdminUnlocked(false);
     },
+
     adminUnlocked,
     unlockAdmin: async (pwd) => {
-      // Verified server-side against a secret env var; the password is never in the bundle.
+      // Verified server-side; on success the account is granted the admin role
+      // in the database, and RLS — not the browser — enforces every admin power.
       try {
         const { ok } = await unlockAdminConsole({ data: { password: pwd } });
         setAdminUnlocked(ok);
+        if (ok) await refresh();
         return ok;
       } catch {
         setAdminUnlocked(false);
@@ -231,48 +340,90 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     lockAdmin: () => {
       setAdminUnlocked(false);
-      void lockAdminConsole();
+      void lockAdminConsole()
+        .then(() => refresh())
+        .catch(() => undefined);
     },
-    addListing: (input) => {
+
+    addListing: async (input) => {
       if (!user) return;
       const created = Date.now();
-      const listing: Listing = {
-        ...input,
-        id: uid("lst"),
+      await supabase.from("listings").insert({
+        category_type: input.category_type,
         breeder_id: user.id,
         breeder_handle: user.public_handle,
-        commission_override: null,
+        custom_bird_name: input.custom_bird_name,
+        breed_type: input.breed_type,
+        gender: input.gender,
+        price_ngn: input.price_ngn,
+        images: input.images,
+        pedigree_json: input.pedigree_json as never,
+        vaccinated: input.vaccinated,
+        state: input.state,
+        description: input.description,
+        batch_quantity: input.batch_quantity,
         is_active: true,
-        creation_timestamp: created,
-        expiry_date: created + LISTING_LIFESPAN_DAYS * DAY_MS,
-      };
-      update((s) => ({ ...s, listings: [listing, ...s.listings] }));
+        creation_timestamp: new Date(created).toISOString(),
+        expiry_date: new Date(created + LISTING_LIFESPAN_DAYS * DAY_MS).toISOString(),
+      });
+      await refresh();
     },
-    deleteListing: (id) =>
-      update((s) => ({ ...s, listings: s.listings.filter((l) => l.id !== id) })),
-    setCommission: (pct) => {
-      console.log(`[ADMIN] Global commission set to ${pct}% — payouts route to OPay ${ADMIN_OPAY}`);
-      update((s) => ({ ...s, commission_pct: pct }));
+
+    deleteListing: async (id) => {
+      await supabase.from("listings").delete().eq("id", id);
+      await refresh();
     },
-    setListingOverride: (id, pct) =>
-      update((s) => ({
-        ...s,
-        listings: s.listings.map((l) => (l.id === id ? { ...l, commission_override: pct } : l)),
-      })),
+
+    setCommission: async (pct) => {
+      await supabase.from("app_settings").update({ commission_pct: pct }).eq("id", 1);
+      await refresh();
+    },
+
+    setListingOverride: async (id, pct) => {
+      await supabase.from("listings").update({ commission_override: pct }).eq("id", id);
+      await refresh();
+    },
+
     commissionFor,
-    buyListing: (l) => {
+
+    buyListing: async (l) => {
       if (!user) return null;
       const pct = l.commission_override ?? db.commission_pct;
       const now = Date.now();
-      const tx: EscrowTransaction = {
-        id: uid("txn"),
+      const { data, error } = await supabase
+        .from("transactions")
+        .insert({
+          listing_id: l.id,
+          listing_name: l.custom_bird_name,
+          buyer_id: user.id,
+          breeder_id: l.breeder_id || null,
+          amount_naira: l.price_ngn,
+          calculated_commission: Math.round((l.price_ngn * pct) / 100),
+          delivery_marked_at: new Date(now).toISOString(),
+          auto_release_at: new Date(now + AUTO_RELEASE_HOURS * 3600_000).toISOString(),
+        })
+        .select()
+        .single();
+      if (error || !data) return null;
+
+      const passcode = makePasscode();
+      await supabase
+        .from("transaction_passcodes")
+        .insert({ transaction_id: data.id, buyer_id: user.id, passcode });
+
+      console.log(
+        `[ESCROW] Funded ${data.id}. Commission earmarked for Admin OPay ${ADMIN_OPAY}. Pickup passcode issued to buyer only.`,
+      );
+      await refresh();
+      return {
+        id: data.id,
         listing_id: l.id,
         listing_name: l.custom_bird_name,
         buyer_id: user.id,
         breeder_id: l.breeder_id,
         amount_naira: l.price_ngn,
         calculated_commission: Math.round((l.price_ngn * pct) / 100),
-        pickup_passcode: makePasscode(),
+        pickup_passcode: passcode,
         delivery_marked_at: now,
         auto_release_at: now + AUTO_RELEASE_HOURS * 3600_000,
         driver_phone: null,
@@ -282,95 +433,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         status: "Escrow Funded",
         created_at: now,
       };
-      console.log(
-        `[ESCROW] Funded ${tx.id}. Commission ${tx.calculated_commission} earmarked for Admin OPay ${ADMIN_OPAY}. Pickup passcode issued to buyer only.`,
-      );
-      update((s) => ({
-        ...s,
-        transactions: [tx, ...s.transactions],
-        listings: s.listings.map((x) =>
-          x.id === l.id
-            ? {
-                ...x,
-                batch_quantity: x.batch_quantity - 1,
-                is_active: x.batch_quantity - 1 > 0,
-              }
-            : x,
-        ),
-      }));
-      return tx;
     },
-    confirmDelivery: (txId) =>
-      update((s) => ({
-        ...s,
-        transactions: s.transactions.map((t) =>
-          t.id === txId ? { ...t, status: "Completed", dispute_status: "None" } : t,
-        ),
-      })),
-    reportDOA: (txId, fileName) => {
-      console.log(`[DISPUTE] DOA reported on ${txId}. Auto-release clock halted. Proof: ${fileName}`);
-      update((s) => ({
-        ...s,
-        transactions: s.transactions.map((t) =>
-          t.id === txId
-            ? {
-                ...t,
-                status: "Disputed",
-                dispute_status: "Disputed: Dead on Arrival" as DisputeStatus,
-                proof_file_name: fileName,
-              }
-            : t,
-        ),
-      }));
-    },
-    submitBreederProof: (txId, driverPhone, waybill) => {
-      console.log(`[DISPUTE] Breeder proof submitted for ${txId}. Driver: ${driverPhone}`);
-      update((s) => ({
-        ...s,
-        transactions: s.transactions.map((t) =>
-          t.id === txId
-            ? {
-                ...t,
-                status: "Disputed",
-                dispute_status: "Under Review: Proof Submitted" as DisputeStatus,
-                driver_phone: driverPhone,
-                waybill_image_url: waybill,
-              }
-            : t,
-        ),
-      }));
-    },
-    adminRefund: (txId) => {
-      console.log(`[ADMIN OVERRIDE] 100% buyer refund approved for ${txId}.`);
-      update((s) => ({
-        ...s,
-        transactions: s.transactions.map((t) =>
-          t.id === txId ? { ...t, status: "Refunded to Buyer", dispute_status: "None" } : t,
-        ),
-      }));
-    },
-    adminRelease: (txId) => {
-      console.log(`[ADMIN OVERRIDE] Forced payout release for ${txId} → commission to OPay ${ADMIN_OPAY}.`);
-      update((s) => ({
-        ...s,
-        transactions: s.transactions.map((t) =>
-          t.id === txId ? { ...t, status: "Completed", dispute_status: "None" } : t,
-        ),
-      }));
-    },
+
+    confirmDelivery: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
+
+    reportDOA: (txId, fileName) =>
+      updateTx(txId, {
+        status: "Disputed",
+        dispute_status: "Disputed: Dead on Arrival",
+        proof_file_name: fileName,
+      }),
+
+    submitBreederProof: (txId, driverPhone, waybill) =>
+      updateTx(txId, {
+        status: "Disputed",
+        dispute_status: "Under Review: Proof Submitted",
+        driver_phone: driverPhone,
+        waybill_image_url: waybill,
+      }),
+
+    adminRefund: (txId) => updateTx(txId, { status: "Refunded to Buyer", dispute_status: "None" }),
+    adminRelease: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
+
     bypassPasscode: (txId, code) => {
       const tx = db.transactions.find((t) => t.id === txId);
-      const ok = !!tx && tx.pickup_passcode.toUpperCase() === code.trim().toUpperCase();
-      console.log(`[ADMIN 2FA BYPASS] ${txId} passcode check → ${ok ? "MATCH" : "MISMATCH"}`);
-      return ok;
+      return !!tx && tx.pickup_passcode.toUpperCase() === code.trim().toUpperCase();
     },
-    banUser: (userId) =>
-      update((s) => ({
-        ...s,
-        users: s.users.map((u) => (u.id === userId ? { ...u, is_banned: !u.is_banned } : u)),
-        current_user_id: s.current_user_id === userId ? null : s.current_user_id,
-      })),
-    sendMessage: (listingId, toId, body) => {
+
+    banUser: async (userId) => {
+      const target = db.users.find((u) => u.id === userId);
+      // Rejected by the database unless this account really holds the admin role.
+      await supabase
+        .from("profiles")
+        .update({ is_banned: !target?.is_banned })
+        .eq("id", userId);
+      await refresh();
+    },
+
+    sendMessage: async (listingId, toId, body) => {
       if (!user) return;
       const recipient = db.users.find((u) => u.id === toId);
       if (recipient && !recipient.is_online) {
@@ -378,13 +478,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           `[WEBHOOK → Termii/Arkesel SMS] POST /sms/send { to: "${recipient.phone_number}", text: "PigeonShield: you have a new escrow-protected inquiry. Log in to reply." }`,
         );
       }
-      update((s) => ({
-        ...s,
-        messages: [
-          ...s.messages,
-          { id: uid("msg"), listing_id: listingId, from_id: user.id, to_id: toId, body, created_at: Date.now() },
-        ],
-      }));
+      await supabase
+        .from("messages")
+        .insert({ listing_id: listingId, from_id: user.id, to_id: toId, body });
+      await refresh();
     },
   };
 

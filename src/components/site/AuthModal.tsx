@@ -17,13 +17,13 @@ export function AuthModal() {
   const [state, setState] = useState("Lagos");
   const mode = authGate.mode;
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const email = String(f.get("email") ?? "");
     const password = String(f.get("password") ?? "");
     if (mode === "login") {
-      const err = login(email, password);
+      const err = await login(email, password);
       setError(err);
       if (!err) toast.success("Session restored — you stay logged in through refreshes.");
       return;
@@ -32,7 +32,7 @@ export function AuthModal() {
       setError("You must accept the PigeonShield Nigeria Terms of Service to register.");
       return;
     }
-    const err = register({
+    const err = await register({
       real_name: String(f.get("real_name") ?? ""),
       email,
       password,
@@ -133,7 +133,6 @@ export function AuthModal() {
               <button className="font-semibold text-primary underline" onClick={() => { setError(null); openAuth("register", authGate.warning); }}>
                 Register here
               </button>
-              <p className="mt-2 text-xs">Demo login: musa@example.ng / demo1234</p>
             </>
           ) : (
             <>

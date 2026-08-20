@@ -47,6 +47,10 @@ function AdminPage() {
           <h1 className="flex items-center gap-2 text-xl font-bold">
             <Lock className="size-5 text-primary" /> Master Access Required
           </h1>
+          <p className="text-sm text-muted-foreground">
+            You must be signed in to your account first. The master password is verified on the
+            server and grants the admin role to your account.
+          </p>
           <div className="space-y-1.5">
             <Label htmlFor="master">Master password</Label>
             <Input id="master" type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} />
@@ -55,11 +59,12 @@ function AdminPage() {
             className="w-full"
             onClick={async () => {
               if (await unlockAdmin(pwd)) toast.success("God-mode unlocked.");
-              else toast.error("Incorrect master password.");
+              else toast.error("Incorrect master password, or you are not signed in.");
             }}
           >
             Unlock console
           </Button>
+
         </Card>
       </main>
     );
