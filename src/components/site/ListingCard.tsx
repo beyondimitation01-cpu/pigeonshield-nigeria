@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { reportToAdmin } from "@/lib/store";
 import { daysRemaining, ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError } from "@/lib/listing-images";
+import { useStore } from "@/lib/store";
+import { UserAvatar } from "@/components/site/UserAvatar";
 
 export function MediaPlaceholder({ label, className }: { label: string; className?: string }) {
   return (
@@ -19,6 +21,8 @@ export function MediaPlaceholder({ label, className }: { label: string; classNam
 export function ListingCard({ listing }: { listing: Listing }) {
   const days = daysRemaining(listing.expiry_date);
   const cover = listingCover(listing);
+  const { db } = useStore();
+  const seller = listing.breeder_id ? db.sellers[listing.breeder_id] : undefined;
 
   return (
     <Card className="group overflow-hidden p-0 transition-shadow hover:shadow-lg">
@@ -65,7 +69,12 @@ export function ListingCard({ listing }: { listing: Listing }) {
             <MapPin className="size-3" /> {listing.state}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Bird className="size-3" /> {listing.breeder_handle}
+            {seller?.avatar_url ? (
+              <UserAvatar url={seller.avatar_url} name={listing.breeder_handle} size={18} />
+            ) : (
+              <Bird className="size-3" />
+            )}
+            {listing.breeder_handle}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2 pt-1">

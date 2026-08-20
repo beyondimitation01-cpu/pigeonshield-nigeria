@@ -16,6 +16,7 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as PigeonBossAdminRouteImport } from './routes/pigeon-boss-admin'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
+import { Route as RefCodeRouteImport } from './routes/ref.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const ListingIdRoute = ListingIdRouteImport.update({
   path: '/listing/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefCodeRoute = RefCodeRouteImport.update({
+  id: '/ref/$code',
+  path: '/ref/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
+  '/ref/$code': typeof RefCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
+  '/ref/$code': typeof RefCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
+  '/ref/$code': typeof RefCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/pigeon-boss-admin'
     | '/listing/$id'
+    | '/ref/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/pigeon-boss-admin'
     | '/listing/$id'
+    | '/ref/$code'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/pigeon-boss-admin'
     | '/listing/$id'
+    | '/ref/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   MyOrdersRoute: typeof MyOrdersRoute
   PigeonBossAdminRoute: typeof PigeonBossAdminRoute
   ListingIdRoute: typeof ListingIdRoute
+  RefCodeRoute: typeof RefCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ref/$code': {
+      id: '/ref/$code'
+      path: '/ref/$code'
+      fullPath: '/ref/$code'
+      preLoaderRoute: typeof RefCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyOrdersRoute: MyOrdersRoute,
   PigeonBossAdminRoute: PigeonBossAdminRoute,
   ListingIdRoute: ListingIdRoute,
+  RefCodeRoute: RefCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

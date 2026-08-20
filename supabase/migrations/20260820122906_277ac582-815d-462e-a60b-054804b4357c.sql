@@ -1,0 +1,1 @@
+UPDATE public.broadcasts SET is_active = false WHERE is_active = true;

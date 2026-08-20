@@ -20,6 +20,9 @@ import {
   ADMIN_OPAY,
   ADMIN_WHATSAPP,
   type DBState,
+  type Broadcast,
+  type PublicSeller,
+  type ReferralRow,
   type Category,
   type Listing,
   type NigerianUser,
@@ -62,7 +65,24 @@ interface StoreValue {
     home_state: string;
     bank_name: string;
     account_number: string;
+    avatar_url?: string;
+    referral_code?: string;
   }) => Promise<string | null>;
+  updateProfile: (patch: {
+    real_name?: string;
+    phone_number?: string;
+    avatar_url?: string;
+    home_state?: string;
+    bank_name?: string;
+    account_number?: string;
+  }) => Promise<string | null>;
+  sendBroadcast: (body: string) => Promise<string | null>;
+  retireBroadcast: (id: string) => Promise<void>;
+  setUserFlags: (
+    userId: string,
+    patch: { is_verified_seller?: boolean; is_frozen?: boolean; escrow_paused?: boolean },
+  ) => Promise<void>;
+  releaseUserFunds: (userId: string) => Promise<number>;
   logout: () => Promise<void>;
   adminUnlocked: boolean;
   unlockAdmin: (pwd: string) => Promise<boolean>;
@@ -94,6 +114,9 @@ const EMPTY: DBState = {
   listings: [],
   transactions: [],
   messages: [],
+  sellers: {},
+  referrals: [],
+  broadcast: null,
   commission_pct: 12,
   whatsapp_alert_number: ADMIN_WHATSAPP,
   referral_code: "",
@@ -136,6 +159,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       home_state: meta["home_state"] ?? "",
       bank_name: meta["bank_name"] ?? "",
       account_number: meta["account_number"] ?? "",
+      avatar_url: meta["avatar_url"] ?? "",
+      email: authUser.email ?? "",
     });
   }, []);
 
@@ -146,7 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs, credits] = await Promise.all([
+    const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals] = await Promise.all([
       supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
       supabase
         .from("listings")
@@ -161,7 +186,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uid
         ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
         : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
+      supabase.from("public_profiles").select("*"),
+      supabase
+        .from("broadcasts")
+        .select("id, body, created_at")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1),
+      uid ? supabase.from("referrals").select("*") : Promise.resolve({ data: [] as never[] }),
     ]);
+
+    const sellerMap: Record<string, PublicSeller> = {};
+    for (const row of (sellers.data ?? []) as Record<string, unknown>[]) {
+      sellerMap[String(row["id"])] = {
+        id: String(row["id"]),
+        public_handle: String(row["public_handle"] ?? ""),
+        avatar_url: String(row["avatar_url"] ?? ""),
+        is_verified_seller: row["is_verified_seller"] === true,
+        is_online: row["is_online"] === true,
+      };
+    }
+
+    const latest = ((announcements.data ?? []) as Record<string, unknown>[])[0];
+    const broadcast: Broadcast | null = latest
+      ? {
+          id: String(latest["id"]),
+          body: String(latest["body"] ?? ""),
+          created_at: ms(String(latest["created_at"])),
+        }
+      : null;
 
     const codeFor = new Map(
       ((passcodes.data ?? []) as { transaction_id: string; passcode: string }[]).map((p) => [
@@ -182,10 +235,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       referred_count: Number(credits.data?.referred_count ?? 0),
       current_user_id: uid,
       jwt: null,
+      sellers: sellerMap,
+      broadcast,
+      referrals: ((referrals.data ?? []) as Record<string, unknown>[]).map((r) => ({
+        id: String(r["id"]),
+        referrer_id: String(r["referrer_id"]),
+        referred_id: String(r["referred_id"]),
+        referral_code: String(r["referral_code"] ?? ""),
+        credits: Number(r["credits"] ?? 0),
+        created_at: ms(String(r["created_at"])),
+      })) as ReferralRow[],
       users: ((profiles.data ?? []) as Record<string, unknown>[]).map((p) => ({
         id: String(p["id"]),
         real_name: String(p["real_name"] ?? ""),
-        email: uid === String(p["id"]) ? (sessionRef.current?.user.email ?? "") : "",
+        email: String(p["email"] ?? (uid === String(p["id"]) ? (sessionRef.current?.user.email ?? "") : "")),
         password: "",
         phone_number: String(p["phone_number"] ?? ""),
         public_handle: String(p["public_handle"] ?? ""),
@@ -194,6 +257,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         account_number: String(p["account_number"] ?? ""),
         is_online: p["is_online"] === true,
         is_banned: p["is_banned"] === true,
+        avatar_url: String(p["avatar_url"] ?? ""),
+        is_verified_seller: p["is_verified_seller"] === true,
+        is_frozen: p["is_frozen"] === true,
+        escrow_paused: p["escrow_paused"] === true,
         created_at: ms(String(p["created_at"])),
       })),
       listings: ((listings.data ?? []) as Record<string, unknown>[]).map((l) => ({
@@ -333,15 +400,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             home_state: input.home_state,
             bank_name: input.bank_name,
             account_number: input.account_number,
+            avatar_url: input.avatar_url ?? "",
           },
         },
       });
       if (error) return error.message;
-      if (!data.session) return "Account created. Check your inbox to confirm your email, then log in.";
+      // Email confirmation is disabled, so the session arrives immediately.
+      if (!data.session) return "Account created. Log in to continue.";
+      sessionRef.current = data.session;
+      setSession(data.session);
       await ensureProfile();
+      const invite = (input.referral_code ?? "").trim().toUpperCase();
+      if (invite) {
+        await supabase
+          .from("referrals")
+          .insert({ referrer_id: data.session.user.id, referred_id: data.session.user.id, referral_code: invite });
+      }
       await refresh();
       setAuthGate({ open: false, mode: "login", warning: null });
       return null;
+    },
+
+    updateProfile: async (patch) => {
+      if (!sessionRef.current?.user) return "Log in first.";
+      const { error } = await supabase
+        .from("profiles")
+        .update(patch)
+        .eq("id", sessionRef.current.user.id);
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    sendBroadcast: async (body) => {
+      const text = body.trim();
+      if (!text) return "Write an announcement first.";
+      if (text.length > 500) return "Keep announcements under 500 characters.";
+      // Retire older announcements so exactly one banner shows platform-wide.
+      await supabase.from("broadcasts").update({ is_active: false }).eq("is_active", true);
+      const { error } = await supabase
+        .from("broadcasts")
+        .insert({ body: text, created_by: sessionRef.current?.user.id ?? null });
+      if (error) return error.message;
+      await refresh();
+      return null;
+    },
+
+    retireBroadcast: async (id) => {
+      await supabase.from("broadcasts").update({ is_active: false }).eq("id", id);
+      await refresh();
+    },
+
+    setUserFlags: async (userId, patch) => {
+      await supabase.from("profiles").update(patch).eq("id", userId);
+      // Verified badge mirrors onto that breeder's live listings.
+      if (patch.is_verified_seller !== undefined) {
+        await supabase
+          .from("listings")
+          .update({ is_verified_seller: patch.is_verified_seller })
+          .eq("breeder_id", userId);
+      }
+      await refresh();
+    },
+
+    releaseUserFunds: async (userId) => {
+      const held = db.transactions.filter(
+        (t) => t.breeder_id === userId && t.status !== "Completed" && t.status !== "Refunded to Buyer",
+      );
+      for (const t of held) {
+        await supabase
+          .from("transactions")
+          .update({ status: "Completed", dispute_status: "None" })
+          .eq("id", t.id);
+      }
+      await refresh();
+      return held.length;
     },
 
     logout: async () => {

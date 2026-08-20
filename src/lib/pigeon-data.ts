@@ -83,6 +83,10 @@ export interface NigerianUser {
   account_number: string;
   is_online: boolean;
   is_banned: boolean;
+  avatar_url: string;
+  is_verified_seller: boolean;
+  is_frozen: boolean;
+  escrow_paused: boolean;
   created_at: number;
 }
 
@@ -199,11 +203,37 @@ function pedigree(name: string, breed: string): Pedigree {
   };
 }
 
+export interface PublicSeller {
+  id: string;
+  public_handle: string;
+  avatar_url: string;
+  is_verified_seller: boolean;
+  is_online: boolean;
+}
+
+export interface Broadcast {
+  id: string;
+  body: string;
+  created_at: number;
+}
+
+export interface ReferralRow {
+  id: string;
+  referrer_id: string;
+  referred_id: string;
+  referral_code: string;
+  credits: number;
+  created_at: number;
+}
+
 export interface DBState {
   users: NigerianUser[];
   listings: Listing[];
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
+  sellers: Record<string, PublicSeller>;
+  referrals: ReferralRow[];
+  broadcast: Broadcast | null;
   commission_pct: number;
   whatsapp_alert_number: string;
   referral_code: string;
@@ -212,6 +242,7 @@ export interface DBState {
   current_user_id: string | null;
   jwt: string | null;
 }
+
 
 const SEED_USERS: NigerianUser[] = [
   {
@@ -226,6 +257,10 @@ const SEED_USERS: NigerianUser[] = [
     account_number: "8031234567",
     is_online: true,
     is_banned: false,
+    avatar_url: "",
+    is_verified_seller: false,
+    is_frozen: false,
+    escrow_paused: false,
     created_at: Date.now() - 40 * DAY_MS,
   },
   {
@@ -240,6 +275,10 @@ const SEED_USERS: NigerianUser[] = [
     account_number: "0123456789",
     is_online: false,
     is_banned: false,
+    avatar_url: "",
+    is_verified_seller: false,
+    is_frozen: false,
+    escrow_paused: false,
     created_at: Date.now() - 30 * DAY_MS,
   },
   {
@@ -254,6 +293,10 @@ const SEED_USERS: NigerianUser[] = [
     account_number: "7098765432",
     is_online: true,
     is_banned: false,
+    avatar_url: "",
+    is_verified_seller: false,
+    is_frozen: false,
+    escrow_paused: false,
     created_at: Date.now() - 12 * DAY_MS,
   },
 ];
@@ -339,6 +382,9 @@ export function seedState(): DBState {
     listings: seedListings(),
     transactions: [],
     messages: [],
+    sellers: {},
+    referrals: [],
+    broadcast: null,
     commission_pct: 7,
     whatsapp_alert_number: ADMIN_WHATSAPP,
     referral_code: "",
