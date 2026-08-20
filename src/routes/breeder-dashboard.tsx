@@ -64,7 +64,7 @@ function BreederDashboard() {
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    addListing({
+    void addListing({
       category_type: category,
       custom_bird_name: String(f.get("name") ?? ""),
       breed_type: breed,
