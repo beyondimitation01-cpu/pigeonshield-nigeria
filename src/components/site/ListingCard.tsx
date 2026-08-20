@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bird, ImageOff, MapPin, Flag, Clock } from "lucide-react";
+import { Bird, ImageOff, MapPin, Flag, Clock, Star, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
