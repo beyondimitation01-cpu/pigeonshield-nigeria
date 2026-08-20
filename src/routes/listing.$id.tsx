@@ -146,3 +146,101 @@ function PedigreeCol({ title, nodes }: { title: string; nodes: { name: string; b
     </div>
   );
 }
+
+function ChatDrawer({
+  listingId,
+  sellerId,
+  sellerHandle,
+}: {
+  listingId: string;
+  sellerId: string;
+  sellerHandle: string;
+}) {
+  const { db, user, isAuthed, openAuth, sendMessage } = useStore();
+  const [open, setOpen] = useState(false);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const thread = db.messages.filter(
+    (m) =>
+      m.listing_id === listingId &&
+      ((m.from_id === user?.id && m.to_id === sellerId) ||
+        (m.from_id === sellerId && m.to_id === user?.id)),
+  );
+
+  async function send(text: string) {
+    const value = text.trim();
+    if (!value) return;
+    if (!isAuthed) {
+      openAuth("login", "Log in to chat with this breeder inside the app.");
+      return;
+    }
+    setSending(true);
+    await sendMessage(listingId, sellerId, value);
+    setSending(false);
+    setBody("");
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button size="lg" variant="outline">
+          <MessageCircle className="size-4" /> Chat with Breeder
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+        <div className="sticky top-0 z-10 border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-xs font-semibold leading-snug text-destructive">
+          ⚠️ Never pay to an unknown seller, always pay via the app for DOA protection.
+        </div>
+        <div className="border-b border-border px-4 py-3">
+          <p className="text-sm font-semibold">{sellerHandle}</p>
+          <p className="text-xs text-muted-foreground">Anonymous escrow-protected chat</p>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          {thread.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No messages yet. Ask about pedigree, age or logistics before funding escrow.
+            </p>
+          ) : (
+            thread.map((m) => (
+              <div
+                key={m.id}
+                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  m.from_id === user?.id
+                    ? "ml-auto bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground"
+                }`}
+              >
+                {m.body}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="border-t border-border p-4">
+          <div className="mb-3 flex flex-wrap gap-2">
+            {QUICK_INQUIRIES.slice(0, 3).map((q) => (
+              <Button key={q} size="sm" variant="secondary" onClick={() => void send(q)}>
+                {q}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Type a message"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void send(body);
+              }}
+            />
+            <Button disabled={sending} onClick={() => void send(body)} aria-label="Send message">
+              <Send className="size-4" />
+            </Button>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
