@@ -344,6 +344,7 @@ export function seedState(): DBState {
     referral_code: "",
     referral_credits: 0,
     referred_count: 0,
+    current_user_id: null,
     jwt: null,
   };
 }
