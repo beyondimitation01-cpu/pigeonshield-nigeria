@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserAvatar } from "@/components/site/UserAvatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY } from "@/lib/pigeon-data";
 
@@ -25,7 +26,8 @@ const NAV_LINKS = [
 ] as const;
 
 export function Navbar() {
-  const { isAuthed, authReady, user, openAuth, logout } = useStore();
+  const { isLoading, isAuthenticated } = useAuth();
+  const { user, openAuth, logout } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -58,10 +60,10 @@ export function Navbar() {
         <div className="hidden items-center gap-6 lg:flex">{links}</div>
 
         <div className="flex items-center gap-2">
-          {!authReady ? (
+          {isLoading ? (
             // Never guess: no session-dependent button until getSession() resolves.
             <div className="h-8 w-28 animate-pulse rounded-md bg-muted" aria-hidden />
-          ) : isAuthed ? (
+          ) : isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-2">
