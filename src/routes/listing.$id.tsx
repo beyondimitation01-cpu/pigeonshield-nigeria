@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Flag, MapPin, ShieldCheck, Syringe } from "lucide-react";
+import { Flag, MapPin, MessageCircle, Send, ShieldCheck, Syringe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { MediaPlaceholder } from "@/components/site/ListingCard";
 import { useStore, reportToAdmin } from "@/lib/store";
-import { daysRemaining, ngn } from "@/lib/pigeon-data";
+import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({
