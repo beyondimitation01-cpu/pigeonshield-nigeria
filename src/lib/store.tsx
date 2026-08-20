@@ -53,6 +53,8 @@ interface StoreValue {
   db: DBState;
   user: NigerianUser | null;
   isAuthed: boolean;
+  /** False until the initial Supabase getSession() check has resolved. */
+  authReady: boolean;
   authGate: AuthGate;
   openAuth: (mode?: "login" | "register", warning?: string | null) => void;
   closeAuth: () => void;
@@ -144,6 +146,7 @@ const ms = (value: string | null) => (value ? new Date(value).getTime() : 0);
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<DBState>(EMPTY);
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [authGate, setAuthGate] = useState<AuthGate>({
     open: false,
@@ -345,16 +348,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(({ data }) => {
-      sessionRef.current = data.session;
-      setSession(data.session);
-      void ensureProfile().then(refresh);
-      if (data.session) {
-        void getAdminSession()
-          .then((r) => setAdminUnlocked(r.unlocked))
-          .catch(() => setAdminUnlocked(false));
-      }
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        sessionRef.current = data.session;
+        setSession(data.session);
+        void ensureProfile().then(refresh);
+        if (data.session) {
+          void getAdminSession()
+            .then((r) => setAdminUnlocked(r.unlocked))
+            .catch(() => setAdminUnlocked(false));
+        }
+      })
+      .catch(() => {
+        sessionRef.current = null;
+        setSession(null);
+      })
+      .finally(() => setAuthReady(true));
 
     // Live sync: any listing inserted/updated/deleted by any user shows up
     // instantly (home feed and the admin console read the same state).
@@ -394,6 +404,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     db,
     user,
     isAuthed: !!session && !!user,
+    authReady,
     authGate,
     openAuth: (mode = "login", warning = null) => setAuthGate({ open: true, mode, warning }),
     closeAuth: () => setAuthGate((g) => ({ ...g, open: false, warning: null })),
@@ -504,9 +515,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     logout: async () => {
-      if (user) await supabase.from("profiles").update({ is_online: false }).eq("id", user.id);
-      await supabase.auth.signOut();
+      if (user) {
+        await supabase.from("profiles").update({ is_online: false }).eq("id", user.id);
+      }
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Already signed out / network hiccup: still clear local state below.
+      }
+      // Reset the UI to guest mode immediately, without waiting for a refetch.
+      sessionRef.current = null;
+      setSession(null);
       setAdminUnlocked(false);
+      setAuthGate({ open: false, mode: "login", warning: null });
+      setDb((prev) => ({ ...prev, current_user_id: null }));
+      void refresh();
     },
 
     adminUnlocked,
