@@ -36,12 +36,12 @@ function ListingDetail() {
   const pct = commissionFor(listing);
   const cover = listing.images[active];
 
-  function purchase() {
+  async function purchase() {
     if (!isAuthed) {
       openAuth("login", "Protected action: log in to fund escrow for this listing.");
       return;
     }
-    const tx = buyListing(listing!);
+    const tx = await buyListing(listing!);
     if (tx) {
       toast.success(`Escrow funded. Your pickup passcode is ${tx.pickup_passcode}`);
       navigate({ to: "/my-orders" });

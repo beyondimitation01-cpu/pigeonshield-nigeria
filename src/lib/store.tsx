@@ -242,8 +242,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const updateTx = useCallback(
-    async (txId: string, patch: Record<string, unknown>) => {
-      await supabase.from("transactions").update(patch).eq("id", txId);
+    async (txId: string, patch: Record<string, string | null>) => {
+      await supabase.from("transactions").update(patch as never).eq("id", txId);
       await refresh();
     },
     [refresh],
