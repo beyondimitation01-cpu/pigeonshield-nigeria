@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { QUICK_INQUIRIES } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/messages")({
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/messages")({
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
   const { listing: listingParam } = Route.useSearch();
-  const { db, user, sendMessage } = useStore();
+  const { db, user, sendMessage, authReady } = useStore();
   const [active, setActive] = useState<string | null>(listingParam ?? null);
   const [body, setBody] = useState("");
 

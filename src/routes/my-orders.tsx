@@ -118,8 +118,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
 
 function MyOrders() {
   const authed = useRequireAuth("My Orders area");
-  const { authReady } = useStore();
-  const { db, user } = useStore();
+  const { db, user, authReady } = useStore();
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) {

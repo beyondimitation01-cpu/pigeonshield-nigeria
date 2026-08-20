@@ -44,8 +44,7 @@ export const Route = createFileRoute("/breeder-dashboard")({
 
 function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
-  const { authReady } = useStore();
-  const { db, user, addListing, deleteListing } = useStore();
+  const { db, user, addListing, deleteListing, authReady } = useStore();
   const [editingPhotos, setEditingPhotos] = useState<string | null>(null);
   const [category, setCategory] = useState<Category>("Pigeon");
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
