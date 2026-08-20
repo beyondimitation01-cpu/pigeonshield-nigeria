@@ -343,8 +343,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    // Live sync: any listing inserted/updated/deleted by any user shows up
+    // instantly (home feed and the admin console read the same state).
+    const channel = supabase
+      .channel("listings-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => {
+        void refresh();
+      })
+      .subscribe();
+
+    return () => {
+      sub.subscription.unsubscribe();
+      void supabase.removeChannel(channel);
+    };
   }, [refresh, ensureProfile]);
+
 
   const user = useMemo(
     () => db.users.find((u) => u.id === db.current_user_id) ?? null,
