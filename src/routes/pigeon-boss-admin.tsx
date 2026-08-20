@@ -129,6 +129,38 @@ function AdminPage() {
       </Card>
 
       <Card className="space-y-3 p-5">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <MessageCircle className="size-4 text-primary" /> WhatsApp alert number
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          <Input
+            value={whats}
+            onChange={(e) => setWhats(e.target.value)}
+            placeholder="2348139049440"
+            className="max-w-56"
+            inputMode="tel"
+          />
+          <Button
+            onClick={async () => {
+              await setWhatsappAlertNumber(whats);
+              toast.success("WhatsApp alert number updated.");
+            }}
+          >
+            Save
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={`https://wa.me/${db.whatsapp_alert_number}`} target="_blank" rel="noreferrer">
+              Test alert
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Dispute, DOA and scam reports are routed to WhatsApp {db.whatsapp_alert_number}.
+        </p>
+      </Card>
+
+
+      <Card className="space-y-3 p-5">
         <h2 className="flex items-center gap-2 font-semibold"><ListX className="size-4 text-primary" /> Listing control ({db.listings.length})</h2>
         <div className="max-h-80 space-y-2 overflow-y-auto">
           {db.listings.map((l) => (
