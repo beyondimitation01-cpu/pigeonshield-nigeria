@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage, formatBytes, MAX_EDGE_PX } from "@/lib/image-compress";
+import { onImageError } from "@/lib/listing-images";
 
 const BUCKET = "listing-photos";
 // Listings live 7 days; a 60-day signed link comfortably outlasts them.
@@ -83,7 +84,7 @@ export function PhotoUploader({
       <div className="flex flex-wrap gap-2">
         {photos.map((p) => (
           <div key={p.path} className="relative size-20 overflow-hidden rounded-md border border-border">
-            <img src={p.url} alt="Listing photo" loading="lazy" decoding="async" className="size-full object-cover" />
+            <img src={p.url} alt="Listing photo" loading="lazy" decoding="async" onError={onImageError()} className="size-full object-cover" />
             <button
               type="button"
               aria-label="Remove photo"
