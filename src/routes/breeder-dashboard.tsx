@@ -70,7 +70,7 @@ function BreederDashboard() {
       breed_type: breed,
       gender,
       price_ngn: Number(f.get("price") ?? 0),
-      images: [],
+      images: photos.map((p) => p.url),
       pedigree_json: null,
       vaccinated,
       state,
@@ -78,6 +78,7 @@ function BreederDashboard() {
       batch_quantity: Number(f.get("qty") ?? 1),
     });
     e.currentTarget.reset();
+    setPhotos([]);
     toast.success("Listing published — live for 7 days.");
   }
 
@@ -171,6 +172,10 @@ function BreederDashboard() {
                 <Label htmlFor="qty">Batch quantity</Label>
                 <Input id="qty" name="qty" type="number" min={1} required defaultValue={1} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Listing photos</Label>
+              <PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="description">Description</Label>
