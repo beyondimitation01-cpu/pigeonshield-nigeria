@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: "/breeder-dashboard", label: "Breeder Dashboard" },
   { to: "/my-orders", label: "My Orders" },
   { to: "/messages", label: "Messages" },
+  { to: "/feedback", label: "Feedback" },
 ] as const;
 
 export function Navbar() {
@@ -119,6 +120,7 @@ export function Footer() {
               <Link to="/" className="hover:text-primary">Browse Marketplace</Link>
               <Link to="/how-escrow-works" className="hover:text-primary">How Escrow Works</Link>
               <Link to="/breeder-dashboard" className="hover:text-primary">Breeder Dashboard</Link>
+            <Link to="/feedback" className="hover:text-primary">Feedback &amp; Complaints</Link>
             </div>
           </div>
           <div className="space-y-2">

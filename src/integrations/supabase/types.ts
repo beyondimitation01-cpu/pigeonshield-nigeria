@@ -35,6 +35,45 @@ export type Database = {
         }
         Relationships: []
       }
+      app_feedback: {
+        Row: {
+          category: string
+          contact: string
+          created_at: string
+          id: string
+          message: string
+          name: string
+          rating: number
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: string
+          contact?: string
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          rating?: number
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          contact?: string
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          rating?: number
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           commission_pct: number
@@ -97,6 +136,7 @@ export type Database = {
           images: string[]
           is_active: boolean
           is_featured: boolean
+          is_mock: boolean
           is_verified_seller: boolean
           pedigree_json: Json | null
           price_ngn: number
@@ -119,6 +159,7 @@ export type Database = {
           images?: string[]
           is_active?: boolean
           is_featured?: boolean
+          is_mock?: boolean
           is_verified_seller?: boolean
           pedigree_json?: Json | null
           price_ngn: number
@@ -141,6 +182,7 @@ export type Database = {
           images?: string[]
           is_active?: boolean
           is_featured?: boolean
+          is_mock?: boolean
           is_verified_seller?: boolean
           pedigree_json?: Json | null
           price_ngn?: number
@@ -346,7 +388,10 @@ export type Database = {
           id: string
           listing_id: string | null
           listing_name: string
+          payment_reference: string | null
           proof_file_name: string | null
+          receipt_uploaded_at: string | null
+          receipt_url: string | null
           status: string
           waybill_image_url: string | null
         }
@@ -363,7 +408,10 @@ export type Database = {
           id?: string
           listing_id?: string | null
           listing_name: string
+          payment_reference?: string | null
           proof_file_name?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
           status?: string
           waybill_image_url?: string | null
         }
@@ -380,7 +428,10 @@ export type Database = {
           id?: string
           listing_id?: string | null
           listing_name?: string
+          payment_reference?: string | null
           proof_file_name?: string | null
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
           status?: string
           waybill_image_url?: string | null
         }

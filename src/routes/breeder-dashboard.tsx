@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Trash2, PlusCircle, Package, Share2, Copy, Gift } from "lucide-react";
+import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { Card } from "@/components/ui/card";
@@ -44,6 +44,7 @@ export const Route = createFileRoute("/breeder-dashboard")({
 function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
   const { db, user, addListing, deleteListing } = useStore();
+  const [editingPhotos, setEditingPhotos] = useState<string | null>(null);
   const [category, setCategory] = useState<Category>("Pigeon");
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
@@ -204,7 +205,8 @@ function BreederDashboard() {
                 <p className="text-sm text-muted-foreground">No listings yet.</p>
               ) : (
                 mine.map((l) => (
-                  <div key={l.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
+                  <div key={l.id} className="space-y-3 rounded-md border border-border p-3">
+                    <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{l.custom_bird_name}</p>
                       <p className="text-xs text-muted-foreground">
@@ -212,6 +214,14 @@ function BreederDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Edit listing photos"
+                        onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}
+                      >
+                        <ImagePlus className="size-4" />
+                      </Button>
                       <Badge variant={l.is_active ? "default" : "destructive"}>
                         {l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}
                       </Badge>
@@ -219,6 +229,10 @@ function BreederDashboard() {
                         <Trash2 className="size-4 text-destructive" />
                       </Button>
                     </div>
+                    </div>
+                    {editingPhotos === l.id ? (
+                      <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} />
+                    ) : null}
                   </div>
                 ))
               )}
@@ -379,6 +393,40 @@ function ReferBoost() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+/** Owner-side photo swap: uploads to storage, then persists the URLs on the row. */
+function ListingPhotoEditor({
+  listingId,
+  userId,
+  images,
+}: {
+  listingId: string;
+  userId: string;
+  images: string[];
+}) {
+  const { setListingImages } = useStore();
+  const [photos, setPhotos] = useState<UploadedPhoto[]>(images.map((url) => ({ url, path: url })));
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="space-y-2 rounded-md bg-muted/40 p-3">
+      <PhotoUploader userId={userId} photos={photos} onChange={setPhotos} />
+      <Button
+        size="sm"
+        disabled={saving}
+        onClick={async () => {
+          setSaving(true);
+          const err = await setListingImages(listingId, photos.map((p) => p.url));
+          setSaving(false);
+          if (err) toast.error(err);
+          else toast.success("Listing photos saved.");
+        }}
+      >
+        Save photos
+      </Button>
     </div>
   );
 }

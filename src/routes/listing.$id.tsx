@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { CheckoutModal } from "@/components/site/CheckoutModal";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
@@ -27,8 +29,10 @@ export const Route = createFileRoute("/listing/$id")({
 function ListingDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { db, user, isAuthed, openAuth, buyListing, commissionFor } = useStore();
+  const { db, user, commissionFor } = useStore();
+  const { requireAuth } = useAuthGuard();
   const [active, setActive] = useState(0);
+  const [checkout, setCheckout] = useState(false);
   const listing = db.listings.find((l) => l.id === id);
 
   if (!listing) {
@@ -40,16 +44,9 @@ function ListingDetail() {
   const gallery = listingGallery(listing);
   const cover = gallery[active] ?? gallery[0]!;
 
-  async function purchase() {
-    if (!isAuthed) {
-      openAuth("login", "Protected action: log in to fund escrow for this listing.");
-      return;
-    }
-    const tx = await buyListing(listing!);
-    if (tx) {
-      toast.success(`Escrow funded. Your pickup passcode is ${tx.pickup_passcode}`);
-      navigate({ to: "/my-orders" });
-    }
+  function purchase() {
+    if (!requireAuth("Buying a bird requires a PigeonShield account.")) return;
+    setCheckout(true);
   }
 
   return (
@@ -112,7 +109,15 @@ function ListingDetail() {
             <Button size="lg" variant="ghost" onClick={() => navigate({ to: "/messages", search: { listing: listing.id } })}>
               Open full inbox
             </Button>
-            <Button size="lg" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => reportToAdmin(`Listing ID ${listing.id}`)}>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                if (!requireAuth("Reporting an issue requires an account.")) return;
+                reportToAdmin(`Listing ID ${listing.id}`);
+              }}
+            >
               <Flag className="size-4" /> Report Scam or Issue to Admin
             </Button>
           </div>
@@ -123,6 +128,8 @@ function ListingDetail() {
           ) : null}
         </div>
       </div>
+
+      <CheckoutModal listing={listing} open={checkout} onOpenChange={setCheckout} />
 
       {listing.pedigree_json ? (
         <Card className="mt-10 p-6">
@@ -163,7 +170,8 @@ function ChatDrawer({
   sellerId: string;
   sellerHandle: string;
 }) {
-  const { db, user, isAuthed, openAuth, sendMessage } = useStore();
+  const { db, user, sendMessage } = useStore();
+  const { requireAuth } = useAuthGuard();
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -178,10 +186,7 @@ function ChatDrawer({
   async function send(text: string) {
     const value = text.trim();
     if (!value) return;
-    if (!isAuthed) {
-      openAuth("login", "Log in to chat with this breeder inside the app.");
-      return;
-    }
+    if (!requireAuth("Chatting with a breeder requires an account.")) return;
     setSending(true);
     await sendMessage(listingId, sellerId, value);
     setSending(false);

@@ -65,6 +65,8 @@ export type DisputeStatus =
   | "Disputed: Dead on Arrival";
 
 export type TxStatus =
+  | "Pending Verification"
+  | "Payment Verified / Processing"
   | "Escrow Funded"
   | "In Transit"
   | "Completed"
@@ -120,6 +122,7 @@ export interface Listing {
   is_active: boolean;
   is_featured?: boolean;
   is_verified_seller?: boolean;
+  is_mock?: boolean;
   creation_timestamp: number;
   expiry_date: number;
 }
@@ -140,6 +143,9 @@ export interface EscrowTransaction {
   proof_file_name: string | null;
   dispute_status: DisputeStatus;
   status: TxStatus;
+  payment_reference: string | null;
+  receipt_url: string | null;
+  receipt_uploaded_at: number | null;
   created_at: number;
 }
 
@@ -168,6 +174,18 @@ export function makeHandle() {
   const digits = String(Math.floor(100000 + Math.random() * 900000));
   return `Verified Breeder #${digits}`;
 }
+
+/** Buyer-facing narration code for the manual OPay transfer. */
+export function makeOrderReference() {
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `PS-${new Date().toISOString().slice(2, 10).replace(/-/g, "")}-${rand}`;
+}
+
+export const OPAY_ACCOUNT = {
+  bank: "OPay",
+  number: ADMIN_OPAY,
+  name: "Abd.........rba",
+} as const;
 
 export function makePasscode() {
   return "PS-" + String(Math.floor(1000 + Math.random() * 9000));
@@ -226,6 +244,25 @@ export interface ReferralRow {
   created_at: number;
 }
 
+export interface FeedbackRow {
+  id: string;
+  user_id: string | null;
+  name: string;
+  contact: string;
+  category: string;
+  rating: number;
+  message: string;
+  status: string;
+  created_at: number;
+}
+
+export const FEEDBACK_CATEGORIES = [
+  "Bug Report",
+  "Feature Suggestion",
+  "General Complaint",
+  "App Review",
+] as const;
+
 export interface DBState {
   users: NigerianUser[];
   listings: Listing[];
@@ -233,6 +270,7 @@ export interface DBState {
   messages: ChatMessage[];
   sellers: Record<string, PublicSeller>;
   referrals: ReferralRow[];
+  feedback: FeedbackRow[];
   broadcast: Broadcast | null;
   commission_pct: number;
   whatsapp_alert_number: string;
@@ -384,6 +422,7 @@ export function seedState(): DBState {
     messages: [],
     sellers: {},
     referrals: [],
+    feedback: [],
     broadcast: null,
     commission_pct: 7,
     whatsapp_alert_number: ADMIN_WHATSAPP,

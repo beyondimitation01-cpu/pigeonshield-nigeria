@@ -151,3 +151,8 @@
     color: var(--color-foreground);
   }
 }
+
+/* Hide the floating "Edit with Lovable" watermark badge. */
+#lovable-badge {
+  display: none !important;
+}

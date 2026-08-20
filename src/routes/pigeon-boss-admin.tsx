@@ -6,6 +6,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/site/UserAvatar";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
+import { AdminPendingOrders } from "@/components/site/AdminPendingOrders";
+import { AdminFeedbackPanel } from "@/components/site/AdminFeedbackPanel";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
+import { formatNigerianPhone } from "@/lib/phone";
 
 export const Route = createFileRoute("/pigeon-boss-admin")({
   head: () => ({
@@ -97,7 +100,11 @@ function AdminPage() {
 
 
   const disputes = db.transactions.filter((t) => t.status === "Disputed");
-  const gross = db.transactions.reduce((s, t) => s + t.calculated_commission, 0);
+  // Live figures only — no placeholder amounts. Commission counts settled escrow.
+  const gross = db.transactions
+    .filter((t) => t.status === "Completed")
+    .reduce((s, t) => s + t.calculated_commission, 0);
+  const pendingPayments = db.transactions.filter((t) => t.status === "Pending Verification").length;
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-10">
@@ -112,6 +119,7 @@ function AdminPage() {
         <Card className="p-4"><p className="text-xs text-muted-foreground">Total commission earned</p><p className="text-2xl font-bold text-primary">{ngn(gross)}</p></Card>
         <Card className="p-4"><p className="text-xs text-muted-foreground">Settlement wallet</p><p className="text-2xl font-bold">OPay {ADMIN_OPAY}</p></Card>
         <Card className="p-4"><p className="text-xs text-muted-foreground">Open disputes</p><p className="text-2xl font-bold text-destructive">{disputes.length}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Awaiting payment verification</p><p className="text-2xl font-bold">{pendingPayments}</p></Card>
       </div>
 
       <Card className="space-y-3 p-5">
@@ -144,7 +152,7 @@ function AdminPage() {
             Save
           </Button>
           <Button variant="outline" asChild>
-            <a href={`https://wa.me/${db.whatsapp_alert_number}`} target="_blank" rel="noreferrer">
+            <a href={`https://wa.me/${formatNigerianPhone(db.whatsapp_alert_number)}`} target="_blank" rel="noreferrer">
               Test alert
             </a>
           </Button>
@@ -156,6 +164,10 @@ function AdminPage() {
 
 
       <AdminListingsTable />
+
+      <AdminPendingOrders />
+
+      <AdminFeedbackPanel />
 
 
       <Card className="space-y-3 p-5">
