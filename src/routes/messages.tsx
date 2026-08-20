@@ -53,13 +53,9 @@ function MessagesPage() {
     });
   }, [db.messages, db.listings, user, listingParam]);
 
+  if (!authReady) return <AuthPending />;
   if (!authed || !user) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold">Messages</h1>
-        <p className="mt-2 text-muted-foreground">Log in to open your inbox.</p>
-      </main>
-    );
+    return <AuthRequired title="Messages" description="Log in to open your inbox." />;
   }
 
   const current = threads.find((t) => t.listingId === active) ?? threads[0];
