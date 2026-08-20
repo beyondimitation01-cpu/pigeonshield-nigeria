@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import {
   BREEDS_BY_CATEGORY,
