@@ -70,6 +70,9 @@ interface StoreValue {
   addListing: (input: NewListingInput) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
   setCommission: (pct: number) => Promise<void>;
+  setWhatsappAlertNumber: (value: string) => Promise<void>;
+  setListingFlags: (id: string, patch: { is_featured?: boolean; is_verified_seller?: boolean }) => Promise<void>;
+  applyReferral: (code: string) => Promise<string | null>;
   setListingOverride: (id: string, pct: number | null) => Promise<void>;
   commissionFor: (l: Listing) => number;
   buyListing: (l: Listing) => Promise<EscrowTransaction | null>;
