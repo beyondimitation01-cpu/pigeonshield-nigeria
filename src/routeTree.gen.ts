@@ -14,6 +14,7 @@ import { Route as BreederDashboardRouteImport } from './routes/breeder-dashboard
 import { Route as HowEscrowWorksRouteImport } from './routes/how-escrow-works'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
+import { Route as PigeonBossAdminRouteImport } from './routes/pigeon-boss-admin'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const MyOrdersRoute = MyOrdersRouteImport.update({
   path: '/my-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PigeonBossAdminRoute = PigeonBossAdminRouteImport.update({
+  id: '/pigeon-boss-admin',
+  path: '/pigeon-boss-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListingIdRoute = ListingIdRouteImport.update({
   id: '/listing/$id',
   path: '/listing/$id',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/how-escrow-works': typeof HowEscrowWorksRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
+  '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/how-escrow-works': typeof HowEscrowWorksRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
+  '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/how-escrow-works': typeof HowEscrowWorksRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
+  '/pigeon-boss-admin': typeof PigeonBossAdminRoute
   '/listing/$id': typeof ListingIdRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/how-escrow-works'
     | '/messages'
     | '/my-orders'
+    | '/pigeon-boss-admin'
     | '/listing/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/how-escrow-works'
     | '/messages'
     | '/my-orders'
+    | '/pigeon-boss-admin'
     | '/listing/$id'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/how-escrow-works'
     | '/messages'
     | '/my-orders'
+    | '/pigeon-boss-admin'
     | '/listing/$id'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   HowEscrowWorksRoute: typeof HowEscrowWorksRoute
   MessagesRoute: typeof MessagesRoute
   MyOrdersRoute: typeof MyOrdersRoute
+  PigeonBossAdminRoute: typeof PigeonBossAdminRoute
   ListingIdRoute: typeof ListingIdRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pigeon-boss-admin': {
+      id: '/pigeon-boss-admin'
+      path: '/pigeon-boss-admin'
+      fullPath: '/pigeon-boss-admin'
+      preLoaderRoute: typeof PigeonBossAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/listing/$id': {
       id: '/listing/$id'
       path: '/listing/$id'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   HowEscrowWorksRoute: HowEscrowWorksRoute,
   MessagesRoute: MessagesRoute,
   MyOrdersRoute: MyOrdersRoute,
+  PigeonBossAdminRoute: PigeonBossAdminRoute,
   ListingIdRoute: ListingIdRoute,
 }
 export const routeTree = rootRouteImport
