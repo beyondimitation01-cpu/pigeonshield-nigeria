@@ -101,11 +101,10 @@ function Marketplace() {
             <ShieldCheck className="size-3" /> Delivery-fraud-proof escrow
           </Badge>
           <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-primary md:text-5xl">
-            Nigeria's anonymous pigeon marketplace, guarded by escrow.
+            Nigeria&rsquo;s #1 Trusted Marketplace for Verified Pigeon Breeders &amp; Buyers
           </h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">
-            Funds are held until you confirm safe delivery with your 2FA pickup passcode. Dead on Arrival?
-            Upload proof and the payout freezes instantly.
+            Buy, sell, and trade high-quality pigeons with 100% DOA protection through PigeonShield Escrow.
           </p>
         </div>
       </section>
