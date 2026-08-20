@@ -333,8 +333,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setAdminUnlocked(ok);
         if (ok) await refresh();
         return ok;
-      } catch (e) {
-        console.error("[unlockAdmin]", e);
+      } catch {
         setAdminUnlocked(false);
         return false;
       }
