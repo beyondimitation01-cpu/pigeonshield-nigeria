@@ -737,10 +737,3 @@ export function useStore() {
   if (!ctx) throw new Error("useStore must be used inside StoreProvider");
   return ctx;
 }
-
-export function reportToAdmin(reference: string) {
-  const text = encodeURIComponent(
-    `PigeonShield Nigeria — Scam / Issue Report\nReference: ${reference}\nPlease investigate this transaction or listing.`,
-  );
-  window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${text}`, "_blank");
-}

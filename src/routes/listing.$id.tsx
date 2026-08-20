@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useStore, reportToAdmin } from "@/lib/store";
+import { useStore } from "@/lib/store";
+import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
 import { listingGallery, onImageError } from "@/lib/listing-images";
 
