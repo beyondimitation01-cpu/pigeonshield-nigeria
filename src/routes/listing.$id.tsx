@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CheckoutModal } from "@/components/site/CheckoutModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { whatsappLink } from "@/lib/phone";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
