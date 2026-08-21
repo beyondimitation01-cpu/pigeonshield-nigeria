@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(null);
         setUser(null);
       }
-      setIsLoading(false);
     });
 
     // On mount, read any existing local storage token before declaring auth ready.
