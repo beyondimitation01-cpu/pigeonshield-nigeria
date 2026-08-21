@@ -17,6 +17,7 @@ import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import {
   BREEDS_BY_CATEGORY,
   CATEGORY_OPTIONS,
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/breeder-dashboard")({
       { property: "og:description", content: "Publish listings and track escrow sales anonymously." },
     ],
   }),
-  component: BreederDashboard,
+  component: GuardedBreederDashboard,
 });
 
 function BreederDashboard() {
@@ -427,5 +428,13 @@ function ListingPhotoEditor({
         Save photos
       </Button>
     </div>
+  );
+}
+
+function GuardedBreederDashboard() {
+  return (
+    <ProtectedRoute title="Breeder Dashboard" description="Log in to manage your listings.">
+      <BreederDashboard />
+    </ProtectedRoute>
   );
 }
