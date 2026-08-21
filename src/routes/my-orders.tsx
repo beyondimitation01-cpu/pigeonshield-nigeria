@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AUTO_RELEASE_HOURS, ngn, type EscrowTransaction } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/my-orders")({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/my-orders")({
       { property: "og:description", content: "Confirm delivery, reveal passcodes and raise DOA disputes." },
     ],
   }),
-  component: MyOrders,
+  component: GuardedMyOrders,
 });
 
 function hoursLeft(tx: EscrowTransaction) {
@@ -157,5 +158,13 @@ function MyOrders() {
         </div>
       </section>
     </main>
+  );
+}
+
+function GuardedMyOrders() {
+  return (
+    <ProtectedRoute title="My Orders" description="Log in to view your escrow orders.">
+      <MyOrders />
+    </ProtectedRoute>
   );
 }

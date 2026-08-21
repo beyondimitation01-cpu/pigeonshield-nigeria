@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { QUICK_INQUIRIES } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/messages")({
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/messages")({
       { property: "og:description", content: "Anonymous, escrow-safe breeder chat with offline SMS alerts." },
     ],
   }),
-  component: MessagesPage,
+  component: GuardedMessagesPage,
 });
 
 function MessagesPage() {
@@ -155,5 +156,13 @@ function MessagesPage() {
         </Card>
       </div>
     </main>
+  );
+}
+
+function GuardedMessagesPage() {
+  return (
+    <ProtectedRoute title="Messages" description="Log in to open your inbox.">
+      <MessagesPage />
+    </ProtectedRoute>
   );
 }
