@@ -406,10 +406,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [authSession, refresh, ensureProfile]);
 
 
-  const user = useMemo(
-    () => db.users.find((u) => u.id === db.current_user_id) ?? null,
-    [db.users, db.current_user_id],
-  );
+  const user = useMemo(() => {
+    const persistedProfile = db.users.find((candidate) => candidate.id === db.current_user_id);
+    if (persistedProfile) return persistedProfile;
+
+    // Auth is the source of truth for whether someone is signed in. Profile
+    // hydration is a separate request and must not make protected routes treat
+    // an authenticated user as a guest while that request is pending or fails.
+    const authUser = authSession?.user;
+    if (!authUser) return null;
+    const meta = (authUser.user_metadata ?? {}) as Record<string, string>;
+    return {
+      id: authUser.id,
+      real_name: meta["real_name"] ?? "",
+      email: authUser.email ?? "",
+      password: "",
+      phone_number: meta["phone_number"] ?? "",
+      public_handle: meta["public_handle"] ?? authUser.email?.split("@")[0] ?? "Member",
+      home_state: meta["home_state"] ?? "",
+      bank_name: meta["bank_name"] ?? "",
+      account_number: meta["account_number"] ?? "",
+      is_online: true,
+      is_banned: false,
+      avatar_url: meta["avatar_url"] ?? "",
+      is_verified_seller: false,
+      is_frozen: false,
+      escrow_paused: false,
+      created_at: authUser.created_at ? new Date(authUser.created_at).getTime() : Date.now(),
+    };
+  }, [authSession, db.users, db.current_user_id]);
 
   const commissionFor = useCallback(
     (l: Listing) => l.commission_override ?? db.commission_pct,
