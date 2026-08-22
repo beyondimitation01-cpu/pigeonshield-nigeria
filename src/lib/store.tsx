@@ -174,6 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     warning: null,
   });
   const sessionRef = useRef<Session | null>(null);
+  const refreshRevision = useRef(0);
   sessionRef.current = authSession;
 
   /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
@@ -205,6 +206,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * what this account may see. The browser cannot widen it.
    */
   const refresh = useCallback(async () => {
+    const requestRevision = ++refreshRevision.current;
     const uid = sessionRef.current?.user.id ?? null;
 
     const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals, feedback] = await Promise.all([
@@ -265,6 +267,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const myProfile = ((profiles.data ?? []) as Record<string, unknown>[]).find(
       (p) => String(p["id"]) === uid,
     );
+
+    // Route changes and auth events can overlap public and authenticated
+    // refreshes. Only the newest request may commit, otherwise a slower guest
+    // response can erase the signed-in profile after login.
+    if (requestRevision !== refreshRevision.current) return;
 
     setDb({
       commission_pct: Number(settings.data?.commission_pct ?? 12),
@@ -399,10 +406,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [authSession, refresh, ensureProfile]);
 
 
-  const user = useMemo(
-    () => db.users.find((u) => u.id === db.current_user_id) ?? null,
-    [db.users, db.current_user_id],
-  );
+  const user = useMemo(() => {
+    const persistedProfile = db.users.find((candidate) => candidate.id === db.current_user_id);
+    if (persistedProfile) return persistedProfile;
+
+    // Auth is the source of truth for whether someone is signed in. Profile
+    // hydration is a separate request and must not make protected routes treat
+    // an authenticated user as a guest while that request is pending or fails.
+    const authUser = authSession?.user;
+    if (!authUser) return null;
+    const meta = (authUser.user_metadata ?? {}) as Record<string, string>;
+    return {
+      id: authUser.id,
+      real_name: meta["real_name"] ?? "",
+      email: authUser.email ?? "",
+      password: "",
+      phone_number: meta["phone_number"] ?? "",
+      public_handle: meta["public_handle"] ?? authUser.email?.split("@")[0] ?? "Member",
+      home_state: meta["home_state"] ?? "",
+      bank_name: meta["bank_name"] ?? "",
+      account_number: meta["account_number"] ?? "",
+      is_online: true,
+      is_banned: false,
+      avatar_url: meta["avatar_url"] ?? "",
+      is_verified_seller: false,
+      is_frozen: false,
+      escrow_paused: false,
+      created_at: authUser.created_at ? new Date(authUser.created_at).getTime() : Date.now(),
+    };
+  }, [authSession, db.users, db.current_user_id]);
 
   const commissionFor = useCallback(
     (l: Listing) => l.commission_override ?? db.commission_pct,
