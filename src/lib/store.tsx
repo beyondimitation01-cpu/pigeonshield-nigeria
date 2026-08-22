@@ -174,6 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     warning: null,
   });
   const sessionRef = useRef<Session | null>(null);
+  const refreshRevision = useRef(0);
   sessionRef.current = authSession;
 
   /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
@@ -205,6 +206,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
    * what this account may see. The browser cannot widen it.
    */
   const refresh = useCallback(async () => {
+    const requestRevision = ++refreshRevision.current;
     const uid = sessionRef.current?.user.id ?? null;
 
     const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals, feedback] = await Promise.all([
@@ -265,6 +267,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const myProfile = ((profiles.data ?? []) as Record<string, unknown>[]).find(
       (p) => String(p["id"]) === uid,
     );
+
+    // Route changes and auth events can overlap public and authenticated
+    // refreshes. Only the newest request may commit, otherwise a slower guest
+    // response can erase the signed-in profile after login.
+    if (requestRevision !== refreshRevision.current) return;
 
     setDb({
       commission_pct: Number(settings.data?.commission_pct ?? 12),
