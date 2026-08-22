@@ -1,16 +1,18 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/lib/store";
 import { GUEST_BLOCK_MESSAGE } from "@/hooks/useAuthGuard";
 
 /** Client-side route protection: blocks rendering and opens the login gate. */
 export function useRequireAuth(area: string) {
-  const { isAuthed, authReady, openAuth } = useStore();
+  const { isAuthenticated, isLoading } = useAuth();
+  const { openAuth } = useStore();
   const warned = useRef(false);
 
   useEffect(() => {
     // Wait for getSession() so signed-in users are never bounced on a refresh.
-    if (!authReady || isAuthed) return;
+    if (isLoading || isAuthenticated) return;
     if (typeof window !== "undefined") {
       try {
         window.sessionStorage.setItem("ps_redirect_after_login", window.location.pathname + window.location.search);
@@ -24,7 +26,7 @@ export function useRequireAuth(area: string) {
     }
     openAuth("login", `${GUEST_BLOCK_MESSAGE} — the ${area} is for members only.`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthed, authReady, area]);
+  }, [isAuthenticated, isLoading, area]);
 
-  return isAuthed;
+  return isAuthenticated;
 }
