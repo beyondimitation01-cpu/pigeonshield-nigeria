@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const authEventRevision = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -29,6 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Live listener: keeps user/session in sync across login, token refresh, and logout.
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
+      // Mark every authoritative auth event. The getSession request below may
+      // have started before a login completed, so its eventual result must not
+      // be allowed to replace this newer state.
+      authEventRevision.current += 1;
       if (
         event === "SIGNED_IN" ||
         event === "TOKEN_REFRESHED" ||
@@ -44,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // On mount, read any existing local storage token before declaring auth ready.
+    const revisionAtRequestStart = authEventRevision.current;
     void supabase.auth
       .getSession()
       .then(({ data, error }) => {
@@ -51,8 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error("[AuthContext] getSession error:", error);
         }
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
+        // Ignore a stale startup response when SIGNED_IN, SIGNED_OUT, token
+        // refresh, or INITIAL_SESSION has already supplied newer auth state.
+        if (authEventRevision.current === revisionAtRequestStart) {
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+        }
       })
       .catch((err) => {
         if (!mounted) return;
