@@ -66,7 +66,8 @@ function BreederDashboard() {
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const f = new FormData(form);
     void addListing({
       category_type: category,
       custom_bird_name: String(f.get("name") ?? ""),
@@ -79,10 +80,15 @@ function BreederDashboard() {
       state,
       description: String(f.get("description") ?? ""),
       batch_quantity: Number(f.get("qty") ?? 1),
-    });
-    e.currentTarget.reset();
-    setPhotos([]);
-    toast.success("Listing published — live for 7 days.");
+    })
+      .then(() => {
+        form.reset();
+        setPhotos([]);
+        toast.success("Listing published — live for 7 days.");
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : "Could not publish listing.");
+      });
   }
 
   return (

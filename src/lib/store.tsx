@@ -630,9 +630,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     addListing: async (input) => {
-      if (!user) return;
+      if (!user) throw new Error("You must be signed in to publish a listing.");
       const created = Date.now();
-      await supabase.from("listings").insert({
+      const { error } = await supabase.from("listings").insert({
         category_type: input.category_type,
         breeder_id: user.id,
         breeder_handle: user.public_handle,
@@ -650,6 +650,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         creation_timestamp: new Date(created).toISOString(),
         expiry_date: new Date(created + LISTING_LIFESPAN_DAYS * DAY_MS).toISOString(),
       });
+      // Surfacing the failure keeps a rejected listing from looking published.
+      if (error) throw new Error(error.message);
       await refresh();
     },
 
