@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.sanitize_text(text) TO authenticated, anon;
