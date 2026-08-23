@@ -240,6 +240,7 @@ export type Database = {
           is_frozen: boolean
           is_online: boolean
           is_verified_seller: boolean
+          loft_name: string
           phone_number: string
           public_handle: string
           real_name: string
@@ -258,6 +259,7 @@ export type Database = {
           is_frozen?: boolean
           is_online?: boolean
           is_verified_seller?: boolean
+          loft_name?: string
           phone_number?: string
           public_handle: string
           real_name?: string
@@ -276,6 +278,7 @@ export type Database = {
           is_frozen?: boolean
           is_online?: boolean
           is_verified_seller?: boolean
+          loft_name?: string
           phone_number?: string
           public_handle?: string
           real_name?: string
@@ -286,25 +289,34 @@ export type Database = {
       public_profiles: {
         Row: {
           avatar_url: string
+          full_name: string
           id: string
           is_online: boolean
           is_verified_seller: boolean
+          loft_name: string
+          phone_number: string
           public_handle: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string
+          full_name?: string
           id: string
           is_online?: boolean
           is_verified_seller?: boolean
+          loft_name?: string
+          phone_number?: string
           public_handle?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string
+          full_name?: string
           id?: string
           is_online?: boolean
           is_verified_seller?: boolean
+          loft_name?: string
+          phone_number?: string
           public_handle?: string
           updated_at?: string
         }
