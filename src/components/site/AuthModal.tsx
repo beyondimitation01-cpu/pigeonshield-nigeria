@@ -20,6 +20,7 @@ export function AuthModal() {
   const [state, setState] = useState("Lagos");
   const [invite, setInvite] = useState("");
   const [photoStep, setPhotoStep] = useState(false);
+  const [loft, setLoft] = useState("");
   const mode = authGate.mode;
 
   // A visitor who arrived through /ref/CODE has the inviter code stashed.
@@ -48,6 +49,7 @@ export function AuthModal() {
     }
     const err = await register({
       real_name: String(f.get("real_name") ?? ""),
+      loft_name: loft,
       email,
       password,
       phone_number: String(f.get("phone_number") ?? ""),
@@ -84,7 +86,7 @@ export function AuthModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-primary">
             <ShieldCheck className="size-5" />
-            {mode === "login" ? "Log in to PigeonShield" : "Create your anonymous account"}
+            {mode === "login" ? "Log in to PigeonShield" : "Create your breeder account"}
           </DialogTitle>
         </DialogHeader>
 
@@ -123,8 +125,15 @@ export function AuthModal() {
         <form onSubmit={submit} className="space-y-3">
           {mode === "register" ? (
             <div className="space-y-1.5">
-              <Label htmlFor="real_name">Full legal name (never shown publicly)</Label>
+              <Label htmlFor="real_name">Full name (shown on your listings)</Label>
               <Input id="real_name" name="real_name" required placeholder="Musa Ibrahim" />
+              <Label htmlFor="loft_name" className="pt-2">Loft / farm name (optional)</Label>
+              <Input
+                id="loft_name"
+                value={loft}
+                onChange={(e) => setLoft(e.target.value)}
+                placeholder="Kano Royal Loft"
+              />
             </div>
           ) : null}
 
@@ -141,7 +150,7 @@ export function AuthModal() {
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="phone_number">Phone number (hidden / SMS alerts)</Label>
+                  <Label htmlFor="phone_number">Phone number (shown to buyers)</Label>
                   <Input id="phone_number" name="phone_number" required placeholder="0803..." />
                 </div>
                 <div className="space-y-1.5">
