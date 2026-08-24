@@ -10,6 +10,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { QUICK_INQUIRIES } from "@/lib/pigeon-data";
+import { UserAvatar } from "@/components/site/UserAvatar";
 
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -76,7 +77,8 @@ function MessagesPage() {
     <main className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Never share phone numbers or WhatsApp links — it voids all escrow protection.
+        Tip: For long-distance purchases, use our Protected Checkout &amp; Driver Link to ensure your
+        money is safe until delivery.
       </p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-[240px_1fr]">
@@ -103,7 +105,17 @@ function MessagesPage() {
           {current ? (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
-                <span className="font-semibold">{other?.public_handle ?? "Breeder"}</span>
+                <span className="inline-flex items-center gap-2 font-semibold">
+                  <UserAvatar
+                    url={(current ? db.sellers[current.otherId]?.avatar_url : null) ?? other?.avatar_url ?? null}
+                    name={other?.real_name || other?.public_handle || "Breeder"}
+                    size={28}
+                  />
+                  {(current ? db.sellers[current.otherId]?.full_name : "") ||
+                    other?.real_name ||
+                    other?.public_handle ||
+                    "Breeder"}
+                </span>
                 <Badge variant={other?.is_online ? "default" : "secondary"} className="gap-1">
                   {other?.is_online ? <Wifi className="size-3" /> : <WifiOff className="size-3" />}
                   {other?.is_online ? "Online" : "Offline — SMS alert sent"}

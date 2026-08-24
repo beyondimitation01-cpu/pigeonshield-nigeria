@@ -63,6 +63,7 @@ interface StoreValue {
   login: (email: string, password: string) => Promise<string | null>;
   register: (input: {
     real_name: string;
+    loft_name?: string;
     email: string;
     password: string;
     phone_number: string;
@@ -74,6 +75,8 @@ interface StoreValue {
   }) => Promise<string | null>;
   updateProfile: (patch: {
     real_name?: string;
+    public_handle?: string;
+    loft_name?: string;
     phone_number?: string;
     avatar_url?: string;
     home_state?: string;
@@ -192,7 +195,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       id: authUser.id,
       real_name: meta["real_name"] ?? "",
       phone_number: meta["phone_number"] ?? "",
-      public_handle: meta["public_handle"] ?? makeHandle(),
+      public_handle: meta["real_name"] || meta["public_handle"] || makeHandle(),
+      loft_name: meta["loft_name"] ?? "",
       home_state: meta["home_state"] ?? "",
       bank_name: meta["bank_name"] ?? "",
       account_number: meta["account_number"] ?? "",
@@ -242,6 +246,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sellerMap[String(row["id"])] = {
         id: String(row["id"]),
         public_handle: String(row["public_handle"] ?? ""),
+        full_name: String(row["full_name"] ?? ""),
+        loft_name: String(row["loft_name"] ?? ""),
+        phone_number: String(row["phone_number"] ?? ""),
         avatar_url: String(row["avatar_url"] ?? ""),
         is_verified_seller: row["is_verified_seller"] === true,
         is_online: row["is_online"] === true,
@@ -298,6 +305,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         password: "",
         phone_number: String(p["phone_number"] ?? ""),
         public_handle: String(p["public_handle"] ?? ""),
+        loft_name: String(p["loft_name"] ?? ""),
         home_state: String(p["home_state"] ?? ""),
         bank_name: String(p["bank_name"] ?? ""),
         account_number: String(p["account_number"] ?? ""),
@@ -422,7 +430,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       email: authUser.email ?? "",
       password: "",
       phone_number: meta["phone_number"] ?? "",
-      public_handle: meta["public_handle"] ?? authUser.email?.split("@")[0] ?? "Member",
+      public_handle: meta["real_name"] || (meta["public_handle"] ?? authUser.email?.split("@")[0] ?? "Member"),
+      loft_name: meta["loft_name"] ?? "",
       home_state: meta["home_state"] ?? "",
       bank_name: meta["bank_name"] ?? "",
       account_number: meta["account_number"] ?? "",
@@ -485,7 +494,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           data: {
             real_name: input.real_name,
             phone_number: input.phone_number,
-            public_handle: makeHandle(),
+            public_handle: input.real_name.trim() || makeHandle(),
+            loft_name: input.loft_name ?? "",
             home_state: input.home_state,
             bank_name: input.bank_name,
             account_number: input.account_number,

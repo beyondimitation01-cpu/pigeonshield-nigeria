@@ -80,6 +80,7 @@ export interface NigerianUser {
   password: string;
   phone_number: string;
   public_handle: string;
+  loft_name: string;
   home_state: string;
   bank_name: string;
   account_number: string;
@@ -224,6 +225,9 @@ function pedigree(name: string, breed: string): Pedigree {
 export interface PublicSeller {
   id: string;
   public_handle: string;
+  full_name: string;
+  loft_name: string;
+  phone_number: string;
   avatar_url: string;
   is_verified_seller: boolean;
   is_online: boolean;
@@ -289,7 +293,8 @@ const SEED_USERS: NigerianUser[] = [
     email: "musa@example.ng",
     password: "demo1234",
     phone_number: "08031234567",
-    public_handle: "Verified Breeder #481203",
+    public_handle: "Musa Ibrahim",
+    loft_name: "Kano Royal Loft",
     home_state: "Kano",
     bank_name: "OPay",
     account_number: "8031234567",
@@ -307,7 +312,8 @@ const SEED_USERS: NigerianUser[] = [
     email: "chidi@example.ng",
     password: "demo1234",
     phone_number: "08127654321",
-    public_handle: "Verified Breeder #772910",
+    public_handle: "Chidi Okeke",
+    loft_name: "Enugu Skyline Loft",
     home_state: "Enugu",
     bank_name: "GTBank",
     account_number: "0123456789",
@@ -325,7 +331,8 @@ const SEED_USERS: NigerianUser[] = [
     email: "tayo@example.ng",
     password: "demo1234",
     phone_number: "07098765432",
-    public_handle: "Verified Breeder #310884",
+    public_handle: "Tunde Adeyemi",
+    loft_name: "Ibadan Champion Loft",
     home_state: "Lagos",
     bank_name: "Moniepoint",
     account_number: "7098765432",

@@ -81,7 +81,8 @@ export function ListingCard({ listing }: { listing: Listing }) {
             ) : (
               <Bird className="size-3 shrink-0" />
             )}
-            <span className="truncate">{listing.breeder_handle}</span>
+            <span className="truncate">{seller?.full_name || seller?.public_handle || listing.breeder_handle}</span>
+            {seller?.loft_name ? <span className="truncate text-[11px]">· {seller.loft_name}</span> : null}
           </span>
         </div>
         <div className="mt-auto flex items-center justify-between gap-1 pt-1">
