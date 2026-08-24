@@ -80,6 +80,7 @@ export interface NigerianUser {
   password: string;
   phone_number: string;
   public_handle: string;
+  loft_name: string;
   home_state: string;
   bank_name: string;
   account_number: string;
@@ -224,6 +225,9 @@ function pedigree(name: string, breed: string): Pedigree {
 export interface PublicSeller {
   id: string;
   public_handle: string;
+  full_name: string;
+  loft_name: string;
+  phone_number: string;
   avatar_url: string;
   is_verified_seller: boolean;
   is_online: boolean;
