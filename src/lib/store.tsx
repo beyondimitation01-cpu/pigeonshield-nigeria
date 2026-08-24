@@ -238,7 +238,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uid
         ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
         : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
-      supabase.from("public_profiles").select("*"),
+      // phone_number is intentionally excluded: it is not publicly readable and
+      // is fetched on demand by signed-in users via the get_seller_phone RPC.
+      supabase
+        .from("public_profiles")
+        .select("id, public_handle, full_name, loft_name, avatar_url, is_verified_seller, is_online"),
       supabase
         .from("broadcasts")
         .select("id, body, created_at")
