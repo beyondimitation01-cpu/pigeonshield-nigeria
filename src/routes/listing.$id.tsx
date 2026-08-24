@@ -35,7 +35,26 @@ function ListingDetail() {
   const { requireAuth } = useAuthGuard();
   const [active, setActive] = useState(0);
   const [checkout, setCheckout] = useState(false);
+  const [revealedPhone, setRevealedPhone] = useState("");
   const listing = db.listings.find((l) => l.id === id);
+  const breederId = listing?.breeder_id ?? "";
+
+  // Seller phone numbers are not public. Signed-in buyers fetch them on demand.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || !breederId) {
+      setRevealedPhone("");
+      return;
+    }
+    void supabase
+      .rpc("get_seller_phone", { _seller_id: breederId })
+      .then(({ data }) => {
+        if (!cancelled) setRevealedPhone(String(data ?? ""));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, breederId]);
 
   if (!listing) {
     return <div className="mx-auto max-w-3xl px-4 py-24 text-center text-muted-foreground">Listing not found or expired.</div>;
