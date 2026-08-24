@@ -67,13 +67,13 @@ export function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-2">
-                  <UserAvatar url={user?.avatar_url ?? null} name={user?.public_handle ?? ""} size={22} />
-                  <span className="max-w-28 truncate">{user?.public_handle ?? "My Account"}</span>
+                  <UserAvatar url={user?.avatar_url ?? null} name={user?.real_name ?? user?.public_handle ?? ""} size={22} />
+                  <span className="max-w-28 truncate">{user?.real_name || user?.public_handle || "My Account"}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">
-                  Signed in as {user?.public_handle}
+                  Signed in as {user?.real_name || user?.public_handle}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => navigate({ to: "/breeder-dashboard" })}>

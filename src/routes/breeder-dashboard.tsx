@@ -95,7 +95,7 @@ function BreederDashboard() {
     <main className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold tracking-tight">Breeder Dashboard</h1>
       <p className="mt-1 text-muted-foreground">
-        Trading as <span className="font-semibold text-primary">{user.public_handle}</span>
+        Trading as <span className="font-semibold text-primary">{user.real_name || user.public_handle}</span>
       </p>
 
       <Tabs defaultValue="inventory" className="mt-8">
@@ -278,6 +278,8 @@ function BreederDashboard() {
 function AccountPanel() {
   const { user, updateProfile } = useStore();
   const [phone, setPhone] = useState(user?.phone_number ?? "");
+  const [fullName, setFullName] = useState(user?.real_name ?? "");
+  const [loft, setLoft] = useState(user?.loft_name ?? "");
   if (!user) return null;
   return (
     <Card className="max-w-xl space-y-5 p-5">
@@ -292,7 +294,37 @@ function AccountPanel() {
         label="Change profile picture"
       />
       <div className="space-y-1.5">
-        <Label htmlFor="payout-phone">Payout phone number (OPay / MTN)</Label>
+        <Label htmlFor="full-name">Full name (public)</Label>
+        <div className="flex gap-2">
+          <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Button
+            onClick={async () => {
+              const err = await updateProfile({ real_name: fullName, public_handle: fullName });
+              if (err) toast.error(err);
+              else toast.success("Name saved.");
+            }}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="loft-name">Loft / farm name (optional, public)</Label>
+        <div className="flex gap-2">
+          <Input id="loft-name" value={loft} onChange={(e) => setLoft(e.target.value)} />
+          <Button
+            onClick={async () => {
+              const err = await updateProfile({ loft_name: loft });
+              if (err) toast.error(err);
+              else toast.success("Loft name saved.");
+            }}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label>
         <div className="flex gap-2">
           <Input id="payout-phone" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
           <Button
@@ -307,7 +339,7 @@ function AccountPanel() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Public handle: <span className="font-medium text-foreground">{user.public_handle}</span>
+        Buyers see your name, loft and phone number on every listing.
       </p>
     </Card>
   );
