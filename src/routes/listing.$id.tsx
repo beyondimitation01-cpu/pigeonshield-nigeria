@@ -45,7 +45,7 @@ function ListingDetail() {
   const sellerCard = db.sellers[listing.breeder_id];
   const sellerDisplayName =
     sellerCard?.full_name || sellerCard?.public_handle || listing.breeder_handle;
-  const sellerPhone = sellerCard?.phone_number || seller?.phone_number || "";
+  const sellerPhone = seller?.phone_number || revealedPhone || "";
   const sellerWa = whatsappLink(
     sellerPhone,
     `Hello ${sellerDisplayName}, I saw your listing "${listing.custom_bird_name}" on PigeonShield Nigeria.`,
