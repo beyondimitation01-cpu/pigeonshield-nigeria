@@ -145,7 +145,17 @@ interface StoreValue {
   sendMessage: (listingId: string, toId: string, body: string) => Promise<void>;
 }
 
-const StoreContext = createContext<StoreValue | null>(null);
+/**
+ * Kept on globalThis so a hot-reloaded duplicate of this module still shares
+ * one context instance — otherwise the Navbar reads a different context than
+ * the provider writes and SSR throws "useStore must be used inside StoreProvider".
+ */
+const globalStore = globalThis as typeof globalThis & {
+  __pigeonshieldStoreContext?: React.Context<StoreValue | null>;
+};
+const StoreContext =
+  globalStore.__pigeonshieldStoreContext ??
+  (globalStore.__pigeonshieldStoreContext = createContext<StoreValue | null>(null));
 
 const EMPTY: DBState = {
   users: [],
