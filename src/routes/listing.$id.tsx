@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Flag, MapPin, MessageCircle, Send, ShieldCheck, Syringe } from "lucide-react";
+import { Flag, MapPin, MessageCircle, Phone, Send, Syringe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,6 +13,8 @@ import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
 import { listingGallery, onImageError } from "@/lib/listing-images";
+import { UserAvatar } from "@/components/site/UserAvatar";
+import { displayNigerianPhone, whatsappLink, formatNigerianPhone } from "@/lib/phone";
 
 export const Route = createFileRoute("/listing/$id")({
   head: () => ({
@@ -40,6 +42,14 @@ function ListingDetail() {
   }
 
   const seller = db.users.find((u) => u.id === listing.breeder_id);
+  const sellerCard = db.sellers[listing.breeder_id];
+  const sellerDisplayName =
+    sellerCard?.full_name || sellerCard?.public_handle || listing.breeder_handle;
+  const sellerPhone = sellerCard?.phone_number || seller?.phone_number || "";
+  const sellerWa = whatsappLink(
+    sellerPhone,
+    `Hello ${sellerDisplayName}, I saw your listing "${listing.custom_bird_name}" on PigeonShield Nigeria.`,
+  );
   const pct = commissionFor(listing);
   const gallery = listingGallery(listing);
   const cover = gallery[active] ?? gallery[0]!;
@@ -89,7 +99,11 @@ function ListingDetail() {
 
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1"><MapPin className="size-4" /> {listing.state}</span>
-            <span className="inline-flex items-center gap-1"><ShieldCheck className="size-4" /> {listing.breeder_handle}</span>
+            <span className="inline-flex items-center gap-1">
+              <UserAvatar url={sellerCard?.avatar_url ?? null} name={sellerDisplayName} size={20} />
+              {sellerDisplayName}
+              {sellerCard?.loft_name ? <span className="text-xs">· {sellerCard.loft_name}</span> : null}
+            </span>
             {listing.category_type === "Dog" ? (
               <span className="inline-flex items-center gap-1"><Syringe className="size-4" /> {listing.vaccinated ? "Vaccinated" : "Not vaccinated"}</span>
             ) : null}
@@ -103,8 +117,24 @@ function ListingDetail() {
 
           <div className="flex flex-wrap gap-3">
             <Button size="lg" onClick={purchase} disabled={user?.id === listing.breeder_id}>
-              Fund Escrow &amp; Buy
+              Buy with Escrow Protection
             </Button>
+            {formatNigerianPhone(sellerPhone) ? (
+              <>
+                <Button size="lg" variant="secondary" asChild>
+                  <a href={`tel:+${formatNigerianPhone(sellerPhone)}`}>
+                    <Phone className="size-4" /> Call Seller ({displayNigerianPhone(sellerPhone)})
+                  </a>
+                </Button>
+                {sellerWa ? (
+                  <Button size="lg" variant="secondary" asChild>
+                    <a href={sellerWa} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="size-4" /> WhatsApp Chat
+                    </a>
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
             <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} />
             <Button size="lg" variant="ghost" onClick={() => navigate({ to: "/messages", search: { listing: listing.id } })}>
               Open full inbox
@@ -172,6 +202,8 @@ function ChatDrawer({
 }) {
   const { db, user, sendMessage } = useStore();
   const { requireAuth } = useAuthGuard();
+  const sellerCard = db.sellers[sellerId];
+  const sellerName = sellerCard?.full_name || sellerCard?.public_handle || sellerHandle;
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -201,12 +233,20 @@ function ChatDrawer({
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-        <div className="sticky top-0 z-10 border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-xs font-semibold leading-snug text-destructive">
-          ⚠️ Never pay to an unknown seller, always pay via the app for DOA protection.
+        <div className="sticky top-0 z-10 border-b border-border bg-muted px-4 py-3 text-xs leading-snug text-muted-foreground">
+          Tip: For long-distance purchases, use our Protected Checkout &amp; Driver Link to ensure your money is
+          safe until delivery.
         </div>
         <div className="border-b border-border px-4 py-3">
-          <p className="text-sm font-semibold">{sellerHandle}</p>
-          <p className="text-xs text-muted-foreground">Anonymous escrow-protected chat</p>
+          <div className="flex items-center gap-2">
+            <UserAvatar url={sellerCard?.avatar_url ?? null} name={sellerName} size={32} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{sellerName}</p>
+              {sellerCard?.loft_name ? (
+                <p className="truncate text-xs text-muted-foreground">{sellerCard.loft_name}</p>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
