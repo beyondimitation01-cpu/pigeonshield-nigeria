@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Flag, MapPin, MessageCircle, Phone, Send, Syringe } from "lucide-react";
@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CheckoutModal } from "@/components/site/CheckoutModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
 import { listingGallery, onImageError } from "@/lib/listing-images";
@@ -35,7 +36,26 @@ function ListingDetail() {
   const { requireAuth } = useAuthGuard();
   const [active, setActive] = useState(0);
   const [checkout, setCheckout] = useState(false);
+  const [revealedPhone, setRevealedPhone] = useState("");
   const listing = db.listings.find((l) => l.id === id);
+  const breederId = listing?.breeder_id ?? "";
+
+  // Seller phone numbers are not public. Signed-in buyers fetch them on demand.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || !breederId) {
+      setRevealedPhone("");
+      return;
+    }
+    void supabase
+      .rpc("get_seller_phone", { _seller_id: breederId })
+      .then(({ data }) => {
+        if (!cancelled) setRevealedPhone(String(data ?? ""));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, breederId]);
 
   if (!listing) {
     return <div className="mx-auto max-w-3xl px-4 py-24 text-center text-muted-foreground">Listing not found or expired.</div>;
@@ -45,7 +65,7 @@ function ListingDetail() {
   const sellerCard = db.sellers[listing.breeder_id];
   const sellerDisplayName =
     sellerCard?.full_name || sellerCard?.public_handle || listing.breeder_handle;
-  const sellerPhone = sellerCard?.phone_number || seller?.phone_number || "";
+  const sellerPhone = seller?.phone_number || revealedPhone || "";
   const sellerWa = whatsappLink(
     sellerPhone,
     `Hello ${sellerDisplayName}, I saw your listing "${listing.custom_bird_name}" on PigeonShield Nigeria.`,
