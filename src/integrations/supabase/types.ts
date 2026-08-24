@@ -505,6 +505,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_seller_phone: { Args: { _seller_id: string }; Returns: string }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
