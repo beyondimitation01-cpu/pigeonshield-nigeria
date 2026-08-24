@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CheckoutModal } from "@/components/site/CheckoutModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, QUICK_INQUIRIES } from "@/lib/pigeon-data";
 import { listingGallery, onImageError } from "@/lib/listing-images";
