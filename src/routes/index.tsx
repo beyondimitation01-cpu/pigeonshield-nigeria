@@ -39,6 +39,7 @@ export const Route = createFileRoute("/")({
 
 function Marketplace() {
   const { db } = useStore();
+  const { requireAuth } = useAuthGuard();
   const [tab, setTab] = useState<"pigeons" | "others">("pigeons");
   const [state, setState] = useState("All states");
   const [breed, setBreed] = useState("All breeds");
