@@ -7,6 +7,7 @@ import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError } from "@/lib/listing-images";
 import { useStore } from "@/lib/store";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { UserAvatar } from "@/components/site/UserAvatar";
 
 export function MediaPlaceholder({ label, className }: { label: string; className?: string }) {
