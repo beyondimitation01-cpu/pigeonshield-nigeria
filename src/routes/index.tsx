@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ListingCard } from "@/components/site/ListingCard";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
 import { onImageError } from "@/lib/listing-images";
