@@ -128,33 +128,31 @@ function BreederDashboard() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Select
-                  value={category}
-                  onValueChange={(v) => {
-                    const c = v as Category;
+                <Label htmlFor="category-combo">Category</Label>
+                <Combobox
+                  id="category-combo"
+                  value={CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category}
+                  options={CATEGORY_OPTIONS.map((c) => c.label)}
+                  searchPlaceholder="Search category..."
+                  onChange={(label) => {
+                    const c = (CATEGORY_OPTIONS.find((o) => o.label === label)?.value ??
+                      "Pigeon") as Category;
                     setCategory(c);
                     setBreed(BREEDS_BY_CATEGORY[c][0] ?? "");
                   }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORY_OPTIONS.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                />
               </div>
               <div className="space-y-1.5">
-                <Label>Breed</Label>
-                <Select value={breed} onValueChange={setBreed}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="max-h-64">
-                    {BREEDS_BY_CATEGORY[category].map((b) => (
-                      <SelectItem key={b} value={b}>{b}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="breed-combo">Breed</Label>
+                <Combobox
+                  id="breed-combo"
+                  value={breed}
+                  options={BREEDS_BY_CATEGORY[category]}
+                  onChange={setBreed}
+                  allowCustom
+                  placeholder="Select or type a breed"
+                  searchPlaceholder="Search or type a breed..."
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Gender</Label>
