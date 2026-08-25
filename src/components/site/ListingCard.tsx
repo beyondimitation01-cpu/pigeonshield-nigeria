@@ -23,6 +23,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const days = daysRemaining(listing.expiry_date);
   const cover = listingCover(listing);
   const { db } = useStore();
+  const { requireAuth } = useAuthGuard();
   const seller = listing.breeder_id ? db.sellers[listing.breeder_id] : undefined;
 
   return (
