@@ -35,42 +35,36 @@ export const Route = createFileRoute("/messages")({
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
   const { listing: listingParam } = Route.useSearch();
-  const { db, user, sendMessage, markMessagesRead, authReady } = useStore();
-  const [active, setActive] = useState<string | null>(listingParam ?? null);
+  const { db, user, sendMessage, markConversationRead, authReady } = useStore();
+  const [active, setActive] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const lastMarked = useRef<string | null>(null);
 
-  const threads = useMemo(() => {
-    if (!user) return [] as { listingId: string; title: string; otherId: string }[];
-    const ids = new Set<string>();
-    if (listingParam) ids.add(listingParam);
-    db.messages
-      .filter((m) => m.from_id === user.id || m.to_id === user.id)
-      .forEach((m) => ids.add(m.listing_id));
-    return [...ids].flatMap((id) => {
-      const l = db.listings.find((x) => x.id === id);
-      if (!l) return [];
-      const otherId =
-        l.breeder_id === user.id
-          ? (db.messages.find((m) => m.listing_id === id && m.from_id !== user.id)?.from_id ?? user.id)
-          : l.breeder_id;
-      return [{ listingId: id, title: l.custom_bird_name, otherId }];
-    });
-  }, [db.messages, db.listings, user, listingParam]);
+  const conversations = useMemo(() => {
+    if (!user) return [] as { id: string; otherId: string }[];
+    const existing = db.conversations
+      .filter((c) => c.participant_a === user.id || c.participant_b === user.id)
+      .map((c) => ({ id: c.id, otherId: c.participant_a === user.id ? c.participant_b : c.participant_a }));
+    if (!listingParam) return existing;
+    const listing = db.listings.find((item) => item.id === listingParam);
+    if (!listing?.breeder_id || listing.breeder_id === user.id) return existing;
+    if (existing.some((c) => c.otherId === listing.breeder_id)) return existing;
+    return [{ id: `new:${listing.breeder_id}`, otherId: listing.breeder_id }, ...existing];
+  }, [db.conversations, db.listings, user, listingParam]);
 
-  const current = threads.find((t) => t.listingId === active) ?? threads[0];
-  const other = current ? db.users.find((u) => u.id === current.otherId) : undefined;
+  const current = conversations.find((c) => c.id === active) ?? conversations[0];
+  const other = current ? db.users.find((u) => u.id === current.otherId) ?? db.sellers[current.otherId] : undefined;
   const thread = current
-    ? db.messages.filter((m) => m.listing_id === current.listingId).sort((a, b) => a.created_at - b.created_at)
+    ? db.messages.filter((m) => m.conversation_id === current.id).sort((a, b) => a.created_at - b.created_at)
     : [];
 
   useEffect(() => {
     if (!current || !user || !authReady) return;
-    const key = `${current.listingId}:${current.otherId}`;
+    const key = `${current.id}:${current.otherId}`;
     if (lastMarked.current === key) return;
     lastMarked.current = key;
-    void markMessagesRead(current.listingId, current.otherId).catch(() => undefined);
-  }, [current?.listingId, current?.otherId, user, authReady, markMessagesRead]);
+    if (!current.id.startsWith("new:")) void markConversationRead(current.id).catch(() => undefined);
+  }, [current?.id, current?.otherId, user, authReady, markConversationRead]);
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) {
@@ -79,7 +73,7 @@ function MessagesPage() {
 
   function send(text: string) {
     if (!current || !text.trim()) return;
-    void sendMessage(current.listingId, current.otherId, text.trim()).catch((error: unknown) => {
+    void sendMessage(listingParam ?? null, current.otherId, text.trim()).catch((error: unknown) => {
       toast.error(error instanceof Error ? error.message : "Message could not be sent.");
     });
     setBody("");
@@ -95,21 +89,38 @@ function MessagesPage() {
 
       <div className="mt-8 grid gap-6 md:grid-cols-[240px_1fr]">
         <Card className="p-3">
-          <p className="px-2 pb-2 text-xs font-semibold uppercase text-muted-foreground">Threads</p>
-          {threads.length === 0 ? (
+          <p className="px-2 pb-2 text-xs font-semibold uppercase text-muted-foreground">Conversations</p>
+          {conversations.length === 0 ? (
             <p className="px-2 text-sm text-muted-foreground">No conversations yet.</p>
           ) : (
-            threads.map((t) => (
+            conversations.map((conversation) => {
+              const conversationMessages = db.messages.filter((m) => m.conversation_id === conversation.id);
+              const latest = conversationMessages[conversationMessages.length - 1];
+              const unread = conversationMessages.filter((m) => m.to_id === user.id && !m.read_at).length;
+              const person = db.users.find((u) => u.id === conversation.otherId) ?? db.sellers[conversation.otherId];
+              const personName = person && "real_name" in person ? person.real_name : person?.full_name;
+              return (
               <button
-                key={t.listingId}
-                onClick={() => setActive(t.listingId)}
-                className={`w-full truncate rounded-md px-2 py-2 text-left text-sm ${
-                  current?.listingId === t.listingId ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"
+                key={conversation.id}
+                onClick={() => setActive(conversation.id)}
+                className={`w-full rounded-md px-2 py-2 text-left text-sm ${
+                  current?.id === conversation.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"
                 }`}
               >
-                {t.title}
+                <span className="flex items-center gap-2">
+                  <UserAvatar url={person?.avatar_url ?? null} name={personName || person?.public_handle || "Member"} size={30} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{personName || person?.public_handle || "Member"}</span>
+                    <span className="block truncate text-xs font-normal text-muted-foreground">{latest?.body ?? "New conversation"}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    {latest ? <span className="text-[10px] font-normal text-muted-foreground">{new Date(latest.created_at).toLocaleDateString()}</span> : null}
+                    {unread > 0 ? <Badge>{unread}</Badge> : null}
+                  </span>
+                </span>
               </button>
-            ))
+              );
+            })
           )}
         </Card>
 
@@ -120,11 +131,11 @@ function MessagesPage() {
                 <span className="inline-flex items-center gap-2 font-semibold">
                   <UserAvatar
                     url={(current ? db.sellers[current.otherId]?.avatar_url : null) ?? other?.avatar_url ?? null}
-                    name={other?.real_name || other?.public_handle || "Breeder"}
+                    name={other && "real_name" in other ? other.real_name : other?.full_name || other?.public_handle || "Breeder"}
                     size={28}
                   />
                   {(current ? db.sellers[current.otherId]?.full_name : "") ||
-                    other?.real_name ||
+                    (other && "real_name" in other ? other.real_name : other?.full_name) ||
                     other?.public_handle ||
                     "Breeder"}
                 </span>
@@ -175,7 +186,7 @@ function MessagesPage() {
               </form>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Select a listing to message its breeder.</p>
+            <p className="text-sm text-muted-foreground">Select a conversation or start one from a listing.</p>
           )}
         </Card>
       </div>

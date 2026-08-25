@@ -152,6 +152,7 @@ export interface EscrowTransaction {
 
 export interface ChatMessage {
   id: string;
+  conversation_id: string;
   listing_id: string;
   from_id: string;
   to_id: string;
@@ -165,9 +166,18 @@ export interface MessageNotification {
   recipient_id: string;
   message_id: string;
   listing_id: string | null;
+  conversation_id: string;
   kind: string;
   created_at: number;
   read_at: number | null;
+}
+
+export interface ChatConversation {
+  id: string;
+  participant_a: string;
+  participant_b: string;
+  created_at: number;
+  updated_at: number;
 }
 
 export const DAY_MS = 86_400_000;
@@ -284,6 +294,7 @@ export interface DBState {
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
   notifications: MessageNotification[];
+  conversations: ChatConversation[];
   sellers: Record<string, PublicSeller>;
   referrals: ReferralRow[];
   feedback: FeedbackRow[];
@@ -440,6 +451,7 @@ export function seedState(): DBState {
     transactions: [],
     messages: [],
     notifications: [],
+    conversations: [],
     sellers: {},
     referrals: [],
     feedback: [],

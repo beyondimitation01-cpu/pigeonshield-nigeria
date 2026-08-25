@@ -34,6 +34,7 @@ import {
   type DisputeStatus,
   type TxStatus,
   type MessageNotification,
+  type ChatConversation,
 } from "./pigeon-data";
 
 type NewListingInput = Omit<
@@ -144,9 +145,12 @@ interface StoreValue {
   adminRelease: (txId: string) => Promise<void>;
   bypassPasscode: (txId: string, code: string) => boolean;
   banUser: (userId: string) => Promise<void>;
-  sendMessage: (listingId: string, toId: string, body: string) => Promise<void>;
+  sendMessage: (listingId: string | null, toId: string, body: string) => Promise<void>;
   markMessagesRead: (listingId: string, otherId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  getOrCreateConversation: (otherId: string) => Promise<string>;
+  sendConversationMessage: (conversationId: string, listingId: string | null, toId: string, body: string) => Promise<void>;
+  markConversationRead: (conversationId: string) => Promise<void>;
 }
 
 /**
@@ -167,6 +171,7 @@ const EMPTY: DBState = {
   transactions: [],
   messages: [],
   notifications: [],
+  conversations: [],
   sellers: {},
   referrals: [],
   feedback: [],
@@ -229,7 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const requestRevision = ++refreshRevision.current;
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs, notifications, credits, sellers, announcements, referrals, feedback] = await Promise.all([
+    const [settings, listings, profiles, txs, passcodes, msgs, notifications, conversations, credits, sellers, announcements, referrals, feedback] = await Promise.all([
       supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
       supabase
         .from("listings")
@@ -242,6 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("notifications").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("conversations").select("*").order("updated_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid
         ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
         : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
@@ -402,6 +408,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         listing_id: String(m["listing_id"] ?? ""),
         from_id: String(m["from_id"]),
         to_id: String(m["to_id"]),
+        conversation_id: String(m["conversation_id"]),
         body: String(m["body"] ?? ""),
         created_at: ms(String(m["created_at"])),
         read_at: m["read_at"] ? ms(String(m["read_at"])) : null,
@@ -411,10 +418,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         recipient_id: String(n["recipient_id"]),
         message_id: String(n["message_id"]),
         listing_id: n["listing_id"] ? String(n["listing_id"]) : null,
+        conversation_id: String(n["conversation_id"]),
         kind: String(n["kind"] ?? "message"),
         created_at: ms(String(n["created_at"])),
         read_at: n["read_at"] ? ms(String(n["read_at"])) : null,
       })) as MessageNotification[],
+      conversations: ((conversations.data ?? []) as Record<string, unknown>[]).map((c) => ({
+        id: String(c["id"]),
+        participant_a: String(c["participant_a"]),
+        participant_b: String(c["participant_b"]),
+        created_at: ms(String(c["created_at"])),
+        updated_at: ms(String(c["updated_at"])),
+      })) as ChatConversation[],
     });
   }, []);
 
@@ -905,14 +920,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     sendMessage: async (listingId, toId, body) => {
       if (!user) return;
-      const { error } = await supabase
-        .from("messages")
-        .insert({ listing_id: listingId, from_id: user.id, to_id: toId, body });
+      const { data: conversationId, error: conversationError } = await supabase.rpc("get_or_create_conversation", { _other_id: toId });
+      if (conversationError || !conversationId) throw new Error(conversationError?.message ?? "Could not open conversation.");
+      const { error } = await supabase.rpc("send_message", {
+        _conversation_id: conversationId,
+        _listing_id: listingId,
+        _to_id: toId,
+        _body: body,
+      });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
+    getOrCreateConversation: async (otherId) => {
+      const { data, error } = await supabase.rpc("get_or_create_conversation", { _other_id: otherId });
+      if (error || !data) throw new Error(error?.message ?? "Could not open conversation.");
+      return data;
+    },
+    sendConversationMessage: async (conversationId, listingId, toId, body) => {
+      const { error } = await supabase.rpc("send_message", {
+        _conversation_id: conversationId,
+        _listing_id: listingId,
+        _to_id: toId,
+        _body: body,
+      });
       if (error) throw new Error(error.message);
       await refresh();
     },
     markMessagesRead: async (listingId, otherId) => {
       const { error } = await supabase.rpc("mark_messages_read", { _listing_id: listingId, _other_id: otherId });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
+    markConversationRead: async (conversationId) => {
+      const { error } = await supabase.rpc("mark_conversation_read", { _conversation_id: conversationId });
       if (error) throw new Error(error.message);
       await refresh();
     },

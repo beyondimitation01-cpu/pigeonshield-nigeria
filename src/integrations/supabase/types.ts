@@ -194,6 +194,7 @@ export type Database = {
       messages: {
         Row: {
           body: string
+          conversation_id: string
           created_at: string
           from_id: string
           id: string
@@ -203,6 +204,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          conversation_id: string
           created_at?: string
           from_id: string
           id?: string
@@ -212,6 +214,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          conversation_id?: string
           created_at?: string
           from_id?: string
           id?: string
@@ -229,9 +232,34 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          participant_a: string
+          participant_b: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participant_a: string
+          participant_b: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participant_a?: string
+          participant_b?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
+          conversation_id: string | null
           id: string
           kind: string
           listing_id: string | null
@@ -241,6 +269,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          conversation_id?: string | null
           id?: string
           kind?: string
           listing_id?: string | null
@@ -250,6 +279,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          conversation_id?: string
           id?: string
           kind?: string
           listing_id?: string | null
@@ -538,6 +568,9 @@ export type Database = {
       }
     }
     Functions: {
+      get_or_create_conversation: { Args: { _other_id: string }; Returns: string }
+      mark_conversation_read: { Args: { _conversation_id: string }; Returns: undefined }
+      send_message: { Args: { _body: string; _conversation_id: string; _listing_id: string | null; _to_id: string }; Returns: string }
       get_seller_phone: { Args: { _seller_id: string }; Returns: string }
       mark_messages_read: { Args: { _listing_id: string; _other_id: string }; Returns: undefined }
       mark_notification_read: { Args: { _notification_id: string }; Returns: undefined }
