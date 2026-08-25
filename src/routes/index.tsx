@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListingCard } from "@/components/site/ListingCard";
+import { Combobox } from "@/components/site/Combobox";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -150,13 +151,14 @@ function Marketplace() {
               {NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={breed} onValueChange={(v) => { setBreed(v); setPage(1); }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent className="max-h-64">
-              <SelectItem value="All breeds">All breeds</SelectItem>
-              {breeds.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Combobox
+            value={breed}
+            options={["All breeds", ...breeds]}
+            onChange={(v) => { setBreed(v); setPage(1); }}
+            allowCustom
+            placeholder="All breeds"
+            searchPlaceholder="Search or type a breed..."
+          />
         </div>
 
         <div className="mt-6 flex items-center justify-between">
