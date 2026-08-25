@@ -167,7 +167,10 @@ function Marketplace() {
             variant="ghost"
             size="sm"
             className="text-destructive hover:bg-destructive/10"
-            onClick={() => reportToAdmin("Marketplace feed report")}
+            onClick={() => {
+              if (!requireAuth("Reporting a scam or issue requires an account.")) return;
+              reportToAdmin("Marketplace feed report");
+            }}
           >
             <Flag className="size-4" /> Report Scam or Issue to Admin
           </Button>
