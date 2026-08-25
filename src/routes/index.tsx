@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ListingCard } from "@/components/site/ListingCard";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
 import { onImageError } from "@/lib/listing-images";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/")({
 
 function Marketplace() {
   const { db } = useStore();
+  const { requireAuth } = useAuthGuard();
   const [tab, setTab] = useState<"pigeons" | "others">("pigeons");
   const [state, setState] = useState("All states");
   const [breed, setBreed] = useState("All breeds");
@@ -165,7 +167,10 @@ function Marketplace() {
             variant="ghost"
             size="sm"
             className="text-destructive hover:bg-destructive/10"
-            onClick={() => reportToAdmin("Marketplace feed report")}
+            onClick={() => {
+              if (!requireAuth("Reporting a scam or issue requires an account.")) return;
+              reportToAdmin("Marketplace feed report");
+            }}
           >
             <Flag className="size-4" /> Report Scam or Issue to Admin
           </Button>

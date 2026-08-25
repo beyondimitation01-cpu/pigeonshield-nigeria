@@ -7,6 +7,7 @@ import { reportToAdmin } from "@/lib/report";
 import { daysRemaining, ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError } from "@/lib/listing-images";
 import { useStore } from "@/lib/store";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { UserAvatar } from "@/components/site/UserAvatar";
 
 export function MediaPlaceholder({ label, className }: { label: string; className?: string }) {
@@ -22,6 +23,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const days = daysRemaining(listing.expiry_date);
   const cover = listingCover(listing);
   const { db } = useStore();
+  const { requireAuth } = useAuthGuard();
   const seller = listing.breeder_id ? db.sellers[listing.breeder_id] : undefined;
 
   return (
@@ -91,7 +93,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
             size="sm"
             variant="ghost"
             className="h-7 px-1.5 text-[11px] text-destructive hover:bg-destructive/10"
-            onClick={() => reportToAdmin(`Listing ID ${listing.id} (${listing.custom_bird_name})`)}
+            onClick={() => {
+              if (!requireAuth("Reporting a listing requires an account.")) return;
+              reportToAdmin(`Listing ID ${listing.id} (${listing.custom_bird_name})`);
+            }}
           >
             <Flag className="size-3" /> Report
           </Button>
