@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListingCard } from "@/components/site/ListingCard";
+import { Combobox } from "@/components/site/Combobox";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { useAuthGuard } from "@/hooks/useAuthGuard";

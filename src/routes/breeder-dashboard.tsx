@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
+import { Combobox } from "@/components/site/Combobox";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
