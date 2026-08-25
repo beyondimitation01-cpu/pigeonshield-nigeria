@@ -93,7 +93,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
             size="sm"
             variant="ghost"
             className="h-7 px-1.5 text-[11px] text-destructive hover:bg-destructive/10"
-            onClick={() => reportToAdmin(`Listing ID ${listing.id} (${listing.custom_bird_name})`)}
+            onClick={() => {
+              if (!requireAuth("Reporting a listing requires an account.")) return;
+              reportToAdmin(`Listing ID ${listing.id} (${listing.custom_bird_name})`);
+            }}
           >
             <Flag className="size-3" /> Report
           </Button>
