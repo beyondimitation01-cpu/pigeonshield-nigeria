@@ -240,9 +240,14 @@ function ChatDrawer({
     if (!value) return;
     if (!requireAuth("Chatting with a breeder requires an account.")) return;
     setSending(true);
-    await sendMessage(listingId, sellerId, value);
-    setSending(false);
-    setBody("");
+    try {
+      await sendMessage(listingId, sellerId, value);
+      setBody("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Message could not be sent.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (

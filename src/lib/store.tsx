@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole } from "@/lib/admin-gate.functions";
 import {
@@ -32,6 +33,7 @@ import {
   type Pedigree,
   type DisputeStatus,
   type TxStatus,
+  type MessageNotification,
 } from "./pigeon-data";
 
 type NewListingInput = Omit<
@@ -143,6 +145,8 @@ interface StoreValue {
   bypassPasscode: (txId: string, code: string) => boolean;
   banUser: (userId: string) => Promise<void>;
   sendMessage: (listingId: string, toId: string, body: string) => Promise<void>;
+  markMessagesRead: (listingId: string, otherId: string) => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
 }
 
 /**
@@ -162,6 +166,7 @@ const EMPTY: DBState = {
   listings: [],
   transactions: [],
   messages: [],
+  notifications: [],
   sellers: {},
   referrals: [],
   feedback: [],
@@ -188,6 +193,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   });
   const sessionRef = useRef<Session | null>(null);
   const refreshRevision = useRef(0);
+  const notifiedMessageIds = useRef(new Set<string>());
   sessionRef.current = authSession;
 
   /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
@@ -223,7 +229,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const requestRevision = ++refreshRevision.current;
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs, credits, sellers, announcements, referrals, feedback] = await Promise.all([
+    const [settings, listings, profiles, txs, passcodes, msgs, notifications, credits, sellers, announcements, referrals, feedback] = await Promise.all([
       supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
       supabase
         .from("listings")
@@ -235,6 +241,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("notifications").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid
         ? supabase.from("referral_credit_totals").select("*").eq("referrer_id", uid).maybeSingle()
         : Promise.resolve({ data: null as { total_credits: number | null; referred_count: number | null } | null }),
@@ -397,7 +404,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         to_id: String(m["to_id"]),
         body: String(m["body"] ?? ""),
         created_at: ms(String(m["created_at"])),
+        read_at: m["read_at"] ? ms(String(m["read_at"])) : null,
       })),
+      notifications: ((notifications.data ?? []) as Record<string, unknown>[]).map((n) => ({
+        id: String(n["id"]),
+        recipient_id: String(n["recipient_id"]),
+        message_id: String(n["message_id"]),
+        listing_id: n["listing_id"] ? String(n["listing_id"]) : null,
+        kind: String(n["kind"] ?? "message"),
+        created_at: ms(String(n["created_at"])),
+        read_at: n["read_at"] ? ms(String(n["read_at"])) : null,
+      })) as MessageNotification[],
     });
   }, []);
 
@@ -416,10 +433,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Live sync: any listing inserted/updated/deleted by any user shows up
     // instantly (home feed and the admin console read the same state).
     const channel = supabase
-      .channel("listings-live")
+      .channel(`account-live-${authSession?.user.id ?? "guest"}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "listings" }, () => {
         void refresh();
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        void refresh();
+      })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${authSession?.user.id ?? "00000000-0000-0000-0000-000000000000"}`,
+        },
+        (payload) => {
+          const notification = payload.new as { message_id?: string; listing_id?: string | null };
+          if (notification.message_id && !notifiedMessageIds.current.has(notification.message_id)) {
+            notifiedMessageIds.current.add(notification.message_id);
+            toast("New message", {
+              description: "You received a new marketplace message.",
+              action: notification.listing_id
+                ? { label: "Open", onClick: () => window.location.assign(`/messages?listing=${notification.listing_id}`) }
+                : undefined,
+            });
+          }
+          void refresh();
+        },
+      )
       .subscribe();
 
     return () => {
@@ -863,15 +905,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     sendMessage: async (listingId, toId, body) => {
       if (!user) return;
-      const recipient = db.users.find((u) => u.id === toId);
-      if (recipient && !recipient.is_online) {
-        console.log(
-          `[WEBHOOK → Termii/Arkesel SMS] POST /sms/send { to: "${recipient.phone_number}", text: "PigeonShield: you have a new escrow-protected inquiry. Log in to reply." }`,
-        );
-      }
-      await supabase
+      const { error } = await supabase
         .from("messages")
         .insert({ listing_id: listingId, from_id: user.id, to_id: toId, body });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
+    markMessagesRead: async (listingId, otherId) => {
+      const { error } = await supabase.rpc("mark_messages_read", { _listing_id: listingId, _other_id: otherId });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
+    markNotificationRead: async (id) => {
+      const { error } = await supabase.rpc("mark_notification_read", { _notification_id: id });
+      if (error) throw new Error(error.message);
       await refresh();
     },
   };

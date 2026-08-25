@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Send, WifiOff, Wifi } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { QUICK_INQUIRIES } from "@/lib/pigeon-data";
 import { UserAvatar } from "@/components/site/UserAvatar";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -34,9 +35,10 @@ export const Route = createFileRoute("/messages")({
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
   const { listing: listingParam } = Route.useSearch();
-  const { db, user, sendMessage, authReady } = useStore();
+  const { db, user, sendMessage, markMessagesRead, authReady } = useStore();
   const [active, setActive] = useState<string | null>(listingParam ?? null);
   const [body, setBody] = useState("");
+  const lastMarked = useRef<string | null>(null);
 
   const threads = useMemo(() => {
     if (!user) return [] as { listingId: string; title: string; otherId: string }[];
@@ -56,20 +58,30 @@ function MessagesPage() {
     });
   }, [db.messages, db.listings, user, listingParam]);
 
-  if (!authReady) return <AuthPending />;
-  if (!authed || !user) {
-    return <AuthRequired title="Messages" description="Log in to open your inbox." />;
-  }
-
   const current = threads.find((t) => t.listingId === active) ?? threads[0];
   const other = current ? db.users.find((u) => u.id === current.otherId) : undefined;
   const thread = current
     ? db.messages.filter((m) => m.listing_id === current.listingId).sort((a, b) => a.created_at - b.created_at)
     : [];
 
+  useEffect(() => {
+    if (!current || !user || !authReady) return;
+    const key = `${current.listingId}:${current.otherId}`;
+    if (lastMarked.current === key) return;
+    lastMarked.current = key;
+    void markMessagesRead(current.listingId, current.otherId).catch(() => undefined);
+  }, [current?.listingId, current?.otherId, user, authReady, markMessagesRead]);
+
+  if (!authReady) return <AuthPending />;
+  if (!authed || !user) {
+    return <AuthRequired title="Messages" description="Log in to open your inbox." />;
+  }
+
   function send(text: string) {
     if (!current || !text.trim()) return;
-    sendMessage(current.listingId, current.otherId, text.trim());
+    void sendMessage(current.listingId, current.otherId, text.trim()).catch((error: unknown) => {
+      toast.error(error instanceof Error ? error.message : "Message could not be sent.");
+    });
     setBody("");
   }
 

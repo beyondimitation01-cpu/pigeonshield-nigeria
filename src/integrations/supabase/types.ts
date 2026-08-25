@@ -198,6 +198,7 @@ export type Database = {
           from_id: string
           id: string
           listing_id: string | null
+          read_at: string | null
           to_id: string
         }
         Insert: {
@@ -206,6 +207,7 @@ export type Database = {
           from_id: string
           id?: string
           listing_id?: string | null
+          read_at?: string | null
           to_id: string
         }
         Update: {
@@ -214,6 +216,7 @@ export type Database = {
           from_id?: string
           id?: string
           listing_id?: string | null
+          read_at?: string | null
           to_id?: string
         }
         Relationships: [
@@ -225,6 +228,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          listing_id: string | null
+          message_id: string
+          read_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string | null
+          message_id: string
+          read_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string | null
+          message_id?: string
+          read_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -506,6 +539,8 @@ export type Database = {
     }
     Functions: {
       get_seller_phone: { Args: { _seller_id: string }; Returns: string }
+      mark_messages_read: { Args: { _listing_id: string; _other_id: string }; Returns: undefined }
+      mark_notification_read: { Args: { _notification_id: string }; Returns: undefined }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Menu, LogOut, ShieldCheck, LayoutDashboard, Package } from "lucide-react";
+import { Menu, LogOut, ShieldCheck, LayoutDashboard, Package, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,7 +27,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { isLoading, isAuthenticated } = useAuth();
-  const { user, openAuth, logout } = useStore();
+  const { user, openAuth, logout, db, markNotificationRead } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -60,6 +60,40 @@ export function Navbar() {
         <div className="hidden items-center gap-6 lg:flex">{links}</div>
 
         <div className="flex items-center gap-2">
+          {user && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
+                  <Bell className="size-5" />
+                  {db.notifications.some((n) => !n.read_at) && (
+                    <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {db.notifications.length === 0 ? (
+                  <DropdownMenuItem disabled>No new messages</DropdownMenuItem>
+                ) : (
+                  db.notifications.slice(0, 8).map((notification) => (
+                    <DropdownMenuItem
+                      key={notification.id}
+                      className={notification.read_at ? "" : "font-semibold"}
+                      onSelect={() => {
+                        void markNotificationRead(notification.id);
+                        if (notification.listing_id) {
+                          void navigate({ to: "/messages", search: { listing: notification.listing_id } });
+                        }
+                      }}
+                    >
+                      New message{notification.read_at ? "" : " (unread)"}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {isLoading ? (
             // Never guess: no session-dependent button until getSession() resolves.
             <div className="h-8 w-28 animate-pulse rounded-md bg-muted" aria-hidden />

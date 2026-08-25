@@ -157,6 +157,17 @@ export interface ChatMessage {
   to_id: string;
   body: string;
   created_at: number;
+  read_at: number | null;
+}
+
+export interface MessageNotification {
+  id: string;
+  recipient_id: string;
+  message_id: string;
+  listing_id: string | null;
+  kind: string;
+  created_at: number;
+  read_at: number | null;
 }
 
 export const DAY_MS = 86_400_000;
@@ -272,6 +283,7 @@ export interface DBState {
   listings: Listing[];
   transactions: EscrowTransaction[];
   messages: ChatMessage[];
+  notifications: MessageNotification[];
   sellers: Record<string, PublicSeller>;
   referrals: ReferralRow[];
   feedback: FeedbackRow[];
@@ -427,6 +439,7 @@ export function seedState(): DBState {
     listings: seedListings(),
     transactions: [],
     messages: [],
+    notifications: [],
     sellers: {},
     referrals: [],
     feedback: [],
