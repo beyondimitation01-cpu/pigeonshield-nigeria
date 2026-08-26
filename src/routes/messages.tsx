@@ -16,6 +16,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/messages")({
   validateSearch: (search: Record<string, unknown>) => ({
     listing: typeof search["listing"] === "string" ? (search["listing"] as string) : undefined,
+    conversation: typeof search["conversation"] === "string" ? (search["conversation"] as string) : undefined,
   }),
   head: () => ({
     meta: [
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/messages")({
 
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
-  const { listing: listingParam } = Route.useSearch();
+  const { listing: listingParam, conversation: conversationParam } = Route.useSearch();
   const { db, user, sendMessage, markConversationRead, authReady } = useStore();
   const [active, setActive] = useState<string | null>(null);
   const [body, setBody] = useState("");
@@ -52,7 +53,10 @@ function MessagesPage() {
     return [{ id: `new:${listing.breeder_id}`, otherId: listing.breeder_id }, ...existing];
   }, [db.conversations, db.listings, user, listingParam]);
 
-  const current = conversations.find((c) => c.id === active) ?? conversations[0];
+  const current =
+    conversations.find((c) => c.id === active) ??
+    conversations.find((c) => c.id === conversationParam) ??
+    conversations[0];
   const other = current ? db.users.find((u) => u.id === current.otherId) ?? db.sellers[current.otherId] : undefined;
   const thread = current
     ? db.messages.filter((m) => m.conversation_id === current.id).sort((a, b) => a.created_at - b.created_at)
@@ -73,9 +77,11 @@ function MessagesPage() {
 
   function send(text: string) {
     if (!current || !text.trim()) return;
-    void sendMessage(listingParam ?? null, current.otherId, text.trim()).catch((error: unknown) => {
-      toast.error(error instanceof Error ? error.message : "Message could not be sent.");
-    });
+    void sendMessage(listingParam ?? null, current.otherId, text.trim())
+      .then((conversationId) => setActive(conversationId))
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : "Message could not be sent.");
+      });
     setBody("");
   }
 

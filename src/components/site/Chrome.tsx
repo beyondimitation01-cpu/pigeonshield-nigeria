@@ -82,8 +82,16 @@ export function Navbar() {
                       className={notification.read_at ? "" : "font-semibold"}
                       onSelect={() => {
                         void markNotificationRead(notification.id);
-                        if (notification.listing_id) {
-                          void navigate({ to: "/messages", search: { listing: notification.listing_id } });
+                        if (notification.conversation_id) {
+                          void navigate({
+                            to: "/messages",
+                            search: { listing: undefined, conversation: notification.conversation_id },
+                          });
+                        } else if (notification.listing_id) {
+                          void navigate({
+                            to: "/messages",
+                            search: { listing: notification.listing_id, conversation: undefined },
+                          });
                         }
                       }}
                     >

@@ -156,7 +156,11 @@ function ListingDetail() {
               </>
             ) : null}
             <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} />
-            <Button size="lg" variant="ghost" onClick={() => navigate({ to: "/messages", search: { listing: listing.id } })}>
+            <Button
+              size="lg"
+              variant="ghost"
+              onClick={() => navigate({ to: "/messages", search: { listing: listing.id, conversation: undefined } })}
+            >
               Open full inbox
             </Button>
             <Button

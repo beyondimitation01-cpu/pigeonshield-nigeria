@@ -145,7 +145,7 @@ interface StoreValue {
   adminRelease: (txId: string) => Promise<void>;
   bypassPasscode: (txId: string, code: string) => boolean;
   banUser: (userId: string) => Promise<void>;
-  sendMessage: (listingId: string | null, toId: string, body: string) => Promise<void>;
+  sendMessage: (listingId: string | null, toId: string, body: string) => Promise<string>;
   markMessagesRead: (listingId: string, otherId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   getOrCreateConversation: (otherId: string) => Promise<string>;
@@ -464,13 +464,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           filter: `recipient_id=eq.${authSession?.user.id ?? "00000000-0000-0000-0000-000000000000"}`,
         },
         (payload) => {
-          const notification = payload.new as { message_id?: string; listing_id?: string | null };
+          const notification = payload.new as {
+            message_id?: string;
+            listing_id?: string | null;
+            conversation_id?: string | null;
+          };
           if (notification.message_id && !notifiedMessageIds.current.has(notification.message_id)) {
             notifiedMessageIds.current.add(notification.message_id);
             toast("New message", {
               description: "You received a new marketplace message.",
-              action: notification.listing_id
-                ? { label: "Open", onClick: () => window.location.assign(`/messages?listing=${notification.listing_id}`) }
+              action: notification.conversation_id
+                ? { label: "Open", onClick: () => window.location.assign(`/messages?conversation=${notification.conversation_id}`) }
                 : undefined,
             });
           }
@@ -919,7 +923,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     sendMessage: async (listingId, toId, body) => {
-      if (!user) return;
+      if (!user) throw new Error("You must be signed in to send a message.");
       const { data: conversationId, error: conversationError } = await supabase.rpc("get_or_create_conversation", { _other_id: toId });
       if (conversationError || !conversationId) throw new Error(conversationError?.message ?? "Could not open conversation.");
       const { error } = await supabase.rpc("send_message", {
@@ -930,6 +934,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       });
       if (error) throw new Error(error.message);
       await refresh();
+      return conversationId;
     },
     getOrCreateConversation: async (otherId) => {
       const { data, error } = await supabase.rpc("get_or_create_conversation", { _other_id: otherId });
