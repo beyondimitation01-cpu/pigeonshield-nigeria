@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +19,7 @@ import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUpload
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { formatNigerianPhone, isValidNigerianPhone } from "@/lib/phone";
 import {
   BREEDS_BY_CATEGORY,
   CATEGORY_OPTIONS,
@@ -279,67 +280,103 @@ function AccountPanel() {
   const [phone, setPhone] = useState(user?.phone_number ?? "");
   const [fullName, setFullName] = useState(user?.real_name ?? "");
   const [loft, setLoft] = useState(user?.loft_name ?? "");
+  const [homeState, setHomeState] = useState(user?.home_state ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setPhone(user.phone_number);
+    setFullName(user.real_name);
+    setLoft(user.loft_name);
+    setHomeState(user.home_state);
+  }, [user]);
+
   if (!user) return null;
+
+  async function saveProfile(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const name = fullName.trim();
+    const normalizedPhone = phone.trim() ? formatNigerianPhone(phone) : "";
+    if (!name) {
+      toast.error("Enter your full name.");
+      return;
+    }
+    if (phone.trim() && !isValidNigerianPhone(phone)) {
+      toast.error("Enter a valid Nigerian phone number.");
+      return;
+    }
+
+    setSaving(true);
+    const err = await updateProfile({
+      real_name: name,
+      public_handle: name,
+      phone_number: normalizedPhone,
+      loft_name: loft.trim(),
+      home_state: homeState,
+    });
+    setSaving(false);
+    if (err) toast.error(err);
+    else toast.success("Profile saved.");
+  }
+
   return (
-    <Card className="max-w-xl space-y-5 p-5">
+    <Card className="max-w-xl p-5">
       <h2 className="font-semibold">Your profile</h2>
-      <AvatarUploader
-        userId={user.id}
-        value={user.avatar_url}
-        onChange={async (url) => {
-          const err = await updateProfile({ avatar_url: url });
-          if (err) toast.error(err);
-        }}
-        label="Change profile picture"
-      />
-      <div className="space-y-1.5">
-        <Label htmlFor="full-name">Full name (public)</Label>
-        <div className="flex gap-2">
-          <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          <Button
-            onClick={async () => {
-              const err = await updateProfile({ real_name: fullName, public_handle: fullName });
-              if (err) toast.error(err);
-              else toast.success("Name saved.");
-            }}
-          >
-            Save
-          </Button>
+      <form onSubmit={saveProfile} className="mt-5 space-y-5">
+        <AvatarUploader
+          userId={user.id}
+          value={user.avatar_url}
+          onChange={async (url) => {
+            const err = await updateProfile({ avatar_url: url });
+            if (err) toast.error(err);
+          }}
+          label="Change profile picture"
+        />
+        <div className="space-y-1.5">
+          <Label htmlFor="full-name">Full name / username (public)</Label>
+          <Input
+            id="full-name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            autoComplete="name"
+            required
+          />
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="loft-name">Loft / farm name (optional, public)</Label>
-        <div className="flex gap-2">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label>
+            <Input
+              id="payout-phone"
+              value={phone}
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="0803 123 4567"
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="home-state">Location / state</Label>
+            <Select value={homeState} onValueChange={setHomeState}>
+              <SelectTrigger id="home-state"><SelectValue placeholder="Select state" /></SelectTrigger>
+              <SelectContent className="max-h-64">
+                {NIGERIAN_STATES.map((stateName) => (
+                  <SelectItem key={stateName} value={stateName}>{stateName}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="loft-name">Loft / farm name (optional, public)</Label>
           <Input id="loft-name" value={loft} onChange={(e) => setLoft(e.target.value)} />
-          <Button
-            onClick={async () => {
-              const err = await updateProfile({ loft_name: loft });
-              if (err) toast.error(err);
-              else toast.success("Loft name saved.");
-            }}
-          >
-            Save
-          </Button>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label>
-        <div className="flex gap-2">
-          <Input id="payout-phone" value={phone} inputMode="tel" onChange={(e) => setPhone(e.target.value)} />
-          <Button
-            onClick={async () => {
-              const err = await updateProfile({ phone_number: phone });
-              if (err) toast.error(err);
-              else toast.success("Payout phone number saved.");
-            }}
-          >
-            Save
-          </Button>
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Buyers see your name, loft and phone number on every listing.
-      </p>
+        <Button type="submit" disabled={saving}>
+          {saving ? "Saving..." : "Save profile"}
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Buyers see your name, loft, location and phone number on your listings.
+        </p>
+      </form>
     </Card>
   );
 }
