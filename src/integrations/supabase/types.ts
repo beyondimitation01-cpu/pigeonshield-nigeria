@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -194,32 +194,26 @@ export type Database = {
       messages: {
         Row: {
           body: string
-          conversation_id: string
           created_at: string
           from_id: string
           id: string
           listing_id: string | null
-          read_at: string | null
           to_id: string
         }
         Insert: {
           body: string
-          conversation_id: string
           created_at?: string
           from_id: string
           id?: string
           listing_id?: string | null
-          read_at?: string | null
           to_id: string
         }
         Update: {
           body?: string
-          conversation_id?: string
           created_at?: string
           from_id?: string
           id?: string
           listing_id?: string | null
-          read_at?: string | null
           to_id?: string
         }
         Relationships: [
@@ -231,63 +225,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      conversations: {
-        Row: {
-          created_at: string
-          id: string
-          participant_a: string
-          participant_b: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          participant_a: string
-          participant_b: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          participant_a?: string
-          participant_b?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          created_at: string
-          conversation_id: string | null
-          id: string
-          kind: string
-          listing_id: string | null
-          message_id: string
-          read_at: string | null
-          recipient_id: string
-        }
-        Insert: {
-          created_at?: string
-          conversation_id?: string | null
-          id?: string
-          kind?: string
-          listing_id?: string | null
-          message_id: string
-          read_at?: string | null
-          recipient_id: string
-        }
-        Update: {
-          created_at?: string
-          conversation_id?: string
-          id?: string
-          kind?: string
-          listing_id?: string | null
-          message_id?: string
-          read_at?: string | null
-          recipient_id?: string
-        }
-        Relationships: []
       }
       profiles: {
         Row: {
@@ -568,12 +505,7 @@ export type Database = {
       }
     }
     Functions: {
-      get_or_create_conversation: { Args: { _other_id: string }; Returns: string }
-      mark_conversation_read: { Args: { _conversation_id: string }; Returns: undefined }
-      send_message: { Args: { _body: string; _conversation_id: string; _listing_id: string | null; _to_id: string }; Returns: string }
       get_seller_phone: { Args: { _seller_id: string }; Returns: string }
-      mark_messages_read: { Args: { _listing_id: string; _other_id: string }; Returns: undefined }
-      mark_notification_read: { Args: { _notification_id: string }; Returns: undefined }
       sanitize_text: { Args: { v: string }; Returns: string }
     }
     Enums: {
