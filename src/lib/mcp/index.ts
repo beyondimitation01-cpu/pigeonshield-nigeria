@@ -1,6 +1,6 @@
 import { auth, defineMcp } from "@lovable.dev/mcp-js";
-import type { McpDefinition } from "@lovable.dev/mcp-js";
-type AnyTool = NonNullable<McpDefinition["tools"]>[number];
+import type { McpDefinitionInput } from "@lovable.dev/mcp-js";
+type AnyTool = McpDefinitionInput["tools"][number];
 import searchListings from "./tools/search-listings";
 import getListing from "./tools/get-listing";
 import myListings from "./tools/my-listings";
