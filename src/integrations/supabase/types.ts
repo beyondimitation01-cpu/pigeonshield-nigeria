@@ -14,27 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      admin_login_attempts: {
-        Row: {
-          failed_count: number
-          locked_until: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          failed_count?: number
-          locked_until?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          failed_count?: number
-          locked_until?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       app_feedback: {
         Row: {
           category: string
@@ -119,6 +98,30 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          participant_a: string
+          participant_b: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participant_a: string
+          participant_b: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participant_a?: string
+          participant_b?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       listings: {
         Row: {
           batch_quantity: number
@@ -194,34 +197,102 @@ export type Database = {
       messages: {
         Row: {
           body: string
+          conversation_id: string
           created_at: string
           from_id: string
           id: string
           listing_id: string | null
+          read_at: string | null
           to_id: string
         }
         Insert: {
           body: string
+          conversation_id: string
           created_at?: string
           from_id: string
           id?: string
           listing_id?: string | null
+          read_at?: string | null
           to_id: string
         }
         Update: {
           body?: string
+          conversation_id?: string
           created_at?: string
           from_id?: string
           id?: string
           listing_id?: string | null
+          read_at?: string | null
           to_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          listing_id: string | null
+          message_id: string
+          read_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string | null
+          message_id: string
+          read_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string | null
+          message_id?: string
+          read_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -505,8 +576,33 @@ export type Database = {
       }
     }
     Functions: {
+      get_or_create_conversation: {
+        Args: { _other_id: string }
+        Returns: string
+      }
       get_seller_phone: { Args: { _seller_id: string }; Returns: string }
-      sanitize_text: { Args: { v: string }; Returns: string }
+      mark_conversation_read: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
+      mark_messages_read: {
+        Args: { _listing_id: string; _other_id: string }
+        Returns: undefined
+      }
+      mark_notification_read: {
+        Args: { _notification_id: string }
+        Returns: undefined
+      }
+      sanitize_text: { Args: { value: string }; Returns: string }
+      send_message: {
+        Args: {
+          _body: string
+          _conversation_id: string
+          _listing_id: string
+          _to_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "user"
