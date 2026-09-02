@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BreederDashboardRouteImport } from './routes/breeder-dashboard'
 import { Route as FeedbackRouteImport } from './routes/feedback'
 import { Route as HowEscrowWorksRouteImport } from './routes/how-escrow-works'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as PigeonBossAdminRouteImport } from './routes/pigeon-boss-admin'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as RefCodeRouteImport } from './routes/ref.$code'
 
@@ -39,6 +41,11 @@ const HowEscrowWorksRoute = HowEscrowWorksRouteImport.update({
   path: '/how-escrow-works',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesRoute = MessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
@@ -54,6 +61,12 @@ const PigeonBossAdminRoute = PigeonBossAdminRouteImport.update({
   path: '/pigeon-boss-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ListingIdRoute = ListingIdRouteImport.update({
   id: '/listing/$id',
   path: '/listing/$id',
@@ -70,9 +83,11 @@ export interface FileRoutesByFullPath {
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/feedback': typeof FeedbackRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/mcp': typeof McpRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
 }
@@ -81,9 +96,11 @@ export interface FileRoutesByTo {
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/feedback': typeof FeedbackRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/mcp': typeof McpRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
 }
@@ -93,9 +110,11 @@ export interface FileRoutesById {
   '/breeder-dashboard': typeof BreederDashboardRoute
   '/feedback': typeof FeedbackRoute
   '/how-escrow-works': typeof HowEscrowWorksRoute
+  '/mcp': typeof McpRoute
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
 }
@@ -106,9 +125,11 @@ export interface FileRouteTypes {
     | '/breeder-dashboard'
     | '/feedback'
     | '/how-escrow-works'
+    | '/mcp'
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
   fileRoutesByTo: FileRoutesByTo
@@ -117,9 +138,11 @@ export interface FileRouteTypes {
     | '/breeder-dashboard'
     | '/feedback'
     | '/how-escrow-works'
+    | '/mcp'
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
   id:
@@ -128,9 +151,11 @@ export interface FileRouteTypes {
     | '/breeder-dashboard'
     | '/feedback'
     | '/how-escrow-works'
+    | '/mcp'
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
   fileRoutesById: FileRoutesById
@@ -140,9 +165,11 @@ export interface RootRouteChildren {
   BreederDashboardRoute: typeof BreederDashboardRoute
   FeedbackRoute: typeof FeedbackRoute
   HowEscrowWorksRoute: typeof HowEscrowWorksRoute
+  McpRoute: typeof McpRoute
   MessagesRoute: typeof MessagesRoute
   MyOrdersRoute: typeof MyOrdersRoute
   PigeonBossAdminRoute: typeof PigeonBossAdminRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ListingIdRoute: typeof ListingIdRoute
   RefCodeRoute: typeof RefCodeRoute
 }
@@ -177,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HowEscrowWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages': {
       id: '/messages'
       path: '/messages'
@@ -196,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/pigeon-boss-admin'
       fullPath: '/pigeon-boss-admin'
       preLoaderRoute: typeof PigeonBossAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/listing/$id': {
@@ -220,9 +261,12 @@ const rootRouteChildren: RootRouteChildren = {
   BreederDashboardRoute: BreederDashboardRoute,
   FeedbackRoute: FeedbackRoute,
   HowEscrowWorksRoute: HowEscrowWorksRoute,
+  McpRoute: McpRoute,
   MessagesRoute: MessagesRoute,
   MyOrdersRoute: MyOrdersRoute,
   PigeonBossAdminRoute: PigeonBossAdminRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ListingIdRoute: ListingIdRoute,
   RefCodeRoute: RefCodeRoute,
 }
