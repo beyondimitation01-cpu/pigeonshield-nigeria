@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "sdk_version": "1.0.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://irsuqaoddbngiibmjwih.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "pigeonshield-marketplace",
+      "version": "0.1.0",
+      "title": "PigeonShield Marketplace"
+    },
+    "tools": [
+      {
+        "name": "search_listings",
+        "title": "Search marketplace listings",
+        "description": "Search active PigeonShield listings by category, breed, Nigerian state, and price range. Returns newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "category": {
+              "description": "Category type, e.g. Pigeons, Chickens, Dogs, Horses.",
+              "type": "string"
+            },
+            "breed": {
+              "description": "Partial breed name to match.",
+              "type": "string"
+            },
+            "state": {
+              "description": "Nigerian state of the seller.",
+              "type": "string"
+            },
+            "max_price_ngn": {
+              "description": "Maximum price in Naira.",
+              "type": "number"
+            },
+            "limit": {
+              "description": "Max rows to return (default 20, capped at 50).",
+              "type": "number"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_listing",
+        "title": "Get listing details",
+        "description": "Fetch the full details of one PigeonShield listing by its id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "listing_id": {
+              "type": "string",
+              "description": "UUID of the listing."
+            }
+          },
+          "required": [
+            "listing_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_listings",
+        "title": "List my listings",
+        "description": "List the birds and animals the signed-in breeder has posted on PigeonShield.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "include_inactive": {
+              "description": "Include expired or deactivated listings.",
+              "type": "boolean"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "my_orders",
+        "title": "List my escrow orders",
+        "description": "List escrow transactions where the signed-in user is the buyer or the seller, with status and amounts in Naira.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "role": {
+              "description": "Filter by the user's side of the deal.",
+              "type": "string",
+              "enum": [
+                "buyer",
+                "seller",
+                "any"
+              ]
+            },
+            "status": {
+              "description": "Filter by escrow status, e.g. pending, dispatched, delivered.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_listing",
+        "title": "Create a listing",
+        "description": "Post a new listing on PigeonShield for the signed-in breeder. Prices are in Nigerian Naira; listings expire after 7 days.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "category_type": {
+              "type": "string",
+              "description": "Category, e.g. Pigeons, Chickens, Dogs, Horses."
+            },
+            "breed_type": {
+              "type": "string",
+              "description": "Breed name."
+            },
+            "price_ngn": {
+              "type": "number",
+              "description": "Asking price in Naira."
+            },
+            "state": {
+              "type": "string",
+              "description": "Nigerian state where the animal is located."
+            },
+            "gender": {
+              "description": "Male, Female, or Pair.",
+              "type": "string"
+            },
+            "description": {
+              "description": "Free-text description of the animal.",
+              "type": "string"
+            },
+            "batch_quantity": {
+              "description": "Number of birds in the batch (default 1).",
+              "type": "number"
+            },
+            "vaccinated": {
+              "description": "Whether the animal is vaccinated.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "category_type",
+            "breed_type",
+            "price_ngn",
+            "state"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
