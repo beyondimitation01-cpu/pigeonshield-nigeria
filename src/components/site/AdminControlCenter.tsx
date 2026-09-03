@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
 import { formatNigerianPhone } from "@/lib/phone";
-import { supabase } from "@/integrations/supabase/client";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { AdminUsersPanel } from "@/components/site/AdminUsersPanel";
 import { AdminOrdersPanel } from "@/components/site/AdminOrdersPanel";
@@ -95,7 +94,7 @@ export function AdminControlCenter() {
           <main className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8">
             {section === "overview" ? <Overview ready={ready} pending={pending} active={active} users={db.users.length} transactions={db.transactions} onNavigate={select} /> : null}
             {section === "users" ? <AdminUsersPanel /> : null}
-            {section === "orders" ? <OrdersSection onNavigate={select} /> : null}
+            {section === "orders" ? <AdminOrdersPanel /> : null}
             {section === "transactions" ? <TransactionsSection onNavigate={select} /> : null}
             {section === "payouts" ? <AdminPayoutQueue /> : null}
             {section === "messages" ? <AdminFeedbackPanel /> : null}
@@ -212,10 +211,6 @@ function activityLabel(status: string, name: string) {
   if (status === "Seller Paid") return `Payout completed · ${name}`;
   if (status === "Dispatched") return `Seller dispatched order · ${name}`;
   return `Transaction updated · ${name}`;
-}
-
-function OrdersSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
-  return <AdminOrdersPanel />;
 }
 
 function TransactionsSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
