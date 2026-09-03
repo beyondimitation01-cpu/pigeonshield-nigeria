@@ -851,7 +851,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         .select()
         .single();
-      if (error || !data) return null;
+      if (error || !data) {
+        if (error?.message.includes("You cannot message or buy your own product")) {
+          throw new Error("You cannot message or buy your own product");
+        }
+        return null;
+      }
 
       console.log(
         `[ESCROW] Funded ${data.id}. Commission earmarked for Admin OPay ${ADMIN_OPAY}.`,
