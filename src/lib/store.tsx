@@ -454,6 +454,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
         void refresh();
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        void refresh();
+      })
       .on(
         "postgres_changes",
         {
@@ -526,7 +529,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateTx = useCallback(
     async (txId: string, patch: Record<string, string | null>) => {
-      await supabase.from("transactions").update(patch as never).eq("id", txId);
+      const { error } = await supabase.from("transactions").update(patch as never).eq("id", txId);
+      if (error) throw new Error(error.message);
       await refresh();
     },
     [refresh],
@@ -791,10 +795,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     verifyPayment: async (txId) => {
-      await supabase
+      const { error } = await supabase
         .from("transactions")
         .update({ status: "Payment Verified / Processing" })
         .eq("id", txId);
+      if (error) throw new Error(error.message);
       await refresh();
     },
 
