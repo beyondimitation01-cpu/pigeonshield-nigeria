@@ -76,7 +76,7 @@ AS $
     );
 $;
 
-REVOKE ALL ON FUNCTION public.get_visible_handover_pins() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_visible_handover_pins() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_visible_handover_pins() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.confirm_receipt_and_reveal_pin(_transaction_id uuid)
