@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { SUPER_ADMIN_EMAIL, timingSafeMatch } from "@/lib/admin-hash";
+import { SUPER_ADMIN_EMAIL } from "@/lib/admin-hash";
 
 /**
  * God-Mode is a real, server-enforced role.
@@ -20,12 +20,11 @@ export const unlockAdminConsole = createServerFn({ method: "POST" })
     return { password };
   })
   .handler(async ({ data, context }) => {
-    const expected = process.env["ADMIN_MASTER_PASSWORD"];
-    if (!expected) return { ok: false as const };
-
-    if (!(await timingSafeMatch(data.password, expected))) return { ok: false as const };
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: verified, error: verificationError } = await supabaseAdmin.rpc("verify_admin_passphrase", {
+      passphrase: data.password,
+    });
+    if (verificationError || verified !== true) return { ok: false as const };
     const { error } = await supabaseAdmin
       .from("user_roles")
       .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
@@ -76,12 +75,13 @@ export const superAdminLogin = createServerFn({ method: "POST" })
     return { password };
   })
   .handler(async ({ data }) => {
-    const expected = process.env["ADMIN_MASTER_PASSWORD"];
-    if (!expected) return { ok: false as const };
-    if (!(await timingSafeMatch(data.password, expected))) return { ok: false as const };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: verified, error: verificationError } = await supabaseAdmin.rpc("verify_admin_passphrase", {
+      passphrase: data.password,
+    });
+    if (verificationError || verified !== true) return { ok: false as const };
 
     const email = SUPER_ADMIN_EMAIL;
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const created = await supabaseAdmin.auth.admin.createUser({
       email,
