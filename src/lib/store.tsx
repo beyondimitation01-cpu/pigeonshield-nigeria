@@ -12,7 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { getAdminSession, lockAdminConsole, superAdminLogin, unlockAdminConsole } from "@/lib/admin-gate.functions";
+import { getAdminSession, lockAdminConsole, superAdminLogin } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
   makePasscode,
@@ -95,7 +95,6 @@ interface StoreValue {
   releaseUserFunds: (userId: string) => Promise<number>;
   logout: () => Promise<void>;
   adminUnlocked: boolean;
-  unlockAdmin: (pwd: string) => Promise<boolean>;
   masterUnlock: (pwd: string) => Promise<boolean>;
   lockAdmin: () => void;
   addListing: (input: NewListingInput) => Promise<void>;
@@ -679,19 +678,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     adminUnlocked,
-    unlockAdmin: async (pwd) => {
-      // Verified server-side; on success the account is granted the admin role
-      // in the database, and RLS — not the browser — enforces every admin power.
-      try {
-        const { ok } = await unlockAdminConsole({ data: { password: pwd } });
-        setAdminUnlocked(ok);
-        if (ok) await refresh();
-        return ok;
-      } catch {
-        setAdminUnlocked(false);
-        return false;
-      }
-    },
     masterUnlock: async (pwd) => {
       // Works from any state. When already signed in, the master password upgrades
       // that account; otherwise the server mints a one-time token for the dedicated
