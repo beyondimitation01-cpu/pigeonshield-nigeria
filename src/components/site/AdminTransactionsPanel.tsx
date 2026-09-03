@@ -21,6 +21,7 @@ export function AdminTransactionsPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    const clean = escapeSearch(query.trim());
     let request = supabase.from("transactions").select("id, listing_name, amount_naira, calculated_commission, status, created_at, payout_paid_at", { count: "exact" });
     if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
