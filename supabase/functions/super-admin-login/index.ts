@@ -72,16 +72,7 @@ Deno.serve(async (req: Request) => {
       userId = created.data.user.id;
     }
 
-    const profile = await admin.from("profiles").upsert(
-      { id: userId, public_handle: "SuperAdmin", real_name: "Super Admin" },
-      { onConflict: "id" },
-    );
-    if (profile.error) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // The admin identity is Auth + user_roles only. Never create a marketplace profile.
 
     const role = await admin.from("user_roles").upsert(
       { user_id: userId, role: "admin" },
