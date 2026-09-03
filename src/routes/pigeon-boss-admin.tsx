@@ -111,7 +111,7 @@ function AdminPage() {
   const disputes = db.transactions.filter((t) => t.status === "Disputed");
   // Live figures only — no placeholder amounts. Commission counts settled escrow.
   const gross = db.transactions
-    .filter((t) => t.status === "Completed")
+    .filter((t) => t.status === "Delivered" || t.status === "Completed")
     .reduce((s, t) => s + t.calculated_commission, 0);
   const pendingPayments = db.transactions.filter((t) => t.status === "Pending Verification").length;
 
@@ -299,7 +299,7 @@ function AdminPage() {
                 const held = db.transactions
                   .filter(
                     (t) =>
-                      t.breeder_id === u.id && t.status !== "Completed" && t.status !== "Refunded to Buyer",
+                      t.breeder_id === u.id && t.status !== "Delivered" && t.status !== "Completed" && t.status !== "Refunded to Buyer",
                   )
                   .reduce((sum, t) => sum + t.amount_naira, 0);
                 const invitedBy = db.referrals.find((r) => r.referred_id === u.id)?.referral_code ?? "—";
