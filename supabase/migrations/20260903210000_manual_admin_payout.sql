@@ -254,3 +254,12 @@ AS $$
 $$;
 REVOKE ALL ON FUNCTION public.get_visible_handover_pins() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_visible_handover_pins() TO authenticated;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'admin_notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.admin_notifications;
+  END IF;
+END $$;
