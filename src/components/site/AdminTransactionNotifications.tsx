@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,14 +19,14 @@ type AdminNotification = {
 export function AdminTransactionNotifications() {
   const [items, setItems] = useState<AdminNotification[]>([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const { data, error } = await supabase
       .from("admin_notifications")
       .select("id, transaction_id, kind, title, body, created_at, read_at")
       .order("created_at", { ascending: false })
       .limit(20);
     if (!error) setItems((data ?? []) as AdminNotification[]);
-  };
+  }, []);
 
   useEffect(() => {
     void load();
@@ -41,7 +41,7 @@ export function AdminTransactionNotifications() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [load]);
 
   const unread = items.filter((item) => !item.read_at).length;
 
