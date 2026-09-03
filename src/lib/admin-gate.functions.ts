@@ -5,9 +5,9 @@ import { SUPER_ADMIN_EMAIL } from "@/lib/admin-hash";
 /**
  * God-Mode is a real, server-enforced role.
  *
- * The master password is only the *enrolment* factor: it is verified on the
- * server against a secret env var, and on success the signed-in user is granted
- * the `admin` role row in the database. Every privileged read/write is then
+ * The master password is only the *enrolment* factor: it is verified by the
+ * Supabase RPC, and on success the signed-in user is granted the `admin` role
+ * row in the database. Every privileged read/write is then
  * authorised by row-level security using that role — never by browser state.
  */
 
