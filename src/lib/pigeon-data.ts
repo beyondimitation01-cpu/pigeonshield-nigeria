@@ -153,7 +153,7 @@ export interface EscrowTransaction {
 export interface ChatMessage {
   id: string;
   conversation_id: string;
-  listing_id: string;
+  listing_id: string | null;
   from_id: string;
   to_id: string;
   body: string;
