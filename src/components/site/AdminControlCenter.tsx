@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bell, ChevronLeft, ChevronRight, LayoutDashboard, ListChecks, Menu, MessageSquareWarning,
   Percent, Settings, ShieldCheck, ShoppingBag, Users, X, Banknote, Megaphone,
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
 import { formatNigerianPhone } from "@/lib/phone";
+import { supabase } from "@/integrations/supabase/client";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { AdminUsersPanel } from "@/components/site/AdminUsersPanel";
 import { AdminOrdersPanel } from "@/components/site/AdminOrdersPanel";
@@ -43,8 +44,20 @@ export function AdminControlCenter() {
   const [pct, setPct] = useState(String(db.commission_pct));
   const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [announcement, setAnnouncement] = useState("");
+  const [adminUnread, setAdminUnread] = useState(0);
 
-  const unread = useMemo(() => db.notifications.filter((n) => !n.read_at).length, [db.notifications]);
+  const loadAdminUnread = useCallback(async () => {
+    const { count } = await supabase.from("admin_notifications").select("id", { count: "exact", head: true }).is("read_at", null);
+    setAdminUnread(count ?? 0);
+  }, []);
+
+  useEffect(() => {
+    void loadAdminUnread();
+    const channel = supabase.channel("admin-center-notification-badge").on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () => void loadAdminUnread()).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [loadAdminUnread]);
+
+  const unread = adminUnread;
   const ready = useMemo(() => db.transactions.filter((t) => (t.status === "Ready for Admin Payout" || t.status === "Delivered") && !t.payout_paid_at).length, [db.transactions]);
   const pending = useMemo(() => db.transactions.filter((t) => t.status === "Pending Verification").length, [db.transactions]);
   const active = useMemo(() => db.transactions.filter((t) => !["Completed", "Seller Paid", "Refunded to Buyer", "Disputed"].includes(t.status)).length, [db.transactions]);
