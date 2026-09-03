@@ -151,6 +151,6 @@ CREATE POLICY "transactions delivery state controlled by handover"
   TO authenticated
   USING (true)
   WITH CHECK (
-    (status <> 'Delivered' AND verification_pin IS NULL)
+    status <> 'Delivered'
     OR private.has_role((select auth.uid()), 'admin')
   );
