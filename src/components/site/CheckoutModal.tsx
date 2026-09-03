@@ -77,15 +77,23 @@ export function CheckoutModal({
       return;
     }
     setSubmitting(true);
-    const tx = await buyListing(listing, { reference, receiptUrl: receipt.url });
-    setSubmitting(false);
-    if (!tx) {
-      toast.error("Could not submit the order. Please try again.");
-      return;
+    try {
+      const tx = await buyListing(listing, { reference, receiptUrl: receipt.url });
+      if (!tx) {
+        toast.error("Could not submit the order. Please try again.");
+        return;
+      }
+      onOpenChange(false);
+      toast.success("Payment submitted for verification. Admin will confirm your transfer shortly.");
+      void navigate({ to: "/my-orders" });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not submit the order. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    onOpenChange(false);
-    toast.success("Payment submitted for verification. Admin will confirm your transfer shortly.");
-    void navigate({ to: "/my-orders" });
+    return;
+    if (!tx) {
+
   }
 
   return (
