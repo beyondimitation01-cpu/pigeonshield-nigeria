@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { SUPER_ADMIN_EMAIL } from "@/lib/admin-hash";
 
 /**
  * God-Mode is a real, server-enforced role.
