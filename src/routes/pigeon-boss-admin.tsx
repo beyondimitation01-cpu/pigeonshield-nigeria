@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Lock, ShieldCheck, Percent, Users, Gavel, KeyRound, MessageCircle, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
+  Lock, ShieldCheck, Percent, Users, Gavel, MessageCircle, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/site/UserAvatar";
@@ -40,19 +40,18 @@ function AdminPage() {
     setWhatsappAlertNumber,
     adminRefund,
     adminRelease,
-    bypassPasscode,
     banUser,
     sendBroadcast,
     retireBroadcast,
     setUserFlags,
     releaseUserFunds,
+    forceMarkDelivered,
   } = useStore();
 
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
   const [pct, setPct] = useState(String(db.commission_pct));
   const [whats, setWhats] = useState(db.whatsapp_alert_number);
-  const [codeInputs, setCodeInputs] = useState<Record<string, string>>({});
   const [announcement, setAnnouncement] = useState("");
 
   async function attemptUnlock() {
@@ -204,29 +203,35 @@ function AdminPage() {
       </Card>
 
       <Card className="space-y-3 p-5">
-        <h2 className="flex items-center gap-2 font-semibold"><KeyRound className="size-4 text-primary" /> 2FA passcode bypass</h2>
-        {db.transactions.slice(0, 8).map((t) => (
-          <div key={t.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-3 text-sm">
-            <span className="mr-auto truncate font-medium">{t.listing_name}</span>
-            <Input
-              className="h-8 w-32"
-              placeholder="PS-XXXX"
-              value={codeInputs[t.id] ?? ""}
-              onChange={(e) => setCodeInputs((s) => ({ ...s, [t.id]: e.target.value }))}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                bypassPasscode(t.id, codeInputs[t.id] ?? "")
-                  ? toast.success("Passcode match verified.")
-                  : toast.error("Passcode mismatch.")
-              }
-            >
-              Verify
-            </Button>
-          </div>
-        ))}
+        <h2 className="flex items-center gap-2 font-semibold">Emergency delivery override</h2>
+        <p className="text-sm text-muted-foreground">
+          Use only when the buyer cannot complete receipt confirmation at the handover point.
+        </p>
+        {db.transactions.filter((t) => !["Delivered", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status)).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active orders require an override.</p>
+        ) : (
+          db.transactions
+            .filter((t) => !["Delivered", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status))
+            .map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3 text-sm">
+                <span className="mr-auto truncate font-medium">{t.listing_name} · {ngn(t.amount_naira)}</span>
+                <Badge variant="outline">{t.status}</Badge>
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await forceMarkDelivered(t.id);
+                      toast.success("Order marked delivered and listing removed from active marketplace.");
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : "Could not mark order delivered.");
+                    }
+                  }}
+                >
+                  Force Mark as Delivered
+                </Button>
+              </div>
+            ))
+        )}
       </Card>
 
       <Card className="space-y-3 p-5">
