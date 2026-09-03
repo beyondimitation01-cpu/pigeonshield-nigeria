@@ -89,13 +89,16 @@ function MessagesPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-0 sm:px-4 sm:py-10">
-      <div className="px-4 sm:px-0">\n        <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
+      <div className="px-4 sm:px-0">
+        <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Tip: For long-distance purchases, use our Protected Checkout &amp; Driver Link to ensure your
         money is safe until delivery.
       </p>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-[240px_1fr]">
+      </div>
+
+      <div className="mt-6 grid min-h-[560px] overflow-hidden border-y border-border bg-background md:grid-cols-[320px_1fr] md:rounded-2xl md:border">
         <Card className={`rounded-none border-0 p-0 shadow-none md:block ${current ? "hidden md:block" : "block"}`}>
           <div className="border-b border-border px-4 py-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conversations</p></div>
           {conversations.length === 0 ? (
@@ -110,7 +113,10 @@ function MessagesPage() {
               return (
               <button
                 key={conversation.id}
-                onClick={() => {\n                  setActive(conversation.id);\n                  void navigate({ to: "/messages", search: { listing: undefined, conversation: conversation.id } });\n                }}
+                onClick={() => {
+                  setActive(conversation.id);
+                  void navigate({ to: "/messages", search: { listing: undefined, conversation: conversation.id } });
+                }}
                 className={`w-full border-b border-border px-4 py-3 text-left text-sm transition-colors ${
                   current?.id === conversation.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted/70"
                 }`}
@@ -135,7 +141,7 @@ function MessagesPage() {
         <Card className={`min-h-[560px] rounded-none border-0 p-0 shadow-none md:flex ${current ? "flex" : "hidden md:flex"}`}>
           {current ? (
             <>
-              <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+              <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
                 <span className="inline-flex min-w-0 items-center gap-2 font-semibold">
                   <UserAvatar
                     url={(current ? db.sellers[current.otherId]?.avatar_url : null) ?? other?.avatar_url ?? null}
@@ -172,7 +178,8 @@ function MessagesPage() {
                 )}
               </div>
 
-              <div className="border-t border-border px-4 py-3">\n                <div className="flex flex-wrap gap-2 pb-3">
+              <div className="border-t border-border px-4 py-3">
+                <div className="flex flex-wrap gap-2 pb-3">
                 {QUICK_INQUIRIES.map((q) => (
                   <Button key={q} size="sm" variant="outline" className="h-7 text-xs" onClick={() => send(q)}>
                     {q}
@@ -192,9 +199,11 @@ function MessagesPage() {
                   <Send className="size-4" />
                 </Button>
               </form>
+                </div>
             </>
           ) : (
-            <div className="m-auto hidden max-w-sm px-6 text-center md:block">\n              <p className="text-lg font-semibold">Your messages</p>\n              <p className="mt-1 text-sm text-muted-foreground">Select a conversation to start chatting.</p>\n            </div>
+            <div className="m-auto hidden max-w-sm px-6 text-center md:block">
+              <p className="text-lg font-semibold">Your messages</p>\n              <p className="mt-1 text-sm text-muted-foreground">Select a conversation to start chatting.</p>\n            </div>
           )}
         </Card>
       </div>
