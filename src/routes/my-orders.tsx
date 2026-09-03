@@ -93,12 +93,12 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
         </div>
       ) : null}
 
-      {side === "buyer" && tx.status === "In Transit" ? (
+      {side === "buyer" && (tx.status === "In Transit" || tx.status === "Delivered" || tx.status === "Completed") ? (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
           <p className="text-sm font-semibold text-primary">Ready for collection</p>
-          {revealedPin ? (
+          {revealedPin || tx.verification_pin ? (
             <>
-              <p className="mt-2 font-mono text-4xl font-bold tracking-[0.35em]">{revealedPin}</p>
+              <p className="mt-2 font-mono text-4xl font-bold tracking-[0.35em]">{revealedPin ?? tx.verification_pin}</p>
               <p className="mt-2 text-sm text-muted-foreground">
                 Show or read this 4-digit PIN to the driver to collect your pigeon.
               </p>
