@@ -199,10 +199,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const notifiedMessageIds = useRef(new Set<string>());
   sessionRef.current = authSession;
 
-  /** Creates the caller's own profile row (RLS: id must equal auth.uid()). */
+  /** Creates a marketplace profile only for non-admin accounts. */
   const ensureProfile = useCallback(async () => {
     const authUser = sessionRef.current?.user;
     if (!authUser) return;
+
+    // Admin authorization belongs to user_roles, not to a marketplace profile.
+    // Admin-only identities must never be materialized as buyer/seller profiles.
+    const { data: adminRole } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authUser.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (adminRole) return;
+
     const { data: existing } = await supabase
       .from("profiles")
       .select("id")
@@ -440,10 +451,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Sync store data whenever the canonical AuthContext session changes.
   useEffect(() => {
     if (authSession) {
-      void ensureProfile().then(refresh);
       void getAdminSession()
-        .then((r) => setAdminUnlocked(r.unlocked))
-        .catch(() => setAdminUnlocked(false));
+        .then(async (r) => {
+          setAdminUnlocked(r.unlocked);
+          if (!r.unlocked) await ensureProfile();
+          await refresh();
+        })
+        .catch(async () => {
+          setAdminUnlocked(false);
+          await ensureProfile();
+          await refresh();
+        });
     } else {
       setAdminUnlocked(false);
       void refresh();
