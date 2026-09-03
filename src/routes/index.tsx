@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Buy and sell racing pigeons, chickens, guard dogs and horses anonymously in Nigeria with DOA-refund escrow and 2FA pickup verification.",
+          "Buy and sell racing pigeons, chickens, guard dogs and horses anonymously in Nigeria with DOA-refund escrow and secure 4-digit pickup PIN handover.",
       },
       { property: "og:title", content: "PigeonShield Nigeria — Escrow-Protected Pigeon Marketplace" },
       {
