@@ -242,7 +242,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .order("is_verified_seller", { ascending: false })
         .order("creation_timestamp", { ascending: false }),
       uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
-      uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("transactions").select("id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, receipt_uploaded_at, created_at").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("notifications").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("conversations").select("*").order("updated_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
@@ -265,6 +265,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ? supabase.from("app_feedback").select("*").order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as never[] }),
     ]);
+
+    const { data: visiblePins } = uid
+      ? await supabase.rpc("get_visible_handover_pins")
+      : { data: [] as never[] };
+
+    const pinMap = new Map<string, string>();
+    for (const row of (visiblePins ?? []) as Record<string, unknown>[]) {
+      const transactionId = row["transaction_id"];
+      const pin = row["verification_pin"];
+      if (transactionId && typeof pin === "string") pinMap.set(String(transactionId), pin);
+    }
 
     const sellerMap: Record<string, PublicSeller> = {};
     for (const row of (sellers.data ?? []) as Record<string, unknown>[]) {
@@ -369,7 +380,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         breeder_id: t["breeder_id"] ? String(t["breeder_id"]) : "",
         amount_naira: Number(t["amount_naira"] ?? 0),
         calculated_commission: Number(t["calculated_commission"] ?? 0),
-        verification_pin: (t["verification_pin"] as string | null) ?? null,
+        verification_pin: pinMap.get(String(t["id"])) ?? null,
         delivery_marked_at: ms(String(t["delivery_marked_at"])),
         auto_release_at: ms(String(t["auto_release_at"])),
         driver_phone: (t["driver_phone"] as string | null) ?? null,
