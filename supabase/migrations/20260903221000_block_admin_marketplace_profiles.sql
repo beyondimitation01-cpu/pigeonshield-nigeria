@@ -12,6 +12,12 @@ BEGIN
     FROM public.user_roles
     WHERE user_id = NEW.id
       AND role = 'admin'::public.app_role
+  )
+  OR EXISTS (
+    SELECT 1
+    FROM auth.users
+    WHERE id = NEW.id
+      AND lower(coalesce(email, '')) = 'superadmin@pigeonshield.app'
   ) THEN
     RETURN NULL;
   END IF;
