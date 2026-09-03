@@ -26,8 +26,14 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promi
 
 async function loadBitmap(file: File): Promise<{ source: CanvasImageSource; width: number; height: number }> {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(file);
-    return { source: bitmap, width: bitmap.width, height: bitmap.height };
+    try {
+      const bitmap = await createImageBitmap(file);
+      return { source: bitmap, width: bitmap.width, height: bitmap.height };
+    } catch {
+      // Some browsers expose createImageBitmap but cannot decode every image
+      // format. Fall back to the regular HTMLImageElement decoder before
+      // reporting the file as unreadable.
+    }
   }
   const url = URL.createObjectURL(file);
   try {
