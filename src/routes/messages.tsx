@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Send, WifiOff, Wifi } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/messages")({
 function MessagesPage() {
   const authed = useRequireAuth("Messages inbox");
   const { listing: listingParam, conversation: conversationParam } = Route.useSearch();
+  const navigate = useNavigate();
   const { db, user, sendMessage, markConversationRead, authReady } = useStore();
   const [active, setActive] = useState<string | null>(null);
   const [body, setBody] = useState("");
@@ -53,10 +54,8 @@ function MessagesPage() {
     return [{ id: `new:${listing.breeder_id}`, otherId: listing.breeder_id }, ...existing];
   }, [db.conversations, db.listings, user, listingParam]);
 
-  const current =
-    conversations.find((c) => c.id === active) ??
-    conversations.find((c) => c.id === conversationParam) ??
-    conversations[0];
+  const selectedId = active ?? conversationParam ?? null;
+  const current = selectedId ? conversations.find((c) => c.id === selectedId) : undefined;
   const other = current ? db.users.find((u) => u.id === current.otherId) ?? db.sellers[current.otherId] : undefined;
   const thread = current
     ? db.messages.filter((m) => m.conversation_id === current.id).sort((a, b) => a.created_at - b.created_at)
@@ -89,16 +88,16 @@ function MessagesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
+    <main className="mx-auto max-w-6xl px-0 sm:px-4 sm:py-10">
+      <div className="px-4 sm:px-0">\n        <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Tip: For long-distance purchases, use our Protected Checkout &amp; Driver Link to ensure your
         money is safe until delivery.
       </p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-[240px_1fr]">
-        <Card className="p-3">
-          <p className="px-2 pb-2 text-xs font-semibold uppercase text-muted-foreground">Conversations</p>
+        <Card className={`rounded-none border-0 p-0 shadow-none md:block ${current ? "hidden md:block" : "block"}`}>
+          <div className="border-b border-border px-4 py-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Conversations</p></div>
           {conversations.length === 0 ? (
             <p className="px-2 text-sm text-muted-foreground">No conversations yet.</p>
           ) : (
@@ -111,9 +110,9 @@ function MessagesPage() {
               return (
               <button
                 key={conversation.id}
-                onClick={() => setActive(conversation.id)}
-                className={`w-full rounded-md px-2 py-2 text-left text-sm ${
-                  current?.id === conversation.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"
+                onClick={() => {\n                  setActive(conversation.id);\n                  void navigate({ to: "/messages", search: { listing: undefined, conversation: conversation.id } });\n                }}
+                className={`w-full border-b border-border px-4 py-3 text-left text-sm transition-colors ${
+                  current?.id === conversation.id ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted/70"
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -133,11 +132,11 @@ function MessagesPage() {
           )}
         </Card>
 
-        <Card className="flex min-h-[420px] flex-col p-4">
+        <Card className={`min-h-[560px] rounded-none border-0 p-0 shadow-none md:flex ${current ? "flex" : "hidden md:flex"}`}>
           {current ? (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
-                <span className="inline-flex items-center gap-2 font-semibold">
+                <span className="inline-flex min-w-0 items-center gap-2 font-semibold">
                   <UserAvatar
                     url={(current ? db.sellers[current.otherId]?.avatar_url : null) ?? other?.avatar_url ?? null}
                     name={other && "real_name" in other ? other.real_name : other?.full_name || other?.public_handle || "Breeder"}
@@ -154,7 +153,7 @@ function MessagesPage() {
                 </Badge>
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto py-4">
+              <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
                 {thread.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Start the conversation below.</p>
                 ) : (
@@ -173,7 +172,7 @@ function MessagesPage() {
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2 pb-3">
+              <div className="border-t border-border px-4 py-3">\n                <div className="flex flex-wrap gap-2 pb-3">
                 {QUICK_INQUIRIES.map((q) => (
                   <Button key={q} size="sm" variant="outline" className="h-7 text-xs" onClick={() => send(q)}>
                     {q}
@@ -188,14 +187,14 @@ function MessagesPage() {
                   send(body);
                 }}
               >
-                <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message..." />
+                <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message..." autoComplete="off" />
                 <Button type="submit" size="icon" aria-label="Send message">
                   <Send className="size-4" />
                 </Button>
               </form>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Select a conversation or start one from a listing.</p>
+            <div className="m-auto hidden max-w-sm px-6 text-center md:block">\n              <p className="text-lg font-semibold">Your messages</p>\n              <p className="mt-1 text-sm text-muted-foreground">Select a conversation to start chatting.</p>\n            </div>
           )}
         </Card>
       </div>
