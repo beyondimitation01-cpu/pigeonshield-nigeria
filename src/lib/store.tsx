@@ -878,6 +878,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         payment_reference: payment.reference,
         receipt_url: payment.receiptUrl,
         receipt_uploaded_at: now,
+        payout_paid_at: null,
+        payout_paid_by: null,
+        payout_reference: null,
+        payout_notes: null,
         created_at: now,
       };
     },
