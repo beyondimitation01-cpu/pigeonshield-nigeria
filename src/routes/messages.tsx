@@ -80,7 +80,7 @@ function MessagesPage() {
     // opened directly from a listing carries that listing as optional context.
     const messageListingId = current.id.startsWith("new:") ? listingParam ?? null : null;
     void sendMessage(messageListingId, current.otherId, text.trim())
-      .then((conversationId) => setActive(conversationId))
+      .then((conversationId) => {\n        setActive(conversationId);\n        void navigate({ to: "/messages", search: { listing: undefined, conversation: conversationId } });\n      })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Message could not be sent.");
       });
@@ -138,7 +138,7 @@ function MessagesPage() {
           )}
         </Card>
 
-        <Card className={`min-h-[560px] rounded-none border-0 p-0 shadow-none md:flex ${current ? "flex" : "hidden md:flex"}`}>
+        <Card className={`min-h-[560px] flex-col rounded-none border-0 p-0 shadow-none md:flex ${current ? "flex" : "hidden md:flex"}`}>
           {current ? (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
