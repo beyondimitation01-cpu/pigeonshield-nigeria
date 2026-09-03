@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Lock, ShieldCheck, Percent, Users, Gavel, MessageCircle, Megaphone, Snowflake, PauseCircle, Banknote, Gift,
+  Lock, ShieldCheck, Percent, Users, Gavel, MessageCircle, Megaphone, Snowflake, PauseCircle, Gift,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/site/UserAvatar";
