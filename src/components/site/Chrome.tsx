@@ -175,7 +175,7 @@ export function Footer() {
             <p className="font-bold text-primary">PigeonShield 🇳🇬</p>
             <p className="mt-2 max-w-sm">
               Nigeria's anonymous, escrow-protected livestock marketplace. Flagship pigeon trading with
-              DOA refund protection and 2FA pickup verification.
+              DOA refund protection and secure 4-digit pickup PIN handover.
             </p>
           </div>
           <div className="space-y-2">
