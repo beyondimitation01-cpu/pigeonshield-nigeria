@@ -16,7 +16,7 @@ import { formatNigerianPhone } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { AdminUsersPanel } from "@/components/site/AdminUsersPanel";
-import { AdminPendingOrders } from "@/components/site/AdminPendingOrders";
+import { AdminOrdersPanel } from "@/components/site/AdminOrdersPanel";
 import { AdminTransactionNotifications } from "@/components/site/AdminTransactionNotifications";
 import { AdminPayoutQueue } from "@/components/site/AdminPayoutQueue";
 import { AdminFeedbackPanel } from "@/components/site/AdminFeedbackPanel";
@@ -215,46 +215,7 @@ function activityLabel(status: string, name: string) {
 }
 
 function OrdersSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
-  const { db, forceMarkDelivered } = useStore();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("All");
-  const [page, setPage] = useState(1);
-  const size = 10;
-  const rows = useMemo(() => db.transactions.filter((t) => {
-    const text = `${t.id} ${t.listing_name}`.toLowerCase();
-    return (!query || text.includes(query.toLowerCase())) && (status === "All" || t.status === status);
-  }), [db.transactions, query, status]);
-  const total = Math.max(1, Math.ceil(rows.length / size));
-  const visible = rows.slice((page - 1) * size, page * size);
-  const statuses = Array.from(new Set(db.transactions.map((t) => t.status))).sort();
-  return (
-    <section className="space-y-5">
-      <SectionIntro title="Orders" text="Review order state, payment verification and delivery interventions without crowding the workspace." />
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Input placeholder="Search by order ID or product…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} className="sm:max-w-md" />
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-          <option>All</option>{statuses.map((s) => <option key={s}>{s}</option>)}
-        </select>
-      </div>
-      <Card className="overflow-hidden">
-        <div className="divide-y divide-border">
-          {visible.map((t) => (
-            <div key={t.id} className="flex flex-wrap items-center gap-3 p-4">
-              <div className="min-w-0 flex-1"><p className="truncate font-medium">{t.listing_name}</p><p className="break-all font-mono text-[11px] text-muted-foreground">{t.id}</p></div>
-              <Badge variant="outline">{t.status}</Badge><span className="font-semibold">{ngn(t.amount_naira)}</span>
-              <Button size="sm" variant="outline" onClick={() => onNavigate("transactions")}>Details</Button>
-              {!["Delivered", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status) ? (
-                <Button size="sm" onClick={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); } }}>Delivery override</Button>
-              ) : null}
-            </div>
-          ))}
-          {!visible.length ? <p className="p-6 text-sm text-muted-foreground">No matching orders.</p> : null}
-        </div>
-        <Pager page={page} total={total} onPage={setPage} />
-      </Card>
-      <AdminPendingOrders />
-    </section>
-  );
+  return <AdminOrdersPanel />;
 }
 
 function TransactionsSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
