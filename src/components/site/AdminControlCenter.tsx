@@ -16,6 +16,7 @@ import { formatNigerianPhone } from "@/lib/phone";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { AdminUsersPanel } from "@/components/site/AdminUsersPanel";
 import { AdminOrdersPanel } from "@/components/site/AdminOrdersPanel";
+import { AdminTransactionsPanel } from "@/components/site/AdminTransactionsPanel";
 import { AdminTransactionNotifications } from "@/components/site/AdminTransactionNotifications";
 import { AdminPayoutQueue } from "@/components/site/AdminPayoutQueue";
 import { AdminFeedbackPanel } from "@/components/site/AdminFeedbackPanel";
@@ -95,7 +96,7 @@ export function AdminControlCenter() {
             {section === "overview" ? <Overview ready={ready} pending={pending} active={active} users={db.users.length} transactions={db.transactions} onNavigate={select} /> : null}
             {section === "users" ? <AdminUsersPanel /> : null}
             {section === "orders" ? <AdminOrdersPanel /> : null}
-            {section === "transactions" ? <TransactionsSection onNavigate={select} /> : null}
+            {section === "transactions" ? <AdminTransactionsPanel /> : null}
             {section === "payouts" ? <AdminPayoutQueue /> : null}
             {section === "messages" ? <AdminFeedbackPanel /> : null}
             {section === "notifications" ? <AdminTransactionNotifications /> : null}
@@ -211,30 +212,6 @@ function activityLabel(status: string, name: string) {
   if (status === "Seller Paid") return `Payout completed · ${name}`;
   if (status === "Dispatched") return `Seller dispatched order · ${name}`;
   return `Transaction updated · ${name}`;
-}
-
-function TransactionsSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
-  const { db } = useStore();
-  const [filter, setFilter] = useState("All");
-  const statuses = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Seller Paid", "Completed", "Disputed", "Refunded to Buyer"];
-  const rows = db.transactions.filter((t) => filter === "All" || t.status === filter);
-  return (
-    <section className="space-y-5">
-      <SectionIntro title="Transactions" text="Monitor the escrow lifecycle and focus attention on transactions that need action." />
-      <div className="flex flex-wrap gap-2">{statuses.map((s) => <Button key={s} size="sm" variant={filter === s ? "default" : "outline"} onClick={() => setFilter(s)}>{s === "Pending Verification" ? "Payment Pending" : s === "Delivered" ? "Buyer Confirmed" : s}</Button>)}</div>
-      <Card className="overflow-hidden">
-        <div className="divide-y divide-border">
-          {rows.slice(0, 50).map((t) => (
-            <button key={t.id} onClick={() => onNavigate(t.status === "Ready for Admin Payout" ? "payouts" : "orders")} className="flex w-full flex-wrap items-center gap-3 p-4 text-left hover:bg-muted/40">
-              <span className="min-w-0 flex-1"><span className="block truncate font-medium">{t.listing_name}</span><span className="font-mono text-[11px] text-muted-foreground">{t.id}</span></span>
-              <span className="font-semibold">{ngn(t.amount_naira)}</span><Badge variant="outline">{t.status}</Badge>
-            </button>
-          ))}
-          {!rows.length ? <p className="p-6 text-sm text-muted-foreground">No transactions in this state.</p> : null}
-        </div>
-      </Card>
-    </section>
-  );
 }
 
 function SettingsSection(props: {
