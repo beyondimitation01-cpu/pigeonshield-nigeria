@@ -22,7 +22,7 @@ export function AdminTransactionsPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     let request = supabase.from("transactions").select("id, listing_name, amount_naira, calculated_commission, status, created_at, payout_paid_at", { count: "exact" });
-    if (query.trim()) request = request.or(`id.ilike.%${query.trim()}%,listing_name.ilike.%${query.trim()}%`);
+    if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
     request = request.order("created_at", { ascending: false });
     const from = (page - 1) * PAGE_SIZE;
@@ -58,4 +58,8 @@ export function AdminTransactionsPanel() {
       </Card>
     </section>
   );
+}
+
+function escapeSearch(value: string) {
+  return value.replace(/[\\%_(),]/g, (char) => `\\${char}`);
 }
