@@ -854,7 +854,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (error || !data) return null;
 
       console.log(
-        `[ESCROW] Funded ${data.id}. Commission earmarked for Admin OPay ${ADMIN_OPAY}. Pickup passcode issued to buyer only.`,
+        `[ESCROW] Funded ${data.id}. Commission earmarked for Admin OPay ${ADMIN_OPAY}.`,
       );
       await refresh();
       return {
