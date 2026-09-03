@@ -76,7 +76,7 @@ export function PhotoUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         multiple
         className="hidden"
         onChange={(e) => void handleFiles(e.target.files)}
