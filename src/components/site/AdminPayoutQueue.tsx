@@ -16,6 +16,11 @@ export function AdminPayoutQueue() {
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const paid = useMemo(
+    () => db.transactions.filter((t) => t.status === "Seller Paid" && t.payout_paid_at).slice(0, 20),
+    [db.transactions],
+  );
+
   const ready = useMemo(
     () =>
       db.transactions.filter(
@@ -141,6 +146,41 @@ export function AdminPayoutQueue() {
               </div>
             );
           })
+        )}
+      </div>
+
+      <div className="border-t border-border">
+        <div className="flex items-center justify-between gap-3 p-5">
+          <div>
+            <h3 className="font-semibold">Seller payout history</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Recent manual payouts recorded after the OPay transfer was completed.</p>
+          </div>
+          <Badge variant="outline">{paid.length} recent</Badge>
+        </div>
+        {paid.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-muted-foreground">No seller payouts recorded yet.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {paid.map((t) => {
+              const seller = db.users.find((u) => u.id === t.breeder_id);
+              const admin = db.users.find((u) => u.id === t.payout_paid_by);
+              return (
+                <div key={t.id} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div>
+                    <p className="font-medium">{t.listing_name}</p>
+                    <p className="break-all font-mono text-[11px] text-muted-foreground">Order {t.id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Seller: {seller?.real_name || seller?.public_handle || t.breeder_id} · Paid by: {admin?.real_name || admin?.public_handle || t.payout_paid_by}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {t.payout_paid_at ? new Date(t.payout_paid_at).toLocaleString("en-NG") : "—"} · Ref: {t.payout_reference || "—"}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold text-primary">{ngn(Math.max(0, t.amount_naira - t.calculated_commission))}</p>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </Card>
