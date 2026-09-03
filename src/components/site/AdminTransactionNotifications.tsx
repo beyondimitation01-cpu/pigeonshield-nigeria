@@ -50,7 +50,8 @@ export function AdminTransactionNotifications() {
       await supabase.from("admin_notifications").update({ read_at: new Date().toISOString() }).eq("id", item.id);
     }
     if (item.transaction_id) {
-      document.getElementById("ready-for-payout")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = document.getElementById(`transaction-${item.transaction_id}`) ?? document.getElementById("ready-for-payout");
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
       window.history.replaceState(null, "", `#transaction-${item.transaction_id}`);
     }
     if (item.kind === "payout_required") {
