@@ -80,7 +80,10 @@ function MessagesPage() {
     // opened directly from a listing carries that listing as optional context.
     const messageListingId = current.id.startsWith("new:") ? listingParam ?? null : null;
     void sendMessage(messageListingId, current.otherId, text.trim())
-      .then((conversationId) => {\n        setActive(conversationId);\n        void navigate({ to: "/messages", search: { listing: undefined, conversation: conversationId } });\n      })
+      .then((conversationId) => {
+        setActive(conversationId);
+        void navigate({ to: "/messages", search: { listing: undefined, conversation: conversationId } });
+      })
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Message could not be sent.");
       });
