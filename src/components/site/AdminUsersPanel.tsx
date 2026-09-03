@@ -39,7 +39,7 @@ export function AdminUsersPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     let request = supabase.from("profiles").select("id, public_handle, real_name, email, phone_number, bank_name, account_number, is_banned, is_verified_seller, is_frozen, escrow_paused, created_at", { count: "exact" });
-    const clean = query.trim();
+    const clean = escapeSearch(query.trim());
     if (clean) {
       request = request.or(`public_handle.ilike.%${clean}%,real_name.ilike.%${clean}%,email.ilike.%${clean}%`);
     }
@@ -120,4 +120,8 @@ export function AdminUsersPanel() {
 
 function Detail({ label, value }: { label: string; value: string }) {
   return <div className="rounded-lg border border-border/70 bg-muted/20 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 break-words text-sm font-medium">{value}</p></div>;
+}
+
+function escapeSearch(value: string) {
+  return value.replace(/[\\%_(),]/g, (char) => `\\${char}`);
 }
