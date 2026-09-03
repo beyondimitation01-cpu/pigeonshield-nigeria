@@ -1,3 +1,8 @@
+alter table admin_secrets.passphrase enable row level security;
+CREATE POLICY "deny API access to admin passphrase" ON admin_secrets.passphrase
+  AS RESTRICTIVE FOR ALL TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
 -- Production security hardening applied to the external Supabase project.
 -- Keep this migration in source control so the live security posture is reproducible.
 
