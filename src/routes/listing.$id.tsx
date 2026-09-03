@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Flag, MapPin, MessageCircle, Phone, Send, Syringe } from "lucide-react";
+import { Flag, MapPin, MessageCircle, Phone, Syringe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CheckoutModal } from "@/components/site/CheckoutModal";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useStore } from "@/lib/store";
@@ -161,7 +159,15 @@ function ListingDetail() {
                 ) : null}
               </>
             ) : null}
-            {!isOwner ? <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} /> : null}
+            {!isOwner ? (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => navigate({ to: "/messages", search: { listing: listing.id, conversation: undefined } })}
+              >
+                <MessageCircle className="size-4" /> Message Seller
+              </Button>
+            ) : null}
             <Button
               size="lg"
               variant="ghost"
@@ -221,113 +227,3 @@ function PedigreeCol({ title, nodes }: { title: string; nodes: { name: string; b
   );
 }
 
-function ChatDrawer({
-  listingId,
-  sellerId,
-  sellerHandle,
-}: {
-  listingId: string;
-  sellerId: string;
-  sellerHandle: string;
-}) {
-  const { db, user, sendMessage } = useStore();
-  const { requireAuth } = useAuthGuard();
-  const sellerCard = db.sellers[sellerId];
-  const sellerName = sellerCard?.full_name || sellerCard?.public_handle || sellerHandle;
-  const [open, setOpen] = useState(false);
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const thread = db.messages.filter(
-    (m) =>
-      m.listing_id === listingId &&
-      ((m.from_id === user?.id && m.to_id === sellerId) ||
-        (m.from_id === sellerId && m.to_id === user?.id)),
-  );
-
-  async function send(text: string) {
-    const value = text.trim();
-    if (!value) return;
-    if (!requireAuth("Chatting with a breeder requires an account.")) return;
-    setSending(true);
-    try {
-      await sendMessage(listingId, sellerId, value);
-      setBody("");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Message could not be sent.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button size="lg" variant="outline">
-          <MessageCircle className="size-4" /> Chat with Breeder
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
-        <div className="sticky top-0 z-10 border-b border-border bg-muted px-4 py-3 text-xs leading-snug text-muted-foreground">
-          Tip: For long-distance purchases, use our Protected Checkout &amp; Driver Link to ensure your money is
-          safe until delivery.
-        </div>
-        <div className="border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            <UserAvatar url={sellerCard?.avatar_url ?? null} name={sellerName} size={32} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{sellerName}</p>
-              {sellerCard?.loft_name ? (
-                <p className="truncate text-xs text-muted-foreground">{sellerCard.loft_name}</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-          {thread.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No messages yet. Ask about pedigree, age or logistics before funding escrow.
-            </p>
-          ) : (
-            thread.map((m) => (
-              <div
-                key={m.id}
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                  m.from_id === user?.id
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
-                }`}
-              >
-                {m.body}
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="border-t border-border p-4">
-          <div className="mb-3 flex flex-wrap gap-2">
-            {QUICK_INQUIRIES.slice(0, 3).map((q) => (
-              <Button key={q} size="sm" variant="secondary" onClick={() => void send(q)}>
-                {q}
-              </Button>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Input
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Type a message"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void send(body);
-              }}
-            />
-            <Button disabled={sending} onClick={() => void send(body)} aria-label="Send message">
-              <Send className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
