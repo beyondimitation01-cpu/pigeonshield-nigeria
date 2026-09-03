@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
 import { formatNigerianPhone } from "@/lib/phone";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/pigeon-boss-admin")({
   head: () => ({
@@ -60,6 +61,15 @@ function AdminPage() {
       return;
     }
     setBusy(true);
+    const { data: verified, error: verificationError } = await supabase.rpc("verify_admin_passphrase", {
+      passphrase: pwd.trim(),
+    });
+    if (verificationError || verified !== true) {
+      setBusy(false);
+      setPwd("");
+      toast.error("Incorrect master password.");
+      return;
+    }
     const ok = await masterUnlock(pwd.trim());
     setBusy(false);
     setPwd("");
