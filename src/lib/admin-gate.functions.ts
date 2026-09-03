@@ -12,26 +12,6 @@ import { SUPER_ADMIN_EMAIL } from "@/lib/admin-hash";
  */
 
 
-export const unlockAdminConsole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { password: string }) => {
-    const password = typeof data?.password === "string" ? data.password : "";
-    if (password.length === 0 || password.length > 200) throw new Error("Invalid password input");
-    return { password };
-  })
-  .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: verified, error: verificationError } = await supabaseAdmin.rpc("verify_admin_passphrase", {
-      passphrase: data.password,
-    });
-    if (verificationError || verified !== true) return { ok: false as const };
-    const { error } = await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: context.userId, role: "admin" }, { onConflict: "user_id,role" });
-    if (error) return { ok: false as const };
-    return { ok: true as const };
-  });
-
 /** Server-side truth for "is this account an admin". Cannot be faked from devtools. */
 export const getAdminSession = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
