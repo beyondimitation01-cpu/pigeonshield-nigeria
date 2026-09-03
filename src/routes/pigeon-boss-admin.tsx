@@ -60,9 +60,11 @@ function AdminPage() {
   // passphrase again. The cleanup also covers client-side route navigation.
   useEffect(() => {
     return () => {
-      void lockAdminConsole().catch(() => undefined);
+      // lockAdmin clears local state immediately; its server call revokes the
+      // privileged role asynchronously so a fast return is still locked.
+      lockAdmin();
     };
-  }, []);
+  }, [lockAdmin]);
 
   async function attemptUnlock() {
     if (!pwd.trim()) {
