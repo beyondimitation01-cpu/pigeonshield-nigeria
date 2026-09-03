@@ -476,6 +476,7 @@ export type Database = {
           receipt_uploaded_at: string | null
           receipt_url: string | null
           status: string
+          verification_pin: string | null
           waybill_image_url: string | null
         }
         Insert: {
@@ -496,6 +497,7 @@ export type Database = {
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
           status?: string
+          verification_pin?: string | null
           waybill_image_url?: string | null
         }
         Update: {
@@ -516,6 +518,7 @@ export type Database = {
           receipt_uploaded_at?: string | null
           receipt_url?: string | null
           status?: string
+          verification_pin?: string | null
           waybill_image_url?: string | null
         }
         Relationships: [
@@ -579,6 +582,18 @@ export type Database = {
       verify_admin_passphrase: {
         Args: { passphrase: string }
         Returns: boolean
+      }
+      dispatch_transaction: {
+        Args: { _transaction_id: string }
+        Returns: string
+      }
+      confirm_receipt_and_reveal_pin: {
+        Args: { _transaction_id: string }
+        Returns: string
+      }
+      force_mark_delivered: {
+        Args: { _transaction_id: string }
+        Returns: undefined
       }
       get_or_create_conversation: {
         Args: { _other_id: string }
