@@ -29,7 +29,7 @@ export function AdminOrdersPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     let request = supabase.from("transactions").select("id, listing_name, buyer_id, breeder_id, amount_naira, status, payment_reference, receipt_url, receipt_uploaded_at, created_at, delivery_marked_at, proof_file_name", { count: "exact" });
-    if (query.trim()) request = request.or(`id.ilike.%${query.trim()}%,listing_name.ilike.%${query.trim()}%`);
+    if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
     request = request.order("created_at", { ascending: false });
     const from = (page - 1) * PAGE_SIZE;
@@ -90,3 +90,7 @@ function OrderDetails({ order, onClose }: { order: OrderRow; onClose: () => void
 }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="rounded-lg border border-border/70 bg-muted/20 p-3"><p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 break-words text-sm font-medium">{value}</p></div>; }
 function Pager({ page, total, onPage }: { page: number; total: number; onPage: (p: number) => void }) { return <div className="flex items-center justify-between border-t border-border p-4 text-sm"><span className="text-muted-foreground">Page {page} of {total}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1} onClick={() => onPage(page - 1)}><ChevronLeft className="size-4" /></Button><Button size="sm" variant="outline" disabled={page >= total} onClick={() => onPage(page + 1)}><ChevronRight className="size-4" /></Button></div></div>; }
+
+function escapeSearch(value: string) {
+  return value.replace(/[\\%_(),]/g, (char) => `\\${char}`);
+}
