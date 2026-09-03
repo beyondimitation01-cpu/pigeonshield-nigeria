@@ -945,7 +945,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     sendConversationMessage: async (conversationId, listingId, toId, body) => {
       const { error } = await supabase.rpc("send_message", {
         _conversation_id: conversationId,
-        _listing_id: listingId,
+        // The DB function parameter is typed uuid (nullable), so null is accepted at runtime.
+        _listing_id: listingId as string,
         _to_id: toId,
         _body: body,
       });
