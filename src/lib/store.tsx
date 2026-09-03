@@ -724,7 +724,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     lockAdmin: () => {
       setAdminUnlocked(false);
       void lockAdminConsole()
-        .then(() => refresh())
+        .then(async () => {
+          // Admin-only identities must not fall back into marketplace mode after locking.
+          await supabase.auth.signOut();
+          await refresh();
+        })
         .catch(() => undefined);
     },
 
