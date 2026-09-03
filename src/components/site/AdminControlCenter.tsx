@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
-  Bell, ChevronLeft, ChevronRight, Gavel, LayoutDashboard, ListChecks, Menu, MessageSquareWarning,
-  Percent, Settings, ShieldCheck, ShoppingBag, Snowflake, Users, X, Banknote, Megaphone, PauseCircle,
+  Bell, ChevronLeft, ChevronRight, LayoutDashboard, ListChecks, Menu, MessageSquareWarning,
+  Percent, Settings, ShieldCheck, ShoppingBag, Users, X, Banknote, Megaphone,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { ADMIN_OPAY, ngn } from "@/lib/pigeon-data";
 import { formatNigerianPhone } from "@/lib/phone";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
+import { AdminUsersPanel } from "@/components/site/AdminUsersPanel";
 import { AdminPendingOrders } from "@/components/site/AdminPendingOrders";
 import { AdminTransactionNotifications } from "@/components/site/AdminTransactionNotifications";
 import { AdminPayoutQueue } from "@/components/site/AdminPayoutQueue";
