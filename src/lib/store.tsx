@@ -646,7 +646,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     releaseUserFunds: async (userId) => {
       const held = db.transactions.filter(
-        (t) => t.breeder_id === userId && t.status !== "Completed" && t.status !== "Refunded to Buyer",
+        (t) => t.breeder_id === userId && t.status !== "Delivered" && t.status !== "Completed" && t.status !== "Refunded to Buyer",
       );
       for (const t of held) {
         await supabase
