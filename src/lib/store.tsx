@@ -679,16 +679,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     adminUnlocked,
     masterUnlock: async (pwd) => {
-      // Works from any state. When already signed in, the master password upgrades
-      // that account; otherwise the server mints a one-time token for the dedicated
-      // Super Admin account and the browser exchanges it for a real session.
+      // The passphrase is verified only by verify_admin_passphrase on the server.
+      // A successful verification establishes the dedicated Super Admin session.
       try {
-        if (authSession) {
-          const { ok } = await unlockAdminConsole({ data: { password: pwd } });
-          setAdminUnlocked(ok);
-          if (ok) await refresh();
-          return ok;
-        }
         const res = await superAdminLogin({ data: { password: pwd } });
         if (!res.ok) return false;
         const { error } = await supabase.auth.verifyOtp({
