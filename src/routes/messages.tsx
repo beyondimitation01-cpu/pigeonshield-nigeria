@@ -79,7 +79,8 @@ function MessagesPage() {
     if (!current || !text.trim()) return;
     // Existing conversations are independent of listings; only the first message
     // opened directly from a listing carries that listing as optional context.
-    const messageListingId = current.id.startsWith("new:") ? listingParam ?? null : null;\n    void sendMessage(messageListingId, current.otherId, text.trim())
+    const messageListingId = current.id.startsWith("new:") ? listingParam ?? null : null;
+    void sendMessage(messageListingId, current.otherId, text.trim())
       .then((conversationId) => setActive(conversationId))
       .catch((error: unknown) => {
         toast.error(error instanceof Error ? error.message : "Message could not be sent.");
