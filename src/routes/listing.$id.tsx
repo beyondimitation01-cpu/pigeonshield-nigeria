@@ -74,7 +74,13 @@ function ListingDetail() {
   const gallery = listingGallery(listing);
   const cover = gallery[active] ?? gallery[0]!;
 
+  const isOwner = user?.id === listing.breeder_id;
+
   function purchase() {
+    if (isOwner) {
+      toast.error("You cannot message or buy your own product");
+      return;
+    }
     if (!requireAuth("Buying a bird requires a PigeonShield account.")) return;
     setCheckout(true);
   }
@@ -136,9 +142,9 @@ function ListingDetail() {
           </Card>
 
           <div className="flex flex-wrap gap-3">
-            <Button size="lg" onClick={purchase} disabled={user?.id === listing.breeder_id}>
+            {!isOwner ? <Button size="lg" onClick={purchase}>
               Buy with Escrow Protection
-            </Button>
+            </Button> : null}
             {formatNigerianPhone(sellerPhone) ? (
               <>
                 <Button size="lg" variant="secondary" asChild>
@@ -155,7 +161,7 @@ function ListingDetail() {
                 ) : null}
               </>
             ) : null}
-            <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} />
+            {!isOwner ? <ChatDrawer listingId={listing.id} sellerId={listing.breeder_id} sellerHandle={listing.breeder_handle} /> : null}
             <Button
               size="lg"
               variant="ghost"
