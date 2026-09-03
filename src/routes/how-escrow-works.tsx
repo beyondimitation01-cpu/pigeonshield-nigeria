@@ -49,14 +49,6 @@ function EscrowPage() {
           </Card>
         ))}
       </div>
-
-      <Card className="mt-8 border-destructive/30 bg-destructive/5 p-6">
-        <h2 className="font-semibold text-destructive">Off-platform contact = account termination</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Sharing phone numbers or WhatsApp links in public chats to dodge platform fees results in immediate
-          account termination and freezing of active funds.
-        </p>
-      </Card>
     </div>
   );
 }
