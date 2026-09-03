@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShieldCheck, KeyRound, Timer, AlertTriangle, Banknote, FileImage } from "lucide-react";
+import { ShieldCheck, Truck, Timer, AlertTriangle, Banknote, FileImage } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { AUTO_RELEASE_HOURS, LISTING_LIFESPAN_DAYS } from "@/lib/pigeon-data";
 
@@ -24,8 +24,8 @@ export const Route = createFileRoute("/how-escrow-works")({
 
 const STEPS = [
   { icon: Banknote, title: "1. Buyer funds escrow", body: "Money leaves the buyer but never reaches the breeder. PigeonShield holds it as an escrow reserve." },
-  { icon: KeyRound, title: "2. reverse PIN handover", body: "The seller generates a 4-digit handover PIN at dispatch and gives it to the driver. The buyer confirms receipt to reveal the same PIN for collection." },
-  { icon: ShieldCheck, title: "3. Confirm safe delivery", body: "One tap releases funds to the breeder minus the platform commission set by the administrator." },
+  { icon: Truck, title: "2. Reverse PIN handover", body: "The seller generates a 4-digit handover PIN at dispatch and gives it to the driver. The buyer confirms receipt to reveal the same PIN for collection." },
+  { icon: ShieldCheck, title: "3. Confirm receipt", body: "The buyer confirms receipt, the order is marked delivered and the listing leaves the active marketplace." },
   { icon: AlertTriangle, title: "4. Dead on Arrival valve", body: "Reporting DOA halts the release clock instantly, requires video/photo proof and flags the transaction as disputed." },
   { icon: FileImage, title: "5. Breeder escalation", body: "If a buyer stalls maliciously, the breeder uploads a waybill snapshot plus the driver's phone number for admin review." },
   { icon: Timer, title: `6. ${AUTO_RELEASE_HOURS}-hour safety net`, body: `No confirmation and no dispute within ${AUTO_RELEASE_HOURS} hours? The system auto-resolves and pays the breeder.` },
