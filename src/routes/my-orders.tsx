@@ -178,8 +178,9 @@ function MyOrders() {
     );
   }
 
-  const purchases = db.transactions.filter((t) => t.buyer_id === user.id);
-  const sales = db.transactions.filter((t) => t.breeder_id === user.id);
+  const terminalStatuses = new Set(["Seller Paid", "Completed", "Refunded to Buyer"]);
+  const purchases = db.transactions.filter((t) => t.buyer_id === user.id && !terminalStatuses.has(t.status));
+  const sales = db.transactions.filter((t) => t.breeder_id === user.id && !terminalStatuses.has(t.status));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
