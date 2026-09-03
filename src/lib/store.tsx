@@ -15,7 +15,6 @@ import { useAuth } from "@/context/AuthContext";
 import { getAdminSession, lockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
-  makePasscode,
   makeOrderReference,
   AUTO_RELEASE_HOURS,
   LISTING_LIFESPAN_DAYS,
@@ -137,12 +136,12 @@ interface StoreValue {
     l: Listing,
     payment: { reference: string; receiptUrl: string },
   ) => Promise<EscrowTransaction | null>;
-  confirmDelivery: (txId: string) => Promise<void>;
+  dispatchOrder: (txId: string) => Promise<string>;
+  confirmReceiptAndRevealPin: (txId: string) => Promise<string>;
   reportDOA: (txId: string, fileName: string) => Promise<void>;
   submitBreederProof: (txId: string, driverPhone: string, waybill: string) => Promise<void>;
   adminRefund: (txId: string) => Promise<void>;
   adminRelease: (txId: string) => Promise<void>;
-  bypassPasscode: (txId: string, code: string) => boolean;
   banUser: (userId: string) => Promise<void>;
   sendMessage: (listingId: string | null, toId: string, body: string) => Promise<string>;
   markMessagesRead: (listingId: string, otherId: string) => Promise<void>;
@@ -233,7 +232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const requestRevision = ++refreshRevision.current;
     const uid = sessionRef.current?.user.id ?? null;
 
-    const [settings, listings, profiles, txs, passcodes, msgs, notifications, conversations, credits, sellers, announcements, referrals, feedback] = await Promise.all([
+    const [settings, listings, profiles, txs, msgs, notifications, conversations, credits, sellers, announcements, referrals, feedback] = await Promise.all([
       supabase.from("app_settings").select("commission_pct, whatsapp_alert_number").eq("id", 1).maybeSingle(),
       supabase
         .from("listings")
@@ -243,7 +242,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .order("creation_timestamp", { ascending: false }),
       uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("transactions").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
-      uid ? supabase.from("transaction_passcodes").select("*") : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("notifications").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("conversations").select("*").order("updated_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
@@ -289,13 +287,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           created_at: ms(String(latest["created_at"])),
         }
       : null;
-
-    const codeFor = new Map(
-      ((passcodes.data ?? []) as { transaction_id: string; passcode: string }[]).map((p) => [
-        p.transaction_id,
-        p.passcode,
-      ]),
-    );
 
     const myProfile = ((profiles.data ?? []) as Record<string, unknown>[]).find(
       (p) => String(p["id"]) === uid,
@@ -377,8 +368,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         breeder_id: t["breeder_id"] ? String(t["breeder_id"]) : "",
         amount_naira: Number(t["amount_naira"] ?? 0),
         calculated_commission: Number(t["calculated_commission"] ?? 0),
-        // Only the buyer (and admins) can read this row from the database.
-        pickup_passcode: codeFor.get(String(t["id"])) ?? "Hidden — buyer only",
+        verification_pin: (t["verification_pin"] as string | null) ?? null,
         delivery_marked_at: ms(String(t["delivery_marked_at"])),
         auto_release_at: ms(String(t["auto_release_at"])),
         driver_phone: (t["driver_phone"] as string | null) ?? null,
@@ -800,7 +790,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     verifyPayment: async (txId) => {
       const { error } = await supabase
         .from("transactions")
-        .update({ status: "Payment Verified / Processing" })
+        .update({ status: "Escrow Funded" })
         .eq("id", txId);
       if (error) throw new Error(error.message);
       await refresh();
@@ -862,11 +852,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .single();
       if (error || !data) return null;
 
-      const passcode = makePasscode();
-      await supabase
-        .from("transaction_passcodes")
-        .insert({ transaction_id: data.id, buyer_id: user.id, passcode });
-
       console.log(
         `[ESCROW] Funded ${data.id}. Commission earmarked for Admin OPay ${ADMIN_OPAY}. Pickup passcode issued to buyer only.`,
       );
@@ -879,7 +864,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         breeder_id: l.breeder_id,
         amount_naira: l.price_ngn,
         calculated_commission: Math.round((l.price_ngn * pct) / 100),
-        pickup_passcode: passcode,
+        verification_pin: null,
         delivery_marked_at: now,
         auto_release_at: now + AUTO_RELEASE_HOURS * 3600_000,
         driver_phone: null,
@@ -894,7 +879,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       };
     },
 
-    confirmDelivery: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
+    dispatchOrder: async (txId) => {
+      const { data, error } = await supabase.rpc("dispatch_transaction", { _transaction_id: txId });
+      if (error || typeof data !== "string") throw new Error(error?.message ?? "Could not dispatch order.");
+      await refresh();
+      return data;
+    },
+
+    confirmReceiptAndRevealPin: async (txId) => {
+      const { data, error } = await supabase.rpc("confirm_receipt_and_reveal_pin", { _transaction_id: txId });
+      if (error || typeof data !== "string") throw new Error(error?.message ?? "Could not confirm receipt.");
+      await refresh();
+      return data;
+    },
 
     reportDOA: (txId, fileName) =>
       updateTx(txId, {
@@ -913,11 +910,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     adminRefund: (txId) => updateTx(txId, { status: "Refunded to Buyer", dispute_status: "None" }),
     adminRelease: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
-
-    bypassPasscode: (txId, code) => {
-      const tx = db.transactions.find((t) => t.id === txId);
-      return !!tx && tx.pickup_passcode.toUpperCase() === code.trim().toUpperCase();
-    },
 
     banUser: async (userId) => {
       const target = db.users.find((u) => u.id === userId);
