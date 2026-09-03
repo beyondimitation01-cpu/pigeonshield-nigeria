@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
-import { ngn } from "@/lib/pigeon-data";
 
 type AdminUser = {
   id: string;
