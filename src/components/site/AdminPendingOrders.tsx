@@ -24,7 +24,7 @@ export function AdminPendingOrders() {
       ) : (
         <div className="space-y-3">
           {pending.map((t) => (
-            <div key={t.id} className="flex flex-wrap items-start gap-4 rounded-md border border-border p-3 text-sm">
+            <div id={'transaction-' + t.id} key={t.id} className="scroll-mt-6 flex flex-wrap items-start gap-4 rounded-md border border-border p-3 text-sm">
               {t.receipt_url ? (
                 <a href={t.receipt_url} target="_blank" rel="noreferrer" className="shrink-0">
                   <img
