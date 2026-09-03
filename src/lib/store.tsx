@@ -142,6 +142,7 @@ interface StoreValue {
   submitBreederProof: (txId: string, driverPhone: string, waybill: string) => Promise<void>;
   adminRefund: (txId: string) => Promise<void>;
   adminRelease: (txId: string) => Promise<void>;
+  forceMarkDelivered: (txId: string) => Promise<void>;
   banUser: (userId: string) => Promise<void>;
   sendMessage: (listingId: string | null, toId: string, body: string) => Promise<string>;
   markMessagesRead: (listingId: string, otherId: string) => Promise<void>;
@@ -910,6 +911,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     adminRefund: (txId) => updateTx(txId, { status: "Refunded to Buyer", dispute_status: "None" }),
     adminRelease: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
+    forceMarkDelivered: async (txId) => {
+      const { error } = await supabase.rpc("force_mark_delivered", { _transaction_id: txId });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
 
     banUser: async (userId) => {
       const target = db.users.find((u) => u.id === userId);
