@@ -35,6 +35,7 @@ export const Route = createFileRoute("/pigeon-boss-admin")({
 function AdminPage() {
   const {
     db,
+    isAuthed,
     adminUnlocked,
     masterUnlock,
     lockAdmin,
@@ -77,6 +78,20 @@ function AdminPage() {
   }
 
   if (!adminUnlocked) {
+    if (isAuthed) {
+      return (
+        <main className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4">
+          <Card className="space-y-3 p-6 text-center">
+            <Lock className="mx-auto size-8 text-destructive" />
+            <h1 className="text-xl font-bold">Administrator access required</h1>
+            <p className="text-sm text-muted-foreground">
+              This signed-in marketplace account is not authorized for the Admin Control Center.
+            </p>
+          </Card>
+        </main>
+      );
+    }
+
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4">
         <Card className="space-y-4 p-6">
@@ -84,8 +99,8 @@ function AdminPage() {
             <Lock className="size-5 text-primary" /> Master Access Required
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter the master password to open God-Mode. No regular account is needed — the
-            password is verified on the server, which then signs you in as Super Admin.
+            Authenticate the administrator identity. It has no marketplace profile and its
+            privileged actions are authorized by the server-side admin role.
           </p>
           <div className="space-y-1.5">
             <Label htmlFor="master">Master password</Label>
@@ -100,7 +115,7 @@ function AdminPage() {
             />
           </div>
           <Button className="w-full" disabled={busy} onClick={() => void attemptUnlock()}>
-            {busy ? "Verifying…" : "Unlock console"}
+            {busy ? "Verifying…" : "Authenticate administrator"}
           </Button>
         </Card>
       </main>
