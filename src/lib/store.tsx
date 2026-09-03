@@ -454,7 +454,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
         void refresh();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {\n        void refresh();\n      })\n      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversations" }, () => {
+        void refresh();
+      })\n      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
         void refresh();
       })
       .on(
