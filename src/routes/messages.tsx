@@ -46,7 +46,9 @@ function MessagesPage() {
     if (!user) return [] as { id: string; otherId: string }[];
     const existing = db.conversations
       .filter((c) => c.participant_a === user.id || c.participant_b === user.id)
-      .map((c) => ({ id: c.id, otherId: c.participant_a === user.id ? c.participant_b : c.participant_a }));
+      .map((c) => ({ id: c.id, otherId: c.participant_a === user.id ? c.participant_b : c.participant_a }))
+      // Legacy/corrupt self-conversations must never be exposed as a chat target.
+      .filter((c) => c.otherId !== user.id);
     if (!listingParam) return existing;
     const listing = db.listings.find((item) => item.id === listingParam);
     if (!listing?.breeder_id || listing.breeder_id === user.id) return existing;
@@ -55,7 +57,7 @@ function MessagesPage() {
   }, [db.conversations, db.listings, user, listingParam]);
 
   const selectedId = active ?? conversationParam ?? null;
-  const current = selectedId ? conversations.find((c) => c.id === selectedId) : undefined;
+  const current = selectedId ? conversations.find((c) => c.id === selectedId && c.otherId !== user.id) : undefined;
   const other = current ? db.users.find((u) => u.id === current.otherId) ?? db.sellers[current.otherId] : undefined;
   const thread = current
     ? db.messages.filter((m) => m.conversation_id === current.id).sort((a, b) => a.created_at - b.created_at)
