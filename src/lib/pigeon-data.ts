@@ -69,6 +69,7 @@ export type TxStatus =
   | "Payment Verified / Processing"
   | "Escrow Funded"
   | "In Transit"
+  | "Delivered"
   | "Completed"
   | "Refunded to Buyer"
   | "Disputed";
@@ -136,7 +137,7 @@ export interface EscrowTransaction {
   breeder_id: string;
   amount_naira: number;
   calculated_commission: number;
-  pickup_passcode: string;
+  verification_pin: string | null;
   delivery_marked_at: number;
   auto_release_at: number;
   driver_phone: string | null;
@@ -208,10 +209,6 @@ export const OPAY_ACCOUNT = {
   number: ADMIN_OPAY,
   name: "Abd.........rba",
 } as const;
-
-export function makePasscode() {
-  return "PS-" + String(Math.floor(1000 + Math.random() * 9000));
-}
 
 export function maskPhone(phone: string) {
   return phone.slice(0, 4) + "*****" + phone.slice(-2);
@@ -398,7 +395,7 @@ function seedListings(): Listing[] {
       vaccinated: true,
       state: NIGERIAN_STATES[(i * 3) % NIGERIAN_STATES.length]!,
       description:
-        "Loft-raised, fully feathered and flight tested. Escrow protected with 2FA pickup passcode verification.",
+        "Loft-raised, fully feathered and flight tested. Escrow protected with secure PIN handover verification.",
       batch_quantity: 1 + (i % 4),
       commission_override: null,
       is_active: true,
