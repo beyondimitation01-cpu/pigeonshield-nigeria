@@ -4,6 +4,8 @@
 ALTER TABLE public.transactions
   ADD COLUMN IF NOT EXISTS verification_pin text;
 
+DROP TABLE IF EXISTS public.transaction_passcodes;
+
 ALTER TABLE public.transactions
   DROP COLUMN IF EXISTS delivery_token,
   DROP COLUMN IF EXISTS token_expires_at;
