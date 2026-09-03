@@ -91,7 +91,6 @@ interface StoreValue {
     userId: string,
     patch: { is_verified_seller?: boolean; is_frozen?: boolean; escrow_paused?: boolean },
   ) => Promise<void>;
-  releaseUserFunds: (userId: string) => Promise<number>;
   logout: () => Promise<void>;
   adminUnlocked: boolean;
   masterUnlock: (pwd: string) => Promise<boolean>;
@@ -141,7 +140,7 @@ interface StoreValue {
   reportDOA: (txId: string, fileName: string) => Promise<void>;
   submitBreederProof: (txId: string, driverPhone: string, waybill: string) => Promise<void>;
   adminRefund: (txId: string) => Promise<void>;
-  adminRelease: (txId: string) => Promise<void>;
+  markSellerPaid: (txId: string, payoutReference?: string, payoutNotes?: string) => Promise<void>;
   forceMarkDelivered: (txId: string) => Promise<void>;
   banUser: (userId: string) => Promise<void>;
   sendMessage: (listingId: string | null, toId: string, body: string) => Promise<string>;
@@ -242,7 +241,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .order("is_verified_seller", { ascending: false })
         .order("creation_timestamp", { ascending: false }),
       uid ? supabase.from("profiles").select("*") : Promise.resolve({ data: [] as never[] }),
-      uid ? supabase.from("transactions").select("id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, receipt_uploaded_at, created_at").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
+      uid ? supabase.from("transactions").select("id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, undefined").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("messages").select("*").order("created_at", { ascending: true }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("notifications").select("*").order("created_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
       uid ? supabase.from("conversations").select("*").order("updated_at", { ascending: false }) : Promise.resolve({ data: [] as never[] }),
@@ -391,6 +390,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         payment_reference: (t["payment_reference"] as string | null) ?? null,
         receipt_url: (t["receipt_url"] as string | null) ?? null,
         receipt_uploaded_at: t["receipt_uploaded_at"] ? ms(String(t["receipt_uploaded_at"])) : null,
+        payout_paid_at: t["payout_paid_at"] ? ms(String(t["payout_paid_at"])) : null,
+        payout_paid_by: (t["payout_paid_by"] as string | null) ?? null,
+        payout_reference: (t["payout_reference"] as string | null) ?? null,
+        payout_notes: (t["payout_notes"] as string | null) ?? null,
         created_at: ms(String(t["created_at"])),
       })),
       feedback: ((feedback.data ?? []) as Record<string, unknown>[]).map((f) => ({
@@ -655,20 +658,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
 
-    releaseUserFunds: async (userId) => {
-      const held = db.transactions.filter(
-        (t) => t.breeder_id === userId && t.status !== "Delivered" && t.status !== "Completed" && t.status !== "Refunded to Buyer",
-      );
-      for (const t of held) {
-        await supabase
-          .from("transactions")
-          .update({ status: "Completed", dispute_status: "None" })
-          .eq("id", t.id);
-      }
-      await refresh();
-      return held.length;
-    },
-
     logout: async () => {
       if (user) {
         await supabase.from("profiles").update({ is_online: false }).eq("id", user.id);
@@ -800,10 +789,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     verifyPayment: async (txId) => {
-      const { error } = await supabase
-        .from("transactions")
-        .update({ status: "Escrow Funded" })
-        .eq("id", txId);
+      const { error } = await supabase.rpc("verify_payment", { _transaction_id: txId });
       if (error) throw new Error(error.message);
       await refresh();
     },
@@ -910,23 +896,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return data;
     },
 
-    reportDOA: (txId, fileName) =>
-      updateTx(txId, {
-        status: "Disputed",
-        dispute_status: "Disputed: Dead on Arrival",
-        proof_file_name: fileName,
-      }),
+    reportDOA: async (txId, fileName) => {
+      const { error } = await supabase.rpc("report_transaction_doa", {
+        _transaction_id: txId,
+        _proof_file_name: fileName,
+      });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
 
-    submitBreederProof: (txId, driverPhone, waybill) =>
-      updateTx(txId, {
-        status: "Disputed",
-        dispute_status: "Under Review: Proof Submitted",
-        driver_phone: driverPhone,
-        waybill_image_url: waybill,
-      }),
+    submitBreederProof: async (txId, driverPhone, waybill) => {
+      const { error } = await supabase.rpc("submit_breeder_delivery_proof", {
+        _transaction_id: txId,
+        _driver_phone: driverPhone,
+        _waybill: waybill,
+      });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
 
     adminRefund: (txId) => updateTx(txId, { status: "Refunded to Buyer", dispute_status: "None" }),
-    adminRelease: (txId) => updateTx(txId, { status: "Completed", dispute_status: "None" }),
+    markSellerPaid: async (txId, payoutReference, payoutNotes) => {
+      const { error } = await supabase.rpc("mark_seller_paid", {
+        _transaction_id: txId,
+        _payout_reference: payoutReference?.trim() || null,
+        _payout_notes: payoutNotes?.trim() || null,
+      });
+      if (error) throw new Error(error.message);
+      await refresh();
+    },
     forceMarkDelivered: async (txId) => {
       const { error } = await supabase.rpc("force_mark_delivered", { _transaction_id: txId });
       if (error) throw new Error(error.message);
