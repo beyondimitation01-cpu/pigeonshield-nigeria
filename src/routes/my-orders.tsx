@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ShieldCheck, AlertTriangle, Timer, FileImage, Truck } from "lucide-react";
+import { AlertTriangle, Timer, FileImage, Truck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,14 +15,14 @@ import { AUTO_RELEASE_HOURS, ngn, type EscrowTransaction } from "@/lib/pigeon-da
 export const Route = createFileRoute("/my-orders")({
   head: () => ({
     meta: [
-      { title: "My Escrow Orders — Passcodes, Delivery & DOA Claims" },
+      { title: "My Escrow Orders — Delivery & DOA Claims" },
       {
         name: "description",
         content:
           "Track escrow orders, dispatch with a seller PIN, confirm receipt, or file a Dead on Arrival dispute.",
       },
       { property: "og:title", content: "My Escrow Orders — PigeonShield Nigeria" },
-      { property: "og:description", content: "Confirm delivery, reveal passcodes and raise DOA disputes." },
+      { property: "og:description", content: "Confirm delivery, reveal the pickup PIN and raise DOA disputes." },
     ],
   }),
   component: GuardedMyOrders,
