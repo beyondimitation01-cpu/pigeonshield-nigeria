@@ -91,9 +91,6 @@ export function CheckoutModal({
     } finally {
       setSubmitting(false);
     }
-    return;
-    if (!tx) {
-
   }
 
   return (
