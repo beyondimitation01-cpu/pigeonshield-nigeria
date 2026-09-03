@@ -83,7 +83,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
         </div>
       ) : null}
 
-      {side === "breeder" && tx.verification_pin && tx.status === "In Transit" ? (
+      {side === "breeder" && tx.verification_pin && (tx.status === "In Transit" || tx.status === "Ready for Admin Payout") ? (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
           <p className="text-sm font-semibold text-primary">Driver handover PIN</p>
           <p className="mt-1 font-mono text-3xl font-bold tracking-[0.35em]">{tx.verification_pin}</p>
@@ -93,7 +93,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
         </div>
       ) : null}
 
-      {side === "buyer" && (tx.status === "In Transit" || tx.status === "Delivered" || tx.status === "Completed") ? (
+      {side === "buyer" && (tx.status === "In Transit" || tx.status === "Ready for Admin Payout" || tx.status === "Seller Paid" || tx.status === "Delivered" || tx.status === "Completed") ? (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
           <p className="text-sm font-semibold text-primary">Ready for collection</p>
           {revealedPin || tx.verification_pin ? (
@@ -125,7 +125,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
 
       {tx.status === "Escrow Funded" ? (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Timer className="size-3" /> Auto-release in {hoursLeft(tx)}h of the {AUTO_RELEASE_HOURS}h window
+          <Timer className="size-3" /> Payment remains held while this order moves through the {AUTO_RELEASE_HOURS}h protection window. Seller payout is always manual.
         </p>
       ) : null}
 
