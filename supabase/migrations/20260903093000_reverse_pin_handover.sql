@@ -37,14 +37,16 @@ BEGIN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  new_pin := lpad((floor(random() * 10000))::int::text, 4, '0');
-
   UPDATE public.transactions
   SET status = 'In Transit',
-      verification_pin = new_pin
+      verification_pin = coalesce(
+        verification_pin,
+        lpad((floor(random() * 10000))::int::text, 4, '0')
+      )
   WHERE id = _transaction_id
     AND breeder_id = (select auth.uid())
-    AND status IN ('Escrow Funded', 'Payment Verified / Processing');
+    AND status IN ('Escrow Funded', 'Payment Verified / Processing')
+  RETURNING verification_pin INTO new_pin;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Order is not available for dispatch';
@@ -56,6 +58,26 @@ $$;
 
 REVOKE ALL ON FUNCTION public.dispatch_transaction(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dispatch_transaction(uuid) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_visible_handover_pins()
+RETURNS TABLE(transaction_id uuid, verification_pin text)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = ''
+AS $
+  SELECT t.id, t.verification_pin
+  FROM public.transactions t
+  WHERE t.verification_pin IS NOT NULL
+    AND (
+      (t.breeder_id = (SELECT auth.uid()) AND t.status IN ('In Transit','Delivered','Completed'))
+      OR (t.buyer_id = (SELECT auth.uid()) AND t.status IN ('Delivered','Completed'))
+      OR private.has_role((SELECT auth.uid()), 'admin'::public.app_role)
+    );
+$;
+
+REVOKE ALL ON FUNCTION public.get_visible_handover_pins() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_visible_handover_pins() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.confirm_receipt_and_reveal_pin(_transaction_id uuid)
 RETURNS text
