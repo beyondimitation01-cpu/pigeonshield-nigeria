@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Lock, ShieldCheck, Percent, Users, Gavel, MessageCircle, Megaphone, Snowflake, PauseCircle, Gift,
@@ -54,6 +54,15 @@ function AdminPage() {
   const [pct, setPct] = useState(String(db.commission_pct));
   const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [announcement, setAnnouncement] = useState("");
+
+  // The console is a temporary privileged session. Leaving this route always
+  // revokes the admin role so returning through the hidden door requires the
+  // passphrase again. The cleanup also covers client-side route navigation.
+  useEffect(() => {
+    return () => {
+      void lockAdminConsole().catch(() => undefined);
+    };
+  }, []);
 
   async function attemptUnlock() {
     if (!pwd.trim()) {
