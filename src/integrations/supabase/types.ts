@@ -53,6 +53,44 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_notifications: {
+        Row: {
+          id: string
+          transaction_id: string | null
+          kind: string
+          title: string
+          body: string
+          created_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: string
+          transaction_id?: string | null
+          kind: string
+          title: string
+          body: string
+          created_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: string
+          transaction_id?: string | null
+          kind?: string
+          title?: string
+          body?: string
+          created_at?: string
+          read_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notifications_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           commission_pct: number
@@ -435,6 +473,10 @@ export type Database = {
         Row: {
           amount_naira: number
           auto_release_at: string
+          payout_paid_at: string | null
+          payout_paid_by: string | null
+          payout_reference: string | null
+          payout_notes: string | null
           breeder_id: string | null
           buyer_id: string
           calculated_commission: number
@@ -456,6 +498,10 @@ export type Database = {
         Insert: {
           amount_naira: number
           auto_release_at?: string
+          payout_paid_at?: string | null
+          payout_paid_by?: string | null
+          payout_reference?: string | null
+          payout_notes?: string | null
           breeder_id?: string | null
           buyer_id: string
           calculated_commission?: number
@@ -477,6 +523,10 @@ export type Database = {
         Update: {
           amount_naira?: number
           auto_release_at?: string
+          payout_paid_at?: string | null
+          payout_paid_by?: string | null
+          payout_reference?: string | null
+          payout_notes?: string | null
           breeder_id?: string | null
           buyer_id?: string
           calculated_commission?: number
@@ -556,6 +606,22 @@ export type Database = {
       verify_admin_passphrase: {
         Args: { passphrase: string }
         Returns: boolean
+      }
+      verify_payment: {
+        Args: { _transaction_id: string }
+        Returns: undefined
+      }
+      report_transaction_doa: {
+        Args: { _transaction_id: string; _proof_file_name: string }
+        Returns: undefined
+      }
+      submit_breeder_delivery_proof: {
+        Args: { _transaction_id: string; _driver_phone: string; _waybill: string }
+        Returns: undefined
+      }
+      mark_seller_paid: {
+        Args: { _transaction_id: string; _payout_reference?: string | null; _payout_notes?: string | null }
+        Returns: undefined
       }
       dispatch_transaction: {
         Args: { _transaction_id: string }
