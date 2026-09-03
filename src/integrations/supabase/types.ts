@@ -561,6 +561,10 @@ export type Database = {
         Args: { _transaction_id: string }
         Returns: string
       }
+      get_visible_handover_pins: {
+        Args: Record<PropertyKey, never>
+        Returns: { transaction_id: string; verification_pin: string }[]
+      }
       confirm_receipt_and_reveal_pin: {
         Args: { _transaction_id: string }
         Returns: string
