@@ -547,7 +547,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         email: email.trim(),
         password,
       });
-      if (error) return "No account matches that email and password.";
+      if (error) {
+        if (error.message.toLowerCase().includes("email not confirmed")) {
+          return "Please confirm your email address first, then log in again.";
+        }
+        if (error.message.toLowerCase().includes("invalid login credentials")) {
+          return "No account matches that email and password.";
+        }
+        return error.message;
+      }
       if (data.session) {
         sessionRef.current = data.session;
       }
@@ -579,8 +587,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       });
       if (error) return error.message;
-      // Email confirmation is disabled, so the session arrives immediately.
-      if (!data.session) return "Account created. Log in to continue.";
+      // Supabase may require email confirmation before issuing a session.
+      // Do not tell the user to log in until confirmation has completed.
+      if (!data.session) {
+        return "Account created. Please check your email and confirm your address before logging in.";
+      }
       sessionRef.current = data.session;
       await ensureProfile();
       const invite = (input.referral_code ?? "").trim().toUpperCase();
