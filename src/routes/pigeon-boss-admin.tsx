@@ -8,6 +8,8 @@ import { UserAvatar } from "@/components/site/UserAvatar";
 import { AdminListingsTable } from "@/components/site/AdminListingsTable";
 import { AdminPendingOrders } from "@/components/site/AdminPendingOrders";
 import { AdminFeedbackPanel } from "@/components/site/AdminFeedbackPanel";
+import { AdminTransactionNotifications } from "@/components/site/AdminTransactionNotifications";
+import { AdminPayoutQueue } from "@/components/site/AdminPayoutQueue";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,12 +41,10 @@ function AdminPage() {
     setCommission,
     setWhatsappAlertNumber,
     adminRefund,
-    adminRelease,
     banUser,
     sendBroadcast,
     retireBroadcast,
     setUserFlags,
-    releaseUserFunds,
     forceMarkDelivered,
   } = useStore();
 
@@ -111,7 +111,7 @@ function AdminPage() {
   const disputes = db.transactions.filter((t) => t.status === "Disputed");
   // Live figures only — no placeholder amounts. Commission counts settled escrow.
   const gross = db.transactions
-    .filter((t) => t.status === "Delivered" || t.status === "Completed")
+    .filter((t) => t.status === "Delivered" || t.status === "Ready for Admin Payout" || t.status === "Seller Paid" || t.status === "Completed")
     .reduce((s, t) => s + t.calculated_commission, 0);
   const pendingPayments = db.transactions.filter((t) => t.status === "Pending Verification").length;
 
@@ -176,6 +176,10 @@ function AdminPage() {
 
       <AdminPendingOrders />
 
+      <AdminTransactionNotifications />
+
+      <AdminPayoutQueue />
+
       <AdminFeedbackPanel />
 
 
@@ -194,7 +198,6 @@ function AdminPage() {
                 Proof: {t.proof_file_name ?? "—"} · Driver: {t.driver_phone ?? "—"} · Waybill: {t.waybill_image_url ?? "—"}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => { adminRelease(t.id); toast.success("Payout released to breeder."); }}>Release to breeder</Button>
                 <Button size="sm" variant="destructive" onClick={() => { adminRefund(t.id); toast.success("Buyer fully refunded."); }}>Refund buyer 100%</Button>
               </div>
             </div>
@@ -207,7 +210,7 @@ function AdminPage() {
         <p className="text-sm text-muted-foreground">
           Use only when the buyer cannot complete receipt confirmation at the handover point.
         </p>
-        {db.transactions.filter((t) => !["Delivered", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status)).length === 0 ? (
+        {db.transactions.filter((t) => !["Delivered", "Ready for Admin Payout", "Seller Paid", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status)).length === 0 ? (
           <p className="text-sm text-muted-foreground">No active orders require an override.</p>
         ) : (
           db.transactions
@@ -357,17 +360,7 @@ function AdminPage() {
                         >
                           <PauseCircle className="size-3" /> {u.escrow_paused ? "Resume" : "Pause escrow"}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const n = await releaseUserFunds(u.id);
-                            toast.success(n ? `Released ${n} payout(s).` : "No held funds for this user.");
-                          }}
-                        >
-                          <Banknote className="size-3" /> Release funds
-                        </Button>
-                        <Button size="sm" variant={u.is_banned ? "outline" : "destructive"} onClick={() => banUser(u.id)}>
+                          <Button size="sm" variant={u.is_banned ? "outline" : "destructive"} onClick={() => banUser(u.id)}>
                           {u.is_banned ? "Unban" : "Ban"}
                         </Button>
                       </div>
