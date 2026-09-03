@@ -28,6 +28,7 @@ export function AdminOrdersPanel() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    const clean = escapeSearch(query.trim());
     let request = supabase.from("transactions").select("id, listing_name, buyer_id, breeder_id, amount_naira, status, payment_reference, receipt_url, receipt_uploaded_at, created_at, delivery_marked_at, proof_file_name", { count: "exact" });
     if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
