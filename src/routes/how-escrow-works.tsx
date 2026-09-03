@@ -10,7 +10,7 @@ export const Route = createFileRoute("/how-escrow-works")({
       {
         name: "description",
         content:
-          "2FA pickup passcodes, Dead on Arrival refunds, breeder waybill escalation and a 48-hour auto-release safety net.",
+          "seller-generated 4-digit handover PINs, Dead on Arrival refunds, breeder waybill escalation and a 48-hour auto-release safety net.",
       },
       { property: "og:title", content: "How PigeonShield Escrow Protects Every Delivery" },
       {
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/how-escrow-works")({
 
 const STEPS = [
   { icon: Banknote, title: "1. Buyer funds escrow", body: "Money leaves the buyer but never reaches the breeder. PigeonShield holds it as an escrow reserve." },
-  { icon: KeyRound, title: "2. 2FA pickup passcode", body: "A unique PS-XXXX passcode appears only on the buyer's screen. The buyer reads it to the driver at collection." },
+  { icon: KeyRound, title: "2. reverse PIN handover", body: "The seller generates a 4-digit handover PIN at dispatch and gives it to the driver. The buyer confirms receipt to reveal the same PIN for collection." },
   { icon: ShieldCheck, title: "3. Confirm safe delivery", body: "One tap releases funds to the breeder minus the platform commission set by the administrator." },
   { icon: AlertTriangle, title: "4. Dead on Arrival valve", body: "Reporting DOA halts the release clock instantly, requires video/photo proof and flags the transaction as disputed." },
   { icon: FileImage, title: "5. Breeder escalation", body: "If a buyer stalls maliciously, the breeder uploads a waybill snapshot plus the driver's phone number for admin review." },
