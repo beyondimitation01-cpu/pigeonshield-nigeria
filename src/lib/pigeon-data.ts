@@ -70,6 +70,8 @@ export type TxStatus =
   | "Escrow Funded"
   | "In Transit"
   | "Delivered"
+  | "Ready for Admin Payout"
+  | "Seller Paid"
   | "Completed"
   | "Refunded to Buyer"
   | "Disputed";
@@ -148,6 +150,10 @@ export interface EscrowTransaction {
   payment_reference: string | null;
   receipt_url: string | null;
   receipt_uploaded_at: number | null;
+  payout_paid_at: number | null;
+  payout_paid_by: string | null;
+  payout_reference: string | null;
+  payout_notes: string | null;
   created_at: number;
 }
 
