@@ -41,7 +41,8 @@ function ListingDetail() {
   // Seller phone numbers are not public. Signed-in buyers fetch them on demand.
   useEffect(() => {
     let cancelled = false;
-    if (!user || !breederId) {
+    // Never reveal the authenticated user's own contact details on their listing.
+    if (!user || !breederId || user.id === breederId) {
       setRevealedPhone("");
       return;
     }
@@ -63,7 +64,8 @@ function ListingDetail() {
   const sellerCard = db.sellers[listing.breeder_id];
   const sellerDisplayName =
     sellerCard?.full_name || sellerCard?.public_handle || listing.breeder_handle;
-  const sellerPhone = seller?.phone_number || revealedPhone || "";
+  const isOwner = user?.id === listing.breeder_id;
+  const sellerPhone = isOwner ? "" : (seller?.phone_number || revealedPhone || "");
   const sellerWa = whatsappLink(
     sellerPhone,
     `Hello ${sellerDisplayName}, I saw your listing "${listing.custom_bird_name}" on PigeonShield Nigeria.`,
@@ -71,8 +73,6 @@ function ListingDetail() {
   const pct = commissionFor(listing);
   const gallery = listingGallery(listing);
   const cover = gallery[active] ?? gallery[0]!;
-
-  const isOwner = user?.id === listing.breeder_id;
 
   function purchase() {
     if (isOwner) {
