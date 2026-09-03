@@ -146,7 +146,7 @@ Maintain full state reactivity simulating 3 tables with strict anonymity masking
 
 Create a highly secure, fully operational hidden administrative workspace accessible strictly by appending `/pigeon-boss-admin` to the application's URL route.
 
-- Route Protection: Display a master login lock screen requiring the temporary master password: `PigeonMaster2026`.
+- Route Protection: Display a master login lock screen requiring a server-side verified master passphrase.
 
 - Provide these exact fully functioning control panels upon successful authentication:
 
