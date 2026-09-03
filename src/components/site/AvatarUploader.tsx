@@ -62,7 +62,7 @@ export function AvatarUploader({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(e) => void handleFile(e.target.files?.[0])}
         />
