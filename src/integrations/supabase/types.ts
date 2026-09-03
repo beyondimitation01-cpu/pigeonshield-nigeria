@@ -576,6 +576,10 @@ export type Database = {
       }
     }
     Functions: {
+      verify_admin_passphrase: {
+        Args: { passphrase: string }
+        Returns: boolean
+      }
       get_or_create_conversation: {
         Args: { _other_id: string }
         Returns: string
