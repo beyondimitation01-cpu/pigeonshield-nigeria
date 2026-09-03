@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { KeyRound, ShieldCheck, AlertTriangle, Timer, FileImage } from "lucide-react";
+import { ShieldCheck, AlertTriangle, Timer, FileImage, Truck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/my-orders")({
       {
         name: "description",
         content:
-          "Track funded escrow orders, reveal your 2FA pickup passcode, confirm safe delivery or file a Dead on Arrival dispute.",
+          "Track escrow orders, dispatch with a seller PIN, confirm receipt, or file a Dead on Arrival dispute.",
       },
       { property: "og:title", content: "My Escrow Orders — PigeonShield Nigeria" },
       { property: "og:description", content: "Confirm delivery, reveal passcodes and raise DOA disputes." },
@@ -33,7 +33,9 @@ function hoursLeft(tx: EscrowTransaction) {
 }
 
 function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breeder" }) {
-  const { confirmDelivery, reportDOA, submitBreederProof } = useStore();
+  const { dispatchOrder, confirmReceiptAndRevealPin, reportDOA, submitBreederProof } = useStore();
+  const [revealedPin, setRevealedPin] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
   const [driver, setDriver] = useState("");
   const [waybill, setWaybill] = useState("");
 
@@ -52,15 +54,72 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
         <p className="text-sm font-medium text-destructive">{tx.dispute_status}</p>
       ) : null}
 
-      {side === "buyer" ? (
+      {side === "breeder" && tx.status === "Escrow Funded" ? (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-            <KeyRound className="size-4" /> 2FA Pickup Passcode
+            <Truck className="size-4" /> Ready for dispatch
           </p>
-          <p className="mt-1 font-mono text-xl tracking-widest">{tx.pickup_passcode}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Read this to the driver only when the animal arrives alive and healthy.
+            Dispatch the order to generate the seller handover PIN.
           </p>
+          <Button
+            size="sm"
+            className="mt-3"
+            disabled={dispatching}
+            onClick={async () => {
+              setDispatching(true);
+              try {
+                const pin = await dispatchOrder(tx.id);
+                toast.success("Order dispatched. Give the PIN to the driver.");
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Could not dispatch order.");
+              } finally {
+                setDispatching(false);
+              }
+            }}
+          >
+            {dispatching ? "Dispatching…" : "Dispatch order"}
+          </Button>
+        </div>
+      ) : null}
+
+      {side === "breeder" && tx.verification_pin && tx.status === "In Transit" ? (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold text-primary">Driver handover PIN</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-[0.35em]">{tx.verification_pin}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Give this 4-digit PIN to your transport driver via SMS or a paper note.
+          </p>
+        </div>
+      ) : null}
+
+      {side === "buyer" && tx.status === "In Transit" ? (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-semibold text-primary">Ready for collection</p>
+          {revealedPin ? (
+            <>
+              <p className="mt-2 font-mono text-4xl font-bold tracking-[0.35em]">{revealedPin}</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Show or read this 4-digit PIN to the driver to collect your pigeon.
+              </p>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={async () => {
+                try {
+                  const pin = await confirmReceiptAndRevealPin(tx.id);
+                  setRevealedPin(pin);
+                  toast.success("Receipt confirmed. Pickup PIN revealed.");
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "Could not confirm receipt.");
+                }
+              }}
+            >
+              Confirm Receipt &amp; Reveal Pickup PIN
+            </Button>
+          )}
         </div>
       ) : null}
 
@@ -72,15 +131,6 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
 
       {side === "buyer" && tx.status === "Escrow Funded" ? (
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            onClick={() => {
-              confirmDelivery(tx.id);
-              toast.success("Delivery confirmed — funds released to the breeder.");
-            }}
-          >
-            <ShieldCheck className="size-4" /> Confirm Safe Delivery
-          </Button>
           <Button
             size="sm"
             variant="destructive"
