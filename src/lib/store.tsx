@@ -12,7 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { getAdminSession, lockAdminConsole } from "@/lib/admin-gate.functions";
+import { lockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
   makeOrderReference,
@@ -451,17 +451,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Sync store data whenever the canonical AuthContext session changes.
   useEffect(() => {
     if (authSession) {
-      void getAdminSession()
-        .then(async (r) => {
-          setAdminUnlocked(r.unlocked);
-          if (!r.unlocked) await ensureProfile();
-          await refresh();
-        })
-        .catch(async () => {
-          setAdminUnlocked(false);
-          await ensureProfile();
-          await refresh();
-        });
+      // Admin console unlock state is intentionally local to the current
+      // mounted console. A persisted admin role is authorization for backend
+      // actions, not permission to reopen the console without the passphrase.
+      setAdminUnlocked(false);
+      void ensureProfile().then(refresh);
     } else {
       setAdminUnlocked(false);
       void refresh();
