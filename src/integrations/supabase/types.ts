@@ -431,32 +431,6 @@ export type Database = {
         }
         Relationships: []
       }
-      transaction_passcodes: {
-        Row: {
-          buyer_id: string
-          passcode: string
-          transaction_id: string
-        }
-        Insert: {
-          buyer_id: string
-          passcode: string
-          transaction_id: string
-        }
-        Update: {
-          buyer_id?: string
-          passcode?: string
-          transaction_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transaction_passcodes_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: true
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       transactions: {
         Row: {
           amount_naira: number
