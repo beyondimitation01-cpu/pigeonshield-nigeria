@@ -206,7 +206,9 @@ function MessagesPage() {
             </>
           ) : (
             <div className="m-auto hidden max-w-sm px-6 text-center md:block">
-              <p className="text-lg font-semibold">Your messages</p>\n              <p className="mt-1 text-sm text-muted-foreground">Select a conversation to start chatting.</p>\n            </div>
+              <p className="text-lg font-semibold">Your messages</p>
+              <p className="mt-1 text-sm text-muted-foreground">Select a conversation to start chatting.</p>
+            </div>
           )}
         </Card>
       </div>
