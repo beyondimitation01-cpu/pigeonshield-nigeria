@@ -831,6 +831,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     buyListing: async (l, payment) => {
       if (!user) return null;
+      if (user.id === l.breeder_id) throw new Error("You cannot message or buy your own product");
       const pct = l.commission_override ?? db.commission_pct;
       const now = Date.now();
       const { data, error } = await supabase
@@ -922,6 +923,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     sendMessage: async (listingId, toId, body) => {
       if (!user) throw new Error("You must be signed in to send a message.");
+      if (user.id === db.listings.find((l) => l.id === listingId)?.breeder_id) throw new Error("You cannot message or buy your own product");
       const { data: conversationId, error: conversationError } = await supabase.rpc("get_or_create_conversation", { _other_id: toId });
       if (conversationError || !conversationId) throw new Error(conversationError?.message ?? "Could not open conversation.");
       const { error } = await supabase.rpc("send_message", {
