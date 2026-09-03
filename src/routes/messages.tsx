@@ -145,6 +145,19 @@ function MessagesPage() {
           {current ? (
             <>
               <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden"
+                  onClick={() => {
+                    setActive(null);
+                    void navigate({ to: "/messages", search: { listing: undefined, conversation: undefined } });
+                  }}
+                  aria-label="Back to conversations"
+                >
+                  ← Back
+                </Button>
                 <span className="inline-flex min-w-0 items-center gap-2 font-semibold">
                   <UserAvatar
                     url={(current ? db.sellers[current.otherId]?.avatar_url : null) ?? other?.avatar_url ?? null}
