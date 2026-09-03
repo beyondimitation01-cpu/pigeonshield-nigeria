@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Lock, ShieldCheck, Percent, Users, Gavel, MessageCircle, Megaphone, Snowflake, PauseCircle, Gift,
@@ -55,16 +55,19 @@ function AdminPage() {
   const [whats, setWhats] = useState(db.whatsapp_alert_number);
   const [announcement, setAnnouncement] = useState("");
 
-  // The console is a temporary privileged session. Leaving this route always
-  // revokes the admin role so returning through the hidden door requires the
-  // passphrase again. The cleanup also covers client-side route navigation.
+  // The store value object is recreated during refreshes, so keep the latest
+  // lock function in a ref. This makes the cleanup run only when this route
+  // actually unmounts, not on ordinary renders.
+  const lockAdminRef = useRef(lockAdmin);
+  lockAdminRef.current = lockAdmin;
+
+  // Leaving the route always locks the temporary console session. The local
+  // state is cleared immediately; the server call revokes the admin role.
   useEffect(() => {
     return () => {
-      // lockAdmin clears local state immediately; its server call revokes the
-      // privileged role asynchronously so a fast return is still locked.
-      lockAdmin();
+      lockAdminRef.current();
     };
-  }, [lockAdmin]);
+  }, []);
 
   async function attemptUnlock() {
     if (!pwd.trim()) {
