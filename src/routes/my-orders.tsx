@@ -69,7 +69,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
             onClick={async () => {
               setDispatching(true);
               try {
-                const pin = await dispatchOrder(tx.id);
+                await dispatchOrder(tx.id);
                 toast.success("Order dispatched. Give the PIN to the driver.");
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : "Could not dispatch order.");
@@ -181,6 +181,8 @@ function MyOrders() {
   const terminalStatuses = new Set(["Seller Paid", "Completed", "Refunded to Buyer"]);
   const purchases = db.transactions.filter((t) => t.buyer_id === user.id && !terminalStatuses.has(t.status));
   const sales = db.transactions.filter((t) => t.breeder_id === user.id && !terminalStatuses.has(t.status));
+  const purchaseHistory = db.transactions.filter((t) => t.buyer_id === user.id && terminalStatuses.has(t.status));
+  const salesHistory = db.transactions.filter((t) => t.breeder_id === user.id && terminalStatuses.has(t.status));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -191,7 +193,7 @@ function MyOrders() {
         <h2 className="text-lg font-semibold">Purchases ({purchases.length})</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {purchases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No purchases yet.</p>
+            <p className="text-sm text-muted-foreground">No active purchases.</p>
           ) : (
             purchases.map((t) => <OrderCard key={t.id} tx={t} side="buyer" />)
           )}
@@ -202,13 +204,48 @@ function MyOrders() {
         <h2 className="text-lg font-semibold">Sales ({sales.length})</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {sales.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sales yet.</p>
+            <p className="text-sm text-muted-foreground">No active sales.</p>
           ) : (
             sales.map((t) => <OrderCard key={t.id} tx={t} side="breeder" />)
           )}
         </div>
       </section>
+
+      <section className="mt-10 border-t border-border pt-8">
+        <h2 className="text-lg font-semibold">Transaction History</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Completed and refunded transactions remain available here without cluttering your active workflow.</p>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <HistoryList title="Purchases" rows={purchaseHistory} />
+          <HistoryList title="Sales" rows={salesHistory} />
+        </div>
+      </section>
     </main>
+  );
+}
+
+function HistoryList({ title, rows }: { title: string; rows: EscrowTransaction[] }) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-card p-4">
+      <h3 className="font-medium">{title} ({rows.length})</h3>
+      <div className="mt-3 space-y-2">
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No completed transactions.</p>
+        ) : (
+          rows.map((tx) => (
+            <div key={tx.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-medium">{tx.listing_name}</p>
+                <p className="text-xs text-muted-foreground">{tx.id}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="font-semibold">{ngn(tx.amount_naira)}</p>
+                <Badge variant="outline" className="mt-1">{tx.status}</Badge>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
