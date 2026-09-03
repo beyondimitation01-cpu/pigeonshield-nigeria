@@ -404,7 +404,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })),
       messages: ((msgs.data ?? []) as Record<string, unknown>[]).map((m) => ({
         id: String(m["id"]),
-        listing_id: String(m["listing_id"] ?? ""),
+        listing_id: m["listing_id"] ? String(m["listing_id"]) : null,
         from_id: String(m["from_id"]),
         to_id: String(m["to_id"]),
         conversation_id: String(m["conversation_id"]),
