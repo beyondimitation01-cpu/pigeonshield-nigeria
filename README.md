@@ -2,7 +2,7 @@
 
 Role: Expert Full-Stack Web Engineer & UI/UX Designer
 
-Project: "PigeonShield Nigeria" — A secure, production-ready, highly premium and responsive desktop & mobile web application for an anonymous Nigerian livestock marketplace. The platform is strictly focused on Pigeons as its primary flagship asset but seamlessly supports secondary agricultural categories (Chickens, Dogs, Horses) while retaining its premium brand identity. It features a delivery-fraud proof escrow ecosystem with explicit Dead on Arrival (DOA) / Faulty Item automated buyer refund loops, persistent browser authentication, a 2FA pickup verification protocol, and a secret high-utility God-Mode Admin Panel.
+Project: "PigeonShield Nigeria" — A secure, production-ready, highly premium and responsive desktop & mobile web application for an anonymous Nigerian livestock marketplace. The platform is strictly focused on Pigeons as its primary flagship asset but seamlessly supports secondary agricultural categories (Chickens, Dogs, Horses) while retaining its premium brand identity. It features a delivery-fraud proof escrow ecosystem with explicit Dead on Arrival (DOA) / Faulty Item automated buyer refund loops, persistent browser authentication, a secure 4-digit pickup PIN handover protocol, and a secret high-utility God-Mode Admin Panel.
 
 
 
@@ -82,7 +82,7 @@ Project: "PigeonShield Nigeria" — A secure, production-ready, highly premium a
 
 #### 4. TWO-WAY DELIVERY CONFIRMATION & COURIER FRAUD PROTECTION
 
-- Buyer Dashboard & 2FA Pickup: Build a prominent green button: "Confirm Safe Delivery & Release Funds". For anti-fraud control, generate a unique, randomized 4-digit Verification Passcode (e.g., "PS-XXXX") inside the transaction state that displays ONLY on the Buyer's screen. The buyer must read this to the driver/breeder upon collection.
+- Buyer Dashboard & PIN Handover: Build a prominent green button: "Confirm Receipt & Reveal Pickup PIN". For anti-fraud control, generate a unique, randomized 4-digit Verification Passcode (e.g., "4-digit PIN") inside the transaction state that displays ONLY on the Buyer's screen. The buyer must read this to the driver/breeder upon collection.
 
 - Dead on Arrival (DOA) Safe Valve: Next to the confirm button, implement a prominent red button labeled "🚨 Report Dead on Arrival / Damaged Goods". Clicking this halts the 48-hour auto-release clock, prompts for a video/photo proof file upload, and immediately shifts the transaction status code to "Disputed: Dead on Arrival".
 
@@ -134,7 +134,7 @@ Maintain full state reactivity simulating 3 tables with strict anonymity masking
 
 2. `NAIRA_PIGEON_LISTINGS_TABLE`: Stores ID, category_type ("Pigeon", "Chicken", etc), breeder_handle, custom_bird_name, breed_type, gender, price_ngn, images array, 3-generation digital pedigree JSON data (null for non-pigeons), creation_timestamp, and expiry status.
 
-3. `NAIRA_ESCROW_TRANSACTIONS_TABLE`: Tracks transaction_id, listing_id, amount_naira, calculated_commission, pickup_passcode, 48-hour delivery countdown state, driver_phone, waybill_image_url, and dispute_status ("None", "Faulty Bird", "Under Review: Proof Submitted", "Disputed: Dead on Arrival").
+3. `NAIRA_ESCROW_TRANSACTIONS_TABLE`: Tracks transaction_id, listing_id, amount_naira, calculated_commission, verification_pin, 48-hour delivery countdown state, driver_phone, waybill_image_url, and dispute_status ("None", "Faulty Bird", "Under Review: Proof Submitted", "Disputed: Dead on Arrival").
 
 
 
