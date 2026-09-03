@@ -12,7 +12,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { getAdminSession, lockAdminConsole, superAdminLogin } from "@/lib/admin-gate.functions";
+import { getAdminSession, lockAdminConsole } from "@/lib/admin-gate.functions";
 import {
   makeHandle,
   makePasscode,
@@ -679,16 +679,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     adminUnlocked,
     masterUnlock: async (pwd) => {
-      // The passphrase is verified only by verify_admin_passphrase on the server.
-      // A successful verification establishes the dedicated Super Admin session.
+      // The server-side edge function repeats the same RPC verification before
+      // minting a real Supabase session for the dedicated Super Admin account.
       try {
-        const res = await superAdminLogin({ data: { password: pwd } });
-        if (!res.ok) return false;
-        const { error } = await supabase.auth.verifyOtp({
-          type: "magiclink",
-          token_hash: res.tokenHash,
+        const { data, error } = await supabase.functions.invoke("super-admin-login", {
+          body: { password: pwd },
         });
-        if (error) return false;
+        if (error || !data?.ok || !data.tokenHash) {
+          setAdminUnlocked(false);
+          return false;
+        }
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: data.tokenHash,
+        });
+        if (otpError) {
+          setAdminUnlocked(false);
+          return false;
+        }
         setAdminUnlocked(true);
         await refresh();
         return true;
