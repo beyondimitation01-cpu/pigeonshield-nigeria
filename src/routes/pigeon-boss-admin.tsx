@@ -88,16 +88,8 @@ function AdminPage() {
     const ok = await masterUnlock(pwd.trim());
     setBusy(false);
     setPwd("");
-    if (ok) {
-      toast.success("Administrator authenticated.");
-      // masterUnlock exchanges the one-time Super Admin token for a new
-      // Supabase session. Reload after success so the application hydrates
-      // from that new identity instead of briefly retaining the previous
-      // marketplace account in its in-memory auth snapshot.
-      window.location.reload();
-    } else {
-      toast.error("Incorrect master password.");
-    }
+    if (ok) toast.success("Administrator authenticated.");
+    else toast.error("Incorrect master password.");
   }
 
   if (!adminUnlocked) {
