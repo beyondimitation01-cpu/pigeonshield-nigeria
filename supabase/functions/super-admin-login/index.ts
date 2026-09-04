@@ -9,6 +9,12 @@ const corsHeaders = {
 const SUPER_ADMIN_EMAIL = "superadmin@pigeonshield.app";
 const ADMIN_SESSION_MS = 10 * 60 * 1000;
 
+const jsonResponse = (body: Record<string, unknown>, status: number) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 type AdminClient = ReturnType<typeof createClient>;
 
 Deno.serve(async (req: Request) => {
@@ -20,43 +26,33 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const password = typeof body?.password === "string" ? body.password : "";
     if (!password || password.length > 200) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 400);
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 500);
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     }) as AdminClient;
 
+    // The database verifier owns the global, atomic brute-force state. It
+    // rejects all new attempts while locked, including the correct passphrase.
     const { data: verified, error: verifyError } = await admin.rpc(
       "verify_admin_passphrase",
       { passphrase: password },
     );
     if (verifyError || verified !== true) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 401);
     }
 
     let userId: string | null = null;
     const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
     if (listed.error) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 500);
     }
     userId = listed.data.users.find((user) => user.email?.toLowerCase() === SUPER_ADMIN_EMAIL)?.id ?? null;
 
@@ -67,10 +63,7 @@ Deno.serve(async (req: Request) => {
         user_metadata: { public_handle: "SuperAdmin", real_name: "Super Admin" },
       });
       if (created.error || !created.data.user) {
-        return new Response(JSON.stringify({ ok: false }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return jsonResponse({ ok: false }, 500);
       }
       userId = created.data.user.id;
     }
@@ -80,25 +73,54 @@ Deno.serve(async (req: Request) => {
       { onConflict: "user_id,role" },
     );
     if (role.error) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 500);
     }
 
+    const sessionExpiresAt = new Date(Date.now() + ADMIN_SESSION_MS).toISOString();
     const session = await admin.from("admin_sessions").upsert(
       {
         user_id: userId,
         last_activity_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + ADMIN_SESSION_MS).toISOString(),
+        expires_at: sessionExpiresAt,
       },
       { onConflict: "user_id" },
     );
     if (session.error) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 500);
+    }
+
+    // Security notification is deliberately best-effort. A notification
+    // failure must never roll back or invalidate the newly-created Admin
+    // session. The recipient is resolved from the existing Admin role model;
+    // no Admin user ID is hardcoded and no secret/session data is included.
+    try {
+      const notificationEventKey = `admin:god-mode-login:${crypto.randomUUID()}`;
+      const notification = await admin.from("notifications").insert(
+        (await admin
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin"))
+          .data
+          ?.map(({ user_id }) => ({
+            recipient_id: user_id,
+            message_id: null,
+            listing_id: null,
+            transaction_id: null,
+            kind: "admin_login",
+            title: "New Admin Login",
+            body: "A new login to your Admin account was detected.",
+            event_key: `${notificationEventKey}:${user_id}`,
+          })) ?? [],
+      );
+
+      if (notification.error) {
+        console.warn("Admin login notification failed:", notification.error.message);
+      }
+    } catch (notificationError) {
+      console.warn(
+        "Admin login notification failed:",
+        notificationError instanceof Error ? notificationError.message : "unknown error",
+      );
     }
 
     const link = await admin.auth.admin.generateLink({
@@ -107,20 +129,11 @@ Deno.serve(async (req: Request) => {
     });
     const tokenHash = link.data.properties?.hashed_token;
     if (link.error || !tokenHash) {
-      return new Response(JSON.stringify({ ok: false }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({ ok: false }, 500);
     }
 
-    return new Response(JSON.stringify({ ok: true, tokenHash }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: true, tokenHash }, 200);
   } catch {
-    return new Response(JSON.stringify({ ok: false }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ ok: false }, 500);
   }
 });
