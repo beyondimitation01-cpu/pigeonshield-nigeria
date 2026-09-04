@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { NIGERIAN_STATES, TERMS_TEXT } from "@/lib/pigeon-data";
 
@@ -50,15 +51,12 @@ export function AuthModal() {
 
     const publicHandle = String(f.get("real_name") ?? "").trim();
     const loftName = loft.trim();
-    const { data: availability, error: availabilityError } = await import("@/integrations/supabase/client").then(
-      ({ supabase }) =>
-        supabase
-          .rpc("check_registration_name_availability", {
-            _public_handle: publicHandle,
-            _loft_name: loftName,
-          })
-          .maybeSingle(),
-    );
+    const { data: availability, error: availabilityError } = await supabase
+      .rpc("check_registration_name_availability", {
+        _public_handle: publicHandle,
+        _loft_name: loftName,
+      })
+      .maybeSingle();
     if (availabilityError) {
       setError("We could not verify username and loft-name availability. Please try again.");
       return;
@@ -76,7 +74,7 @@ export function AuthModal() {
 
     const err = await register({
       real_name: String(f.get("real_name") ?? ""),
-      loft_name: loft,
+      loft_name: loftName,
       email,
       password,
       phone_number: String(f.get("phone_number") ?? ""),
