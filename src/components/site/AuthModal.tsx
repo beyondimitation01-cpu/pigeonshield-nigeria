@@ -47,6 +47,33 @@ export function AuthModal() {
       setError("You must accept the PigeonShield Nigeria Terms of Service to register.");
       return;
     }
+
+    const publicHandle = String(f.get("real_name") ?? "").trim();
+    const loftName = loft.trim();
+    const { data: availability, error: availabilityError } = await import("@/integrations/supabase/client").then(
+      ({ supabase }) =>
+        supabase
+          .rpc("check_registration_name_availability", {
+            _public_handle: publicHandle,
+            _loft_name: loftName,
+          })
+          .maybeSingle(),
+    );
+    if (availabilityError) {
+      setError("We could not verify username and loft-name availability. Please try again.");
+      return;
+    }
+    const usernameTaken = availability?.username_taken === true;
+    const loftNameTaken = availability?.loft_name_taken === true;
+    if (usernameTaken || loftNameTaken) {
+      const messages = [
+        usernameTaken ? "Username already exists. Please choose another." : null,
+        loftNameTaken ? "Loft name already exists. Please choose another." : null,
+      ].filter(Boolean);
+      setError(messages.join(" "));
+      return;
+    }
+
     const err = await register({
       real_name: String(f.get("real_name") ?? ""),
       loft_name: loft,
