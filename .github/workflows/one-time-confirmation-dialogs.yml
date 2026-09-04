@@ -1,0 +1,179 @@
+name: Implement confirmation dialogs
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.event.head_commit.message != 'Implement confirmation dialogs safely'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply focused UI changes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          component = '''import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+type ConfirmActionDialogProps = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  children: React.ReactNode;
+  destructive?: boolean;
+  onConfirm: () => Promise<boolean> | boolean;
+};
+
+/**
+ * Reusable confirmation gate for destructive or high-impact actions.
+ * The underlying mutation is never invoked until the user explicitly confirms.
+ * Returning false keeps the dialog open after a failed mutation.
+ */
+export function ConfirmActionDialog({
+  title,
+  description,
+  confirmLabel,
+  children,
+  destructive = true,
+  onConfirm,
+}: ConfirmActionDialogProps) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleConfirm(event: React.MouseEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      const success = await onConfirm();
+      if (success) {
+        // Radix closes the dialog after the action event completes.
+        // preventDefault above keeps it open until the mutation succeeds.
+        (event.currentTarget as HTMLElement).click();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+            disabled={busy}
+            onClick={handleConfirm}
+          >
+            {busy ? "Working..." : confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+'''
+          Path("src/components/site/ConfirmActionDialog.tsx").write_text(component)
+
+          def edit(path, replacements):
+              p = Path(path)
+              s = p.read_text()
+              original = s
+              for old, new in replacements:
+                  if old not in s:
+                      raise SystemExit(f"Expected source pattern not found in {path}: {old[:120]!r}")
+                  s = s.replace(old, new, 1)
+              if s == original:
+                  raise SystemExit(f"No changes made to {path}")
+              p.write_text(s)
+
+          edit("src/components/site/AdminUsersPanel.tsx", [
+              ('import { supabase } from "@/integrations/supabase/client";\n', 'import { supabase } from "@/integrations/supabase/client";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('<Button variant={selected.is_verified_seller ? "default" : "outline"} onClick={() => void updateFlag(selected, { is_verified_seller: !selected.is_verified_seller })}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button>', '<ConfirmActionDialog title={selected.is_verified_seller ? "Confirm Remove Verification" : "Confirm Seller Verification"} description={selected.is_verified_seller ? "Are you sure you want to remove this seller verification?" : "Are you sure you want to verify this seller? This changes their marketplace verification status."} confirmLabel={selected.is_verified_seller ? "Remove Verification" : "Confirm Verification"} destructive={false} onConfirm={async () => { try { await updateFlag(selected, { is_verified_seller: !selected.is_verified_seller }); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update seller verification."); return false; } }}><Button variant={selected.is_verified_seller ? "default" : "outline"}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button></ConfirmActionDialog>'),
+              ('<Button variant={selected.is_frozen ? "destructive" : "outline"} onClick={() => void updateFlag(selected, { is_frozen: !selected.is_frozen })}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button>', '<ConfirmActionDialog title={selected.is_frozen ? "Confirm Unfreeze" : "Confirm Freeze"} description={selected.is_frozen ? "Are you sure you want to unfreeze this account?" : "Are you sure you want to freeze this account? This may restrict affected marketplace actions."} confirmLabel={selected.is_frozen ? "Confirm Unfreeze" : "Confirm Freeze"} onConfirm={async () => { try { await updateFlag(selected, { is_frozen: !selected.is_frozen }); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update user settings."); return false; } }}><Button variant={selected.is_frozen ? "destructive" : "outline"}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button></ConfirmActionDialog>'),
+              ('<Button variant={selected.escrow_paused ? "secondary" : "outline"} onClick={() => void updateFlag(selected, { escrow_paused: !selected.escrow_paused })}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button>', '<ConfirmActionDialog title={selected.escrow_paused ? "Confirm Resume Escrow" : "Confirm Pause Escrow"} description={selected.escrow_paused ? "Are you sure you want to resume escrow for this user?" : "Are you sure you want to pause escrow for this user? This can restrict affected escrow activity."} confirmLabel={selected.escrow_paused ? "Resume Escrow" : "Pause Escrow"} onConfirm={async () => { try { await updateFlag(selected, { escrow_paused: !selected.escrow_paused }); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update escrow settings."); return false; } }}><Button variant={selected.escrow_paused ? "secondary" : "outline"}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button></ConfirmActionDialog>'),
+              ('<Button variant={selected.is_banned ? "outline" : "destructive"} onClick={() => void toggleBan(selected)}>{selected.is_banned ? "Unban" : "Ban"}</Button>', '<ConfirmActionDialog title={selected.is_banned ? "Confirm Unban" : "Confirm Ban"} description={selected.is_banned ? "Are you sure you want to unban this user?" : "Are you sure you want to ban this user? This will restrict their affected marketplace access."} confirmLabel={selected.is_banned ? "Confirm Unban" : "Confirm Ban"} onConfirm={async () => { try { await toggleBan(selected); return true; } catch { return false; } }}><Button variant={selected.is_banned ? "outline" : "destructive"}>{selected.is_banned ? "Unban" : "Ban"}</Button></ConfirmActionDialog>'),
+          ])
+
+          edit("src/components/site/AdminOrdersPanel.tsx", [
+              ('import { toast } from "sonner";\n', 'import { toast } from "sonner";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('{t.status === "Pending Verification" ? <Button size="sm" onClick={() => void verify(t.id)}><CheckCircle2 className="size-4" /> Verify payment</Button> : null}', '{t.status === "Pending Verification" ? <ConfirmActionDialog title="Confirm Payment Verification" description="Are you sure you want to verify this payment? This will change the transaction payment state." confirmLabel="Confirm Verification" destructive={false} onConfirm={() => verify(t.id)}><Button size="sm"><CheckCircle2 className="size-4" /> Verify payment</Button></ConfirmActionDialog> : null}'),
+              ('{!["Delivered", "Disputed"].includes(t.status) ? <Button size="sm" variant="outline" onClick={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); } }}><Truck className="size-4" /> Delivery override</Button> : null}', '{!["Delivered", "Disputed"].includes(t.status) ? <ConfirmActionDialog title="Confirm Delivery Override" description="Are you sure you want to mark this order as delivered? This changes the transaction state and may reveal the buyer pickup PIN." confirmLabel="Confirm Delivery" onConfirm={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); return true; } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); return false; } }}><Button size="sm" variant="outline"><Truck className="size-4" /> Delivery override</Button></ConfirmActionDialog> : null}'),
+          ])
+
+          edit("src/components/site/AdminPendingOrders.tsx", [
+              ('import { onImageError } from "@/lib/listing-images";\n', 'import { onImageError } from "@/lib/listing-images";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('<Button\n                size="sm"\n                disabled={t.status !== "Pending Verification"}\n                onClick={async () => {\n                  try {\n                    await verifyPayment(t.id);\n                    toast.success("Payment verified — order is now funded and ready for dispatch.");\n                  } catch (error) {\n                    toast.error(error instanceof Error ? error.message : "Could not verify payment.");\n                  }\n                }}\n              >\n                <CheckCircle2 className="size-4" /> Mark Payment Verified\n              </Button>', '<ConfirmActionDialog title="Confirm Payment Verification" description="Are you sure you want to verify this payment? This will fund the order and make it ready for dispatch." confirmLabel="Confirm Verification" destructive={false} onConfirm={async () => { try { await verifyPayment(t.id); toast.success("Payment verified — order is now funded and ready for dispatch."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not verify payment."); return false; } }}><Button size="sm" disabled={t.status !== "Pending Verification"}><CheckCircle2 className="size-4" /> Mark Payment Verified</Button></ConfirmActionDialog>'),
+          ])
+
+          edit("src/components/site/AdminFeedbackPanel.tsx", [
+              ('import { useStore } from "@/lib/store";\n', 'import { useStore } from "@/lib/store";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('<Button\n                        size="sm"\n                        variant="ghost"\n                        aria-label="Delete feedback"\n                        onClick={async () => {\n                          await deleteFeedback(r.id);\n                          toast.success("Feedback deleted.");\n                        }}\n                      >\n                        <Trash2 className="size-4 text-destructive" />\n                      </Button>', '<ConfirmActionDialog title="Confirm Delete" description="Are you sure you want to permanently delete this feedback? This action cannot be undone." confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteFeedback(r.id); toast.success("Feedback deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete feedback."); return false; } }}><Button size="sm" variant="ghost" aria-label="Delete feedback"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog>'),
+          ])
+
+          edit("src/components/site/AdminListingsTable.tsx", [
+              ('import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";\n', 'import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('<Button\n                        size="sm"\n                        variant="destructive"\n                        onClick={async () => {\n                          try {\n                            await deleteListing(l.id);\n                            toast.success("Listing deleted.");\n                          } catch (error) {\n                            toast.error(error instanceof Error ? error.message : "Could not delete listing.");\n                          }\n                        }}\n                      >\n                        <Trash2 className="size-3" /> Delete\n                      </Button>', '<ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="sm" variant="destructive"><Trash2 className="size-3" /> Delete</Button></ConfirmActionDialog>'),
+              ('<Button\n                variant={editing.is_active ? "secondary" : "outline"}\n                onClick={async () => {\n                  try {\n                    await setListingFlags(editing.id, { is_active: !editing.is_active });\n                    setEditing(null);\n                    toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated.");\n                  } catch (error) {\n                    toast.error(error instanceof Error ? error.message : "Could not change listing status.");\n                  }\n                }}\n              >\n                {editing.is_active ? "Freeze listing" : "Re-activate listing"}\n              </Button>', '<ConfirmActionDialog title={editing.is_active ? "Confirm Freeze Listing" : "Confirm Re-activation"} description={editing.is_active ? "Are you sure you want to freeze this listing? It will no longer be active in the marketplace." : "Are you sure you want to re-activate this listing?"} confirmLabel={editing.is_active ? "Confirm Freeze" : "Confirm Re-activate"} onConfirm={async () => { try { await setListingFlags(editing.id, { is_active: !editing.is_active }); setEditing(null); toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not change listing status."); return false; } }}><Button variant={editing.is_active ? "secondary" : "outline"}>{editing.is_active ? "Freeze listing" : "Re-activate listing"}</Button></ConfirmActionDialog>'),
+          ])
+
+          edit("src/routes/breeder-dashboard.tsx", [
+              ('import { ProtectedRoute } from "@/components/ProtectedRoute";\n', 'import { ProtectedRoute } from "@/components/ProtectedRoute";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('<Button size="icon" variant="ghost" aria-label="Delete listing" onClick={() => deleteListing(l.id)}><Trash2 className="size-4 text-destructive" /></Button>', '<ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog>'),
+          ])
+
+          edit("src/components/site/AdminPayoutQueue.tsx", [
+              ('import { toast } from "sonner";\n', 'import { toast } from "sonner";\nimport { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";\n'),
+              ('  async function markPaid(txId: string, amount: number) {\n    const ok = window.confirm(`Confirm that you manually paid this seller ${ngn(amount)}?`);\n    if (!ok) return;\n    setBusyId(txId);', '  async function markPaid(txId: string, amount: number) {\n    setBusyId(txId);'),
+              ('<Button disabled={busyId === t.id} onClick={() => void markPaid(t.id, payoutAmount)} className="min-h-10">\n                    <Banknote className="size-4" /> {busyId === t.id ? "Saving…" : "MARK SELLER PAID"}\n                  </Button>', '<ConfirmActionDialog title="Confirm Seller Payment" description={`Are you sure you want to mark this seller payout of ${ngn(payoutAmount)} as paid? First complete the manual OPay transfer. This action records the payout as completed.`} confirmLabel="Confirm Payment" onConfirm={async () => { try { await markPaid(t.id, payoutAmount); return true; } catch { return false; } }}><Button disabled={busyId === t.id} className="min-h-10">\n                    <Banknote className="size-4" /> {busyId === t.id ? "Saving…" : "MARK SELLER PAID"}\n                  </Button></ConfirmActionDialog>'),
+          ])
+
+          # The confirmation component uses React types; ensure the file has the React namespace available under the project's JSX transform.
+          # Add the explicit React type import only where needed.
+          p = Path("src/components/site/ConfirmActionDialog.tsx")
+          s = p.read_text().replace('import { useState } from "react";\n', 'import { useState } from "react";\nimport type React from "react";\n')
+          p.write_text(s)
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Commit focused changes and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/one-time-confirmation-dialogs.yml
+          git add src/components/site/ConfirmActionDialog.tsx src/components/site/AdminUsersPanel.tsx src/components/site/AdminOrdersPanel.tsx src/components/site/AdminPendingOrders.tsx src/components/site/AdminFeedbackPanel.tsx src/components/site/AdminListingsTable.tsx src/routes/breeder-dashboard.tsx src/components/site/AdminPayoutQueue.tsx .github/workflows/one-time-confirmation-dialogs.yml
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "Implement confirmation dialogs safely"
+          git push
