@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -140,20 +141,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isAdminRoute = pathname === "/pigeon-boss-admin";
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CanonicalHostGuard>
           <StoreProvider>
-            <Navbar />
-            <OfflineBanner />
-            <BroadcastBanner />
-            <div className="min-h-screen pt-16">
+            {!isAdminRoute ? <Navbar /> : null}
+            {!isAdminRoute ? <OfflineBanner /> : null}
+            {!isAdminRoute ? <BroadcastBanner /> : null}
+            <div className={isAdminRoute ? "min-h-screen" : "min-h-screen pt-16"}>
               {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
               <Outlet />
             </div>
-            <Footer />
+            {!isAdminRoute ? <Footer /> : null}
             <AuthModal />
             <AdminGesture />
             <InstallPrompt />
