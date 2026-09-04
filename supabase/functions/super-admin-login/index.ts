@@ -7,6 +7,9 @@ const corsHeaders = {
 };
 
 const SUPER_ADMIN_EMAIL = "superadmin@pigeonshield.app";
+const ADMIN_SESSION_MS = 10 * 60 * 1000;
+
+type AdminClient = ReturnType<typeof createClient>;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -34,7 +37,7 @@ Deno.serve(async (req: Request) => {
 
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
-    });
+    }) as AdminClient;
 
     const { data: verified, error: verifyError } = await admin.rpc(
       "verify_admin_passphrase",
@@ -72,13 +75,26 @@ Deno.serve(async (req: Request) => {
       userId = created.data.user.id;
     }
 
-    // The admin identity is Auth + user_roles only. Never create a marketplace profile.
-
     const role = await admin.from("user_roles").upsert(
       { user_id: userId, role: "admin" },
       { onConflict: "user_id,role" },
     );
     if (role.error) {
+      return new Response(JSON.stringify({ ok: false }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const session = await admin.from("admin_sessions").upsert(
+      {
+        user_id: userId,
+        last_activity_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + ADMIN_SESSION_MS).toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (session.error) {
       return new Response(JSON.stringify({ ok: false }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
