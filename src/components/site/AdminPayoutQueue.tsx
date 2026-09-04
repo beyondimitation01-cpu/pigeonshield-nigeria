@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Banknote, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,27 +7,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store";
-import { ngn } from "@/lib/pigeon-data";
+import { ngn, type EscrowTransaction } from "@/lib/pigeon-data";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const PAYOUT_SELECT = "id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, status, payment_reference, created_at, payout_paid_at, payout_paid_by, payout_reference, payout_notes";
 
 export function AdminPayoutQueue() {
   const { db, markSellerPaid } = useStore();
   const [reference, setReference] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [ready, setReady] = useState<EscrowTransaction[]>([]);
+  const [paid, setPaid] = useState<EscrowTransaction[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const paid = useMemo(
-    () => db.transactions.filter((t) => t.status === "Seller Paid" && t.payout_paid_at).slice(0, 20),
-    [db.transactions],
-  );
+  const loadPayouts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [{ data: readyRows, error: readyError }, { data: paidRows, error: paidError }] = await Promise.all([
+        supabase.from("transactions").select(PAYOUT_SELECT).in("status", ["Ready for Admin Payout", "Delivered"]).is("payout_paid_at", null).order("created_at", { ascending: true }),
+        supabase.from("transactions").select(PAYOUT_SELECT).eq("status", "Seller Paid").not("payout_paid_at", "is", null).order("payout_paid_at", { ascending: false }).limit(20),
+      ]);
+      if (readyError) throw readyError;
+      if (paidError) throw paidError;
+      setReady((readyRows ?? []) as unknown as EscrowTransaction[]);
+      setPaid((paidRows ?? []) as unknown as EscrowTransaction[]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load payout queue.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const ready = useMemo(
-    () =>
-      db.transactions.filter(
-        (t) => (t.status === "Ready for Admin Payout" || t.status === "Delivered") && !t.payout_paid_at,
-      ),
-    [db.transactions],
-  );
+  useEffect(() => { void loadPayouts(); }, [loadPayouts]);
 
   async function markPaid(txId: string, amount: number) {
     const ok = window.confirm(`Confirm that you manually paid this seller ${ngn(amount)}?`);
@@ -38,6 +51,7 @@ export function AdminPayoutQueue() {
       toast.success("Seller marked paid. The transaction has left the payout queue.");
       setReference((prev) => ({ ...prev, [txId]: "" }));
       setNotes((prev) => ({ ...prev, [txId]: "" }));
+      await loadPayouts();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not mark seller paid.");
     } finally {
@@ -62,7 +76,8 @@ export function AdminPayoutQueue() {
       </div>
 
       <div className="divide-y divide-border">
-        {ready.length === 0 ? (
+        {loading && ready.length === 0 ? <p className="p-6 text-sm text-muted-foreground">Loading payout queue…</p> : null}
+        {!loading && ready.length === 0 ? (
           <div className="p-6 text-center">
             <CheckCircle2 className="mx-auto size-8 text-primary" />
             <p className="mt-2 font-medium">No payouts waiting</p>
@@ -112,30 +127,13 @@ export function AdminPayoutQueue() {
                 <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
                   <div className="space-y-1.5">
                     <Label htmlFor={`payout-ref-${t.id}`}>OPay/payment reference (optional)</Label>
-                    <Input
-                      id={`payout-ref-${t.id}`}
-                      value={reference[t.id] ?? ""}
-                      maxLength={255}
-                      placeholder="Enter the manual transfer reference"
-                      onChange={(e) => setReference((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                    />
+                    <Input id={`payout-ref-${t.id}`} value={reference[t.id] ?? ""} maxLength={255} placeholder="Enter the manual transfer reference" onChange={(e) => setReference((prev) => ({ ...prev, [t.id]: e.target.value }))} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor={`payout-note-${t.id}`}>Admin notes (optional)</Label>
-                    <Textarea
-                      id={`payout-note-${t.id}`}
-                      value={notes[t.id] ?? ""}
-                      maxLength={2000}
-                      rows={1}
-                      placeholder="Optional payout note"
-                      onChange={(e) => setNotes((prev) => ({ ...prev, [t.id]: e.target.value }))}
-                    />
+                    <Textarea id={`payout-note-${t.id}`} value={notes[t.id] ?? ""} maxLength={2000} rows={1} placeholder="Optional payout note" onChange={(e) => setNotes((prev) => ({ ...prev, [t.id]: e.target.value }))} />
                   </div>
-                  <Button
-                    disabled={busyId === t.id}
-                    onClick={() => void markPaid(t.id, payoutAmount)}
-                    className="min-h-10"
-                  >
+                  <Button disabled={busyId === t.id} onClick={() => void markPaid(t.id, payoutAmount)} className="min-h-10">
                     <Banknote className="size-4" /> {busyId === t.id ? "Saving…" : "MARK SELLER PAID"}
                   </Button>
                 </div>
@@ -169,12 +167,8 @@ export function AdminPayoutQueue() {
                   <div>
                     <p className="font-medium">{t.listing_name}</p>
                     <p className="break-all font-mono text-[11px] text-muted-foreground">Order {t.id}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Seller: {seller?.real_name || seller?.public_handle || t.breeder_id} · Paid by: {admin?.real_name || admin?.public_handle || t.payout_paid_by}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t.payout_paid_at ? new Date(t.payout_paid_at).toLocaleString("en-NG") : "—"} · Ref: {t.payout_reference || "—"}
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Seller: {seller?.real_name || seller?.public_handle || t.breeder_id} · Paid by: {admin?.real_name || admin?.public_handle || t.payout_paid_by}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t.payout_paid_at ? new Date(t.payout_paid_at).toLocaleString("en-NG") : "—"} · Ref: {t.payout_reference || "—"}</p>
                   </div>
                   <p className="text-lg font-bold text-primary">{ngn(Math.max(0, t.amount_naira - t.calculated_commission))}</p>
                 </div>
@@ -188,10 +182,5 @@ export function AdminPayoutQueue() {
 }
 
 function Info({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
-  return (
-    <div className="rounded-lg border border-border/70 bg-background/70 p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-1 break-words ${emphasis ? "text-lg font-bold text-primary" : "text-sm font-medium"}`}>{value}</p>
-    </div>
-  );
+  return <div className="rounded-lg border border-border/70 bg-background/70 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className={`mt-1 break-words ${emphasis ? "text-lg font-bold text-primary" : "text-sm font-medium"}`}>{value}</p></div>;
 }
