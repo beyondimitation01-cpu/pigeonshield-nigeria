@@ -1,36 +1,63 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-/**
- * God-Mode is a real, server-enforced role.
- *
- * The master password is only the *enrolment* factor: it is verified by the
- * Supabase RPC, and on success the signed-in user is granted the `admin` role
- * row in the database. Every privileged read/write is then
- * authorised by row-level security using that role — never by browser state.
- */
-
-
-/** Server-side truth for "is this account an admin". Cannot be faked from devtools. */
+/** Server-side truth for whether the current auth identity has an active admin session. */
 export const getAdminSession = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Read as the caller: RLS lets a user see only their own role rows.
     const { data } = await context.supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId)
       .eq("role", "admin")
       .maybeSingle();
-    return { unlocked: !!data };
+    if (!data) return { unlocked: false };
 
+    const client = context.supabase as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: () => Promise<{ data: { expires_at: string; last_activity_at: string } | null }>;
+          };
+        };
+      };
+    };
+    const { data: session } = await client
+      .from("admin_sessions")
+      .select("expires_at, last_activity_at")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    const now = Date.now();
+    const active = !!session
+      && new Date(session.expires_at).getTime() > now
+      && new Date(session.last_activity_at).getTime() > now - 10 * 60 * 1000;
+    return { unlocked: active };
   });
 
-/** Revokes the admin role for the current account. */
+/** Refreshes the server-enforced 10-minute inactivity window. */
+export const touchAdminSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await (context.supabase.rpc as unknown as
+      (name: string) => Promise<{ data: boolean | null; error: unknown }>)
+      ("touch_admin_session");
+    return !error && data === true;
+  });
+
+/** Revokes the temporary admin session and admin role for the current auth identity. */
 export const lockAdminConsole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const adminClient = supabaseAdmin as unknown as {
+      from: (table: string) => {
+        delete: () => {
+          eq: (column: string, value: string) => Promise<unknown>;
+        };
+      };
+    };
+    await adminClient.from("admin_sessions").delete().eq("user_id", context.userId);
     await supabaseAdmin
       .from("user_roles")
       .delete()
