@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Timer, FileImage, Truck } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,8 @@ import { useStore } from "@/lib/store";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AUTO_RELEASE_HOURS, ngn, type EscrowTransaction } from "@/lib/pigeon-data";
+import { AUTO_RELEASE_HOURS, ngn, type EscrowTransaction, type TxStatus, type DisputeStatus } from "@/lib/pigeon-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/my-orders")({
   head: () => ({
@@ -28,11 +29,45 @@ export const Route = createFileRoute("/my-orders")({
   component: GuardedMyOrders,
 });
 
+const TERMINAL_STATUSES: TxStatus[] = ["Seller Paid", "Completed", "Refunded to Buyer"];
+
+const TRANSACTION_SELECT =
+  "id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, receipt_uploaded_at, payout_paid_at, payout_paid_by, payout_reference, payout_notes, created_at";
+
 function hoursLeft(tx: EscrowTransaction) {
   return Math.max(0, Math.ceil((tx.auto_release_at - Date.now()) / 3600_000));
 }
 
-function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breeder" }) {
+function mapTransaction(row: Record<string, unknown>, pin: string | null = null): EscrowTransaction {
+  const toMs = (value: unknown) => (value ? new Date(String(value)).getTime() : 0);
+  return {
+    id: String(row["id"]),
+    listing_id: row["listing_id"] ? String(row["listing_id"]) : "",
+    listing_name: String(row["listing_name"] ?? ""),
+    buyer_id: String(row["buyer_id"]),
+    breeder_id: row["breeder_id"] ? String(row["breeder_id"]) : "",
+    amount_naira: Number(row["amount_naira"] ?? 0),
+    calculated_commission: Number(row["calculated_commission"] ?? 0),
+    verification_pin: pin,
+    delivery_marked_at: toMs(row["delivery_marked_at"]),
+    auto_release_at: toMs(row["auto_release_at"]),
+    driver_phone: (row["driver_phone"] as string | null) ?? null,
+    waybill_image_url: (row["waybill_image_url"] as string | null) ?? null,
+    proof_file_name: (row["proof_file_name"] as string | null) ?? null,
+    dispute_status: String(row["dispute_status"] ?? "None") as DisputeStatus,
+    status: String(row["status"]) as TxStatus,
+    payment_reference: (row["payment_reference"] as string | null) ?? null,
+    receipt_url: (row["receipt_url"] as string | null) ?? null,
+    receipt_uploaded_at: row["receipt_uploaded_at"] ? toMs(row["receipt_uploaded_at"]) : null,
+    payout_paid_at: row["payout_paid_at"] ? toMs(row["payout_paid_at"]) : null,
+    payout_paid_by: (row["payout_paid_by"] as string | null) ?? null,
+    payout_reference: (row["payout_reference"] as string | null) ?? null,
+    payout_notes: (row["payout_notes"] as string | null) ?? null,
+    created_at: toMs(row["created_at"]),
+  };
+}
+
+function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buyer" | "breeder"; onChanged: () => void }) {
   const { dispatchOrder, confirmReceiptAndRevealPin, reportDOA, submitBreederProof } = useStore();
   const [revealedPin, setRevealedPin] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
@@ -71,6 +106,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
               try {
                 await dispatchOrder(tx.id);
                 toast.success("Order dispatched. Give the PIN to the driver.");
+                onChanged();
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : "Could not dispatch order.");
               } finally {
@@ -112,6 +148,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
                   const pin = await confirmReceiptAndRevealPin(tx.id);
                   setRevealedPin(pin);
                   toast.success("Receipt confirmed. Pickup PIN revealed.");
+                  onChanged();
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "Could not confirm receipt.");
                 }
@@ -137,6 +174,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
             onClick={() => {
               reportDOA(tx.id, "doa_proof_video.mp4");
               toast.error("DOA reported. Auto-release clock halted for admin review.");
+              onChanged();
             }}
           >
             <AlertTriangle className="size-4" /> Report Dead on Arrival
@@ -157,6 +195,7 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
             onClick={() => {
               submitBreederProof(tx.id, driver, waybill);
               toast.success("Proof submitted for admin review.");
+              onChanged();
             }}
           >
             Escalate to admin
@@ -169,7 +208,85 @@ function OrderCard({ tx, side }: { tx: EscrowTransaction; side: "buyer" | "breed
 
 function MyOrders() {
   const authed = useRequireAuth("My Orders area");
-  const { db, user, authReady } = useStore();
+  const { user, authReady } = useStore();
+  const [purchases, setPurchases] = useState<EscrowTransaction[]>([]);
+  const [sales, setSales] = useState<EscrowTransaction[]>([]);
+  const [purchaseHistory, setPurchaseHistory] = useState<EscrowTransaction[]>([]);
+  const [salesHistory, setSalesHistory] = useState<EscrowTransaction[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadTransactions = useCallback(async () => {
+    if (!user) {
+      setPurchases([]);
+      setSales([]);
+      setPurchaseHistory([]);
+      setSalesHistory([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Active and history are separate database-filtered queries. The active
+      // dashboard never downloads terminal rows just to hide them in React.
+      const activeQuery = supabase
+        .from("transactions")
+        .select(TRANSACTION_SELECT)
+        .not("status", "in", `(${TERMINAL_STATUSES.map((status) => `"${status}"`).join(",")})`)
+        .or(`buyer_id.eq.${user.id},breeder_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+      const historyQuery = supabase
+        .from("transactions")
+        .select(TRANSACTION_SELECT)
+        .in("status", TERMINAL_STATUSES)
+        .or(`buyer_id.eq.${user.id},breeder_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+
+      const [{ data: activeRows, error: activeError }, { data: historyRows, error: historyError }] = await Promise.all([
+        activeQuery,
+        historyQuery,
+      ]);
+      if (activeError) throw activeError;
+      if (historyError) throw historyError;
+
+      const { data: visiblePins } = await supabase.rpc("get_visible_handover_pins");
+      const pinMap = new Map<string, string>();
+      for (const row of (visiblePins ?? []) as Record<string, unknown>[]) {
+        if (row["transaction_id"] && typeof row["verification_pin"] === "string") {
+          pinMap.set(String(row["transaction_id"]), String(row["verification_pin"]));
+        }
+      }
+
+      const active = ((activeRows ?? []) as Record<string, unknown>[]).map((row) =>
+        mapTransaction(row, pinMap.get(String(row["id"])) ?? null),
+      );
+      const history = ((historyRows ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row));
+
+      setPurchases(active.filter((tx) => tx.buyer_id === user.id));
+      setSales(active.filter((tx) => tx.breeder_id === user.id));
+      setPurchaseHistory(history.filter((tx) => tx.buyer_id === user.id));
+      setSalesHistory(history.filter((tx) => tx.breeder_id === user.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load your transactions.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authReady || !authed) return;
+    void loadTransactions();
+
+    const channel = supabase
+      .channel(`my-orders-${user?.id ?? "guest"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        void loadTransactions();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [authReady, authed, loadTransactions, user?.id]);
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) {
@@ -177,12 +294,6 @@ function MyOrders() {
       <AuthRequired title="My Orders" description="Log in to view your escrow orders." />
     );
   }
-
-  const terminalStatuses = new Set(["Seller Paid", "Completed", "Refunded to Buyer"]);
-  const purchases = db.transactions.filter((t) => t.buyer_id === user.id && !terminalStatuses.has(t.status));
-  const sales = db.transactions.filter((t) => t.breeder_id === user.id && !terminalStatuses.has(t.status));
-  const purchaseHistory = db.transactions.filter((t) => t.buyer_id === user.id && terminalStatuses.has(t.status));
-  const salesHistory = db.transactions.filter((t) => t.breeder_id === user.id && terminalStatuses.has(t.status));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -192,10 +303,12 @@ function MyOrders() {
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Purchases ({purchases.length})</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {purchases.length === 0 ? (
+          {loading && purchases.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Loading active purchases…</p>
+          ) : purchases.length === 0 ? (
             <p className="text-sm text-muted-foreground">No active purchases.</p>
           ) : (
-            purchases.map((t) => <OrderCard key={t.id} tx={t} side="buyer" />)
+            purchases.map((t) => <OrderCard key={t.id} tx={t} side="buyer" onChanged={loadTransactions} />)
           )}
         </div>
       </section>
@@ -203,10 +316,12 @@ function MyOrders() {
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Sales ({sales.length})</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {sales.length === 0 ? (
+          {loading && sales.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Loading active sales…</p>
+          ) : sales.length === 0 ? (
             <p className="text-sm text-muted-foreground">No active sales.</p>
           ) : (
-            sales.map((t) => <OrderCard key={t.id} tx={t} side="breeder" />)
+            sales.map((t) => <OrderCard key={t.id} tx={t} side="breeder" onChanged={loadTransactions} />)
           )}
         </div>
       </section>
