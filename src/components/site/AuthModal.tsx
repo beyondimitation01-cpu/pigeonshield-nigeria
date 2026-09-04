@@ -51,12 +51,13 @@ export function AuthModal() {
 
     const publicHandle = String(f.get("real_name") ?? "").trim();
     const loftName = loft.trim();
-    const { data: availability, error: availabilityError } = await supabase
-      .rpc("check_registration_name_availability", {
+    const { data: availability, error: availabilityError } = await (supabase.rpc as any)(
+      "check_registration_name_availability",
+      {
         _public_handle: publicHandle,
         _loft_name: loftName,
-      })
-      .maybeSingle();
+      },
+    ).then((result: { data: { username_taken: boolean; loft_name_taken: boolean } | null; error: { message: string } | null }) => result);
     if (availabilityError) {
       setError("We could not verify username and loft-name availability. Please try again.");
       return;
