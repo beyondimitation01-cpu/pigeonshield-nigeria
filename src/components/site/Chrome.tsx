@@ -25,6 +25,64 @@ const NAV_LINKS = [
   { to: "/feedback", label: "Feedback" },
 ] as const;
 
+const notificationCopy: Record<string, { title: string; body: string }> = {
+  payment_submitted: {
+    title: "Payment submitted",
+    body: "Your payment receipt was submitted successfully and is being reviewed.",
+  },
+  new_order: {
+    title: "New order",
+    body: "A buyer has purchased your product. Please review the order and continue with dispatch.",
+  },
+  payment_confirmed: {
+    title: "Payment confirmed",
+    body: "Payment has been confirmed. Open the order to continue with the next step.",
+  },
+  receipt_confirmation_required: {
+    title: "Order dispatched",
+    body: "Your order has been dispatched. Open the order when you are ready to confirm receipt.",
+  },
+  handover_in_progress: {
+    title: "Order dispatched",
+    body: "Your order is now in transit and the existing handover process can continue.",
+  },
+  receipt_confirmed: {
+    title: "Receipt confirmed",
+    body: "Your receipt confirmation was recorded. The transaction is now awaiting the existing admin payout step.",
+  },
+  payout_pending: {
+    title: "Order ready for payout",
+    body: "The buyer has completed receipt confirmation. Your transaction is awaiting the existing admin payout step.",
+  },
+  seller_paid: {
+    title: "Payment sent",
+    body: "Your payout for the completed order has been processed. Open the order to view its details.",
+  },
+  transaction_completed: {
+    title: "Transaction completed",
+    body: "Your transaction has been completed. Open the order to view its history.",
+  },
+  refund: {
+    title: "Refund update",
+    body: "A refund has affected this transaction. Open the order to review its status.",
+  },
+  payment_attention: {
+    title: "Payment requires attention",
+    body: "A payment or transaction issue affects this order. Open the order to review its status.",
+  },
+  seller_verification: {
+    title: "Seller verification updated",
+    body: "Your seller verification status has changed. Open your account to review the current status.",
+  },
+};
+
+function getNotificationCopy(kind: string) {
+  return notificationCopy[kind] ?? {
+    title: kind === "message" ? "New message" : "Marketplace update",
+    body: kind === "message" ? "You received a new marketplace message." : "Your order or transaction has an important update.",
+  };
+}
+
 export function Navbar() {
   const { isLoading, isAuthenticated } = useAuth();
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
@@ -70,34 +128,44 @@ export function Navbar() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {db.notifications.length === 0 ? (
-                  <DropdownMenuItem disabled>No new messages</DropdownMenuItem>
+                  <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
                 ) : (
-                  db.notifications.slice(0, 8).map((notification) => (
-                    <DropdownMenuItem
-                      key={notification.id}
-                      className={notification.read_at ? "" : "font-semibold"}
-                      onSelect={() => {
-                        void markNotificationRead(notification.id);
-                        if (notification.conversation_id) {
-                          void navigate({
-                            to: "/messages",
-                            search: { listing: undefined, conversation: notification.conversation_id },
-                          });
-                        } else if (notification.listing_id) {
-                          void navigate({
-                            to: "/messages",
-                            search: { listing: notification.listing_id, conversation: undefined },
-                          });
-                        }
-                      }}
-                    >
-                      New message{notification.read_at ? "" : " (unread)"}
-                    </DropdownMenuItem>
-                  ))
+                  db.notifications.slice(0, 8).map((notification) => {
+                    const copy = getNotificationCopy(notification.kind);
+                    const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
+                    return (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="items-start gap-2 py-3"
+                        onSelect={() => {
+                          void markNotificationRead(notification.id);
+                          if (isMessage && notification.conversation_id) {
+                            void navigate({
+                              to: "/messages",
+                              search: { listing: undefined, conversation: notification.conversation_id },
+                            });
+                          } else if (isMessage && notification.listing_id) {
+                            void navigate({
+                              to: "/messages",
+                              search: { listing: notification.listing_id, conversation: undefined },
+                            });
+                          } else {
+                            void navigate({ to: "/my-orders" });
+                          }
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <p className={notification.read_at ? "font-medium" : "font-semibold"}>{copy.title}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{copy.body}</p>
+                          {!notification.read_at && <span className="mt-1 block text-[11px] text-primary">Unread</span>}
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                  })
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
