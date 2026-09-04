@@ -21,15 +21,9 @@ import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUpload
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 import { formatNigerianPhone, isValidNigerianPhone } from "@/lib/phone";
-import {
-  BREEDS_BY_CATEGORY,
-  CATEGORY_OPTIONS,
-  NIGERIAN_STATES,
-  daysRemaining,
-  ngn,
-  type Category,
-} from "@/lib/pigeon-data";
+import { BREEDS_BY_CATEGORY, CATEGORY_OPTIONS, NIGERIAN_STATES, daysRemaining, ngn, type Category } from "@/lib/pigeon-data";
 
 export const Route = createFileRoute("/breeder-dashboard")({
   head: () => ({
@@ -116,7 +110,7 @@ function BreederDashboard() {
             <div className="space-y-6">
               <Card className="p-5">
                 <h2 className="font-semibold">My listings ({mine.length})</h2>
-                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.breed_type} · {ngn(l.price_ngn)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><Button size="icon" variant="ghost" aria-label="Delete listing" onClick={() => deleteListing(l.id)}><Trash2 className="size-4 text-destructive" /></Button></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
+                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.breed_type} · {ngn(l.price_ngn)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
               </Card>
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-semibold"><Package className="size-4 text-primary" /> Escrow sales ({mySales.length})</h2><Button asChild size="sm" variant="ghost"><a href="/my-orders">Transaction history</a></Button></div>
@@ -149,17 +143,9 @@ function AccountPanel() {
   }
   async function deleteAccount() {
     setDeleting(true);
-    try {
-      const { error } = await supabase.rpc("delete_my_account");
-      if (error) throw new Error(error.message);
-      await supabase.auth.signOut();
-      toast.success("Your account has been permanently deleted.");
-      window.location.assign("/");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not delete your account. Your account was not changed.");
-    } finally {
-      setDeleting(false);
-    }
+    try { const { error } = await supabase.rpc("delete_my_account"); if (error) throw new Error(error.message); await supabase.auth.signOut(); toast.success("Your account has been permanently deleted."); window.location.assign("/"); }
+    catch (err) { toast.error(err instanceof Error ? err.message : "Could not delete your account. Your account was not changed."); }
+    finally { setDeleting(false); }
   }
   return <div className="space-y-6"><Card className="max-w-xl p-5"><h2 className="font-semibold">Your profile</h2><form onSubmit={saveProfile} className="mt-5 space-y-5"><AvatarUploader userId={user.id} value={user.avatar_url} onChange={async (url) => { const err = await updateProfile({ avatar_url: url }); if (err) toast.error(err); }} label="Change profile picture" /><div className="space-y-1.5"><Label htmlFor="full-name">Full name / username (public)</Label><Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required /></div><div className="grid gap-5 sm:grid-cols-2"><div className="space-y-1.5"><Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label><Input id="payout-phone" value={phone} inputMode="tel" autoComplete="tel" placeholder="0803 123 4567" onChange={(e) => setPhone(e.target.value)} /></div><div className="space-y-1.5"><Label htmlFor="home-state">Location / state</Label><Select value={homeState} onValueChange={setHomeState}><SelectTrigger id="home-state"><SelectValue placeholder="Select state" /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((stateName) => <SelectItem key={stateName} value={stateName}>{stateName}</SelectItem>)}</SelectContent></Select></div></div><div className="space-y-1.5"><Label htmlFor="loft-name">Loft / farm name (optional, public)</Label><Input id="loft-name" value={loft} onChange={(e) => setLoft(e.target.value)} /></div><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</Button><p className="text-xs text-muted-foreground">Buyers see your name, loft, location and phone number on your listings.</p></form></Card><Card className="max-w-xl border-destructive/40 p-5"><div className="space-y-2"><h2 className="font-semibold text-destructive">Danger Zone</h2><p className="text-sm text-muted-foreground">Permanently delete your account. This cannot be undone.</p></div><AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" className="mt-4" disabled={deleting}><Trash2 className="size-4" /> Delete Account</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Permanently delete your account?</AlertDialogTitle><AlertDialogDescription>This permanently deletes your authenticated account and personal profile data. Completed transaction history is retained as required by the marketplace. If you have active or unresolved marketplace activity, deletion will be blocked until it is resolved. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleting} onClick={(event) => { event.preventDefault(); void deleteAccount(); }}>{deleting ? "Deleting..." : "Delete My Account"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></Card></div>;
 }
