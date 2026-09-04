@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { AdminControlCenter } from "@/components/site/AdminControlCenter";
 import { touchAdminSession } from "@/lib/admin-gate.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const ADMIN_INACTIVITY_MS = 10 * 60 * 1000;
 const ADMIN_TOUCH_THROTTLE_MS = 30 * 1000;
@@ -28,22 +29,32 @@ function AdminPage() {
   const { adminUnlocked, masterUnlock, lockAdmin } = useStore();
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showConsole, setShowConsole] = useState(false);
   const lockAdminRef = useRef(lockAdmin);
   const adminUnlockedRef = useRef(adminUnlocked);
+  const showConsoleRef = useRef(showConsole);
   const lastActivityRef = useRef(Date.now());
   const lastTouchRef = useRef(0);
   const inactivityTimerRef = useRef<number | null>(null);
   lockAdminRef.current = lockAdmin;
   adminUnlockedRef.current = adminUnlocked;
+  showConsoleRef.current = showConsole;
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") setShowConsole(false);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     return () => {
-      if (adminUnlockedRef.current) lockAdminRef.current();
+      if (adminUnlockedRef.current || showConsoleRef.current) lockAdminRef.current();
     };
   }, []);
 
   useEffect(() => {
-    if (!adminUnlocked) return;
+    if (!adminUnlocked && !showConsole) return;
 
     lastActivityRef.current = Date.now();
     lastTouchRef.current = Date.now();
@@ -77,7 +88,7 @@ function AdminPage() {
       events.forEach((event) => window.removeEventListener(event, recordActivity));
       if (inactivityTimerRef.current !== null) window.clearTimeout(inactivityTimerRef.current);
     };
-  }, [adminUnlocked]);
+  }, [adminUnlocked, showConsole]);
 
   async function attemptUnlock() {
     if (!pwd.trim()) {
@@ -88,11 +99,16 @@ function AdminPage() {
     const ok = await masterUnlock(pwd.trim());
     setBusy(false);
     setPwd("");
-    if (ok) toast.success("Administrator authenticated.");
-    else toast.error("Incorrect master password.");
+    if (ok) {
+      setShowConsole(true);
+      toast.success("Administrator authenticated.");
+    } else {
+      setShowConsole(false);
+      toast.error("Incorrect master password.");
+    }
   }
 
-  if (!adminUnlocked) {
+  if (!adminUnlocked && !showConsole) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4">
         <Card className="space-y-4 p-6">
