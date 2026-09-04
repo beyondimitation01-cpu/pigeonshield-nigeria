@@ -16,7 +16,7 @@ type OrderRow = {
 };
 const PAGE_SIZE = 20;
 const TERMINAL_STATUSES = ["Seller Paid", "Completed", "Refunded to Buyer"] as const;
-const ACTIVE_STATUSES = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Disputed"];
+const ACTIVE_STATUSES = ["All", "Pending Verification", "Payment Verified / Processing", "Escrow Funded", "In Transit", "Delivered", "Ready for Admin Payout", "Disputed"];
 
 export function AdminOrdersPanel() {
   const { verifyPayment, forceMarkDelivered } = useStore();
