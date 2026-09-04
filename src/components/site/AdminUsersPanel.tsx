@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -64,10 +65,10 @@ export function AdminUsersPanel() {
       await banUser(user.id);
       setSelected(null);
       await load();
+      toast.success(user.is_banned ? "User unbanned." : "User banned.");
     } catch (error) {
-      // Keep the selected user visible when the backend rejects the mutation.
-      // The UI must not imply that the moderation action succeeded.
       setSelected(user);
+      toast.error(error instanceof Error ? error.message : "Could not update user status.");
     }
   }
 
@@ -76,8 +77,12 @@ export function AdminUsersPanel() {
       await setUserFlags(user.id, patch);
       setSelected({ ...user, ...patch });
       await load();
-    } catch {
+      if (patch.is_verified_seller !== undefined) toast.success(patch.is_verified_seller ? "Seller verified." : "Seller verification removed.");
+      if (patch.is_frozen !== undefined) toast.success(patch.is_frozen ? "User frozen." : "User unfrozen.");
+      if (patch.escrow_paused !== undefined) toast.success(patch.escrow_paused ? "Escrow paused." : "Escrow resumed.");
+    } catch (error) {
       setSelected(user);
+      toast.error(error instanceof Error ? error.message : "Could not update user settings.");
     }
   }
 
