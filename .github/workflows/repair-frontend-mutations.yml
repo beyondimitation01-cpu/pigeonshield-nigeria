@@ -1,0 +1,47 @@
+name: One-time frontend mutation error repair
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event.head_commit.message == 'Run one-time frontend mutation error repair'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch ignored Supabase mutation errors
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lib/store.tsx')
+          text = path.read_text()
+
+          replacements = {
+              'await supabase.from("listings").delete().eq("id", id);': 'const { error } = await supabase.from("listings").delete().eq("id", id).select("id").single();\n      if (error) throw new Error(error.message);',
+              'await supabase.from("listings").update(patch).eq("id", id);': 'const { error } = await supabase.from("listings").update(patch).eq("id", id).select("id").single();\n      if (error) throw new Error(error.message);',
+              'await supabase.from("profiles").update(patch).eq("id", userId);': 'const { error } = await supabase.from("profiles").update(patch).eq("id", userId).select("id").single();\n      if (error) throw new Error(error.message);',
+              'await supabase.from("broadcasts").update({ is_active: false }).eq("id", id);': 'const { error } = await supabase.from("broadcasts").update({ is_active: false }).eq("id", id).select("id").single();\n      if (error) throw new Error(error.message);',
+          }
+
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one occurrence of {old!r}, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Commit repaired mutation handling and remove one-time workflow
+        run: |
+          rm .github/workflows/repair-frontend-mutations.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/store.tsx .github/workflows/repair-frontend-mutations.yml
+          git commit -m 'Repair frontend mutation error handling'
+          git push
