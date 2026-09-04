@@ -9,7 +9,8 @@ import { ngn } from "@/lib/pigeon-data";
 
 type Tx = { id: string; listing_name: string; amount_naira: number; calculated_commission: number; status: string; created_at: string; payout_paid_at: string | null };
 const PAGE_SIZE = 20;
-const STATUSES = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Seller Paid", "Completed", "Disputed", "Refunded to Buyer"];
+const TERMINAL_STATUSES = ["Seller Paid", "Completed", "Refunded to Buyer"] as const;
+const ACTIVE_STATUSES = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Disputed"];
 
 export function AdminTransactionsPanel() {
   const [rows, setRows] = useState<Tx[]>([]);
@@ -22,7 +23,7 @@ export function AdminTransactionsPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     const clean = escapeSearch(query.trim());
-    let request = supabase.from("transactions").select("id, listing_name, amount_naira, calculated_commission, status, created_at, payout_paid_at", { count: "exact" });
+    let request = supabase.from("transactions").select("id, listing_name, amount_naira, calculated_commission, status, created_at, payout_paid_at", { count: "exact" }).not("status", "in", `(${TERMINAL_STATUSES.map((value) => `"${value}"`).join(",")})`);
     if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
     request = request.order("created_at", { ascending: false });
@@ -37,15 +38,15 @@ export function AdminTransactionsPanel() {
 
   return (
     <section className="space-y-5">
-      <div><h2 className="text-2xl font-bold tracking-tight">Transactions</h2><p className="mt-1 text-sm text-muted-foreground">Monitor payment, escrow, confirmation and settlement states with a paginated operational view.</p></div>
+      <div><h2 className="text-2xl font-bold tracking-tight">Transactions</h2><p className="mt-1 text-sm text-muted-foreground">Active transactions requiring payment, escrow, delivery, dispute or settlement attention.</p></div>
       <div className="flex flex-col gap-2 lg:flex-row">
-        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search transaction ID or product…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div>
-        <select aria-label="Filter transactions by status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">{STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
+        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search active transaction ID or product…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div>
+        <select aria-label="Filter transactions by active status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">{ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
       </div>
       <Card className="overflow-hidden">
         <div className="divide-y divide-border">
-          {loading ? <p className="p-6 text-sm text-muted-foreground">Loading transactions…</p> : null}
-          {!loading && rows.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No transactions match your filters.</p> : null}
+          {loading ? <p className="p-6 text-sm text-muted-foreground">Loading active transactions…</p> : null}
+          {!loading && rows.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No matching active transactions.</p> : null}
           {!loading && rows.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center gap-3 p-4">
               <div className="min-w-0 flex-1"><p className="truncate font-medium">{t.listing_name}</p><p className="break-all font-mono text-[11px] text-muted-foreground">{t.id}</p></div>
