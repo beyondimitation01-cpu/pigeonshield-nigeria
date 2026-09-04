@@ -56,8 +56,12 @@ export function AdminPendingOrders() {
                 size="sm"
                 disabled={t.status !== "Pending Verification"}
                 onClick={async () => {
-                  await verifyPayment(t.id);
-                  toast.success("Payment verified — order is now funded and ready for dispatch.");
+                  try {
+                    await verifyPayment(t.id);
+                    toast.success("Payment verified — order is now funded and ready for dispatch.");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not verify payment.");
+                  }
                 }}
               >
                 <CheckCircle2 className="size-4" /> Mark Payment Verified
