@@ -204,27 +204,29 @@ function MessagesPage() {
               </div>
 
               <div className="border-t border-border px-4 py-3">
-                <div className="flex flex-wrap gap-2 pb-3">
-                {QUICK_INQUIRIES.map((q) => (
-                  <Button key={q} size="sm" variant="outline" className="h-7 text-xs" onClick={() => send(q)}>
-                    {q}
-                  </Button>
-                ))}
-              </div>
+                {thread.length === 0 ? (
+                  <div className="flex flex-wrap gap-2 pb-3">
+                    {QUICK_INQUIRIES.map((q) => (
+                      <Button key={q} size="sm" variant="outline" className="h-7 text-xs" onClick={() => send(q)}>
+                        {q}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
 
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  send(body);
-                }}
-              >
-                <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message..." autoComplete="off" />
-                <Button type="submit" size="icon" aria-label="Send message">
-                  <Send className="size-4" />
-                </Button>
-              </form>
-                </div>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    send(body);
+                  }}
+                >
+                  <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message..." autoComplete="off" />
+                  <Button type="submit" size="icon" aria-label="Send message">
+                    <Send className="size-4" />
+                  </Button>
+                </form>
+              </div>
             </>
           ) : (
             <div className="m-auto hidden max-w-sm px-6 text-center md:block">
