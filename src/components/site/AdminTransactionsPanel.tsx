@@ -10,7 +10,7 @@ import { ngn } from "@/lib/pigeon-data";
 type Tx = { id: string; listing_name: string; amount_naira: number; calculated_commission: number; status: string; created_at: string; payout_paid_at: string | null };
 const PAGE_SIZE = 20;
 const TERMINAL_STATUSES = ["Seller Paid", "Completed", "Refunded to Buyer"] as const;
-const ACTIVE_STATUSES = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Disputed"];
+const ACTIVE_STATUSES = ["All", "Pending Verification", "Payment Verified / Processing", "Escrow Funded", "In Transit", "Delivered", "Ready for Admin Payout", "Disputed"];
 
 export function AdminTransactionsPanel() {
   const [rows, setRows] = useState<Tx[]>([]);
