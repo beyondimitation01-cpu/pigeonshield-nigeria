@@ -78,9 +78,16 @@ function MessagesPage() {
 
   function send(text: string) {
     if (!current || !text.trim()) return;
-    // Existing conversations are independent of listings; only the first message
-    // opened directly from a listing carries that listing as optional context.
+    // A new conversation opened from a listing must never be created for an
+    // inactive listing. The database also enforces this on message insertion.
     const messageListingId = current.id.startsWith("new:") ? listingParam ?? null : null;
+    if (messageListingId) {
+      const listing = db.listings.find((item) => item.id === messageListingId);
+      if (!listing?.is_active) {
+        toast.error("This listing is no longer available");
+        return;
+      }
+    }
     void sendMessage(messageListingId, current.otherId, text.trim())
       .then((conversationId) => {
         setActive(conversationId);
