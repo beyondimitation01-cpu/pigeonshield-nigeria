@@ -15,6 +15,8 @@ type OrderRow = {
   created_at: string; delivery_marked_at: string | null; proof_file_name: string | null;
 };
 const PAGE_SIZE = 20;
+const TERMINAL_STATUSES = ["Seller Paid", "Completed", "Refunded to Buyer"] as const;
+const ACTIVE_STATUSES = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Disputed"];
 
 export function AdminOrdersPanel() {
   const { verifyPayment, forceMarkDelivered } = useStore();
@@ -29,7 +31,7 @@ export function AdminOrdersPanel() {
   const load = useCallback(async () => {
     setLoading(true);
     const clean = escapeSearch(query.trim());
-    let request = supabase.from("transactions").select("id, listing_name, buyer_id, breeder_id, amount_naira, status, payment_reference, receipt_url, receipt_uploaded_at, created_at, delivery_marked_at, proof_file_name", { count: "exact" });
+    let request = supabase.from("transactions").select("id, listing_name, buyer_id, breeder_id, amount_naira, status, payment_reference, receipt_url, receipt_uploaded_at, created_at, delivery_marked_at, proof_file_name", { count: "exact" }).not("status", "in", `(${TERMINAL_STATUSES.map((value) => `"${value}"`).join(",")})`);
     if (clean) request = request.or(`id.ilike.%${clean}%,listing_name.ilike.%${clean}%`);
     if (status !== "All") request = request.eq("status", status);
     request = request.order("created_at", { ascending: false });
@@ -41,7 +43,6 @@ export function AdminOrdersPanel() {
 
   useEffect(() => { void load(); }, [load]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const statuses = ["All", "Pending Verification", "Funded", "Dispatched", "Delivered", "Ready for Admin Payout", "Seller Paid", "Completed", "Disputed", "Refunded to Buyer"];
 
   async function verify(id: string) {
     try { await verifyPayment(id); toast.success("Payment verified."); await load(); }
@@ -50,22 +51,22 @@ export function AdminOrdersPanel() {
 
   return (
     <section className="space-y-5">
-      <div><h2 className="text-2xl font-bold tracking-tight">Orders</h2><p className="mt-1 text-sm text-muted-foreground">Search and review orders without loading the complete transaction history into the page.</p></div>
+      <div><h2 className="text-2xl font-bold tracking-tight">Orders</h2><p className="mt-1 text-sm text-muted-foreground">Active orders requiring review or action. Completed, paid and refunded transactions remain in history.</p></div>
       <div className="flex flex-col gap-2 lg:flex-row">
-        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search order ID or product…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div>
-        <select aria-label="Filter orders by status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">{statuses.map((s) => <option key={s}>{s}</option>)}</select>
+        <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search active order ID or product…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div>
+        <select aria-label="Filter orders by active status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">{ACTIVE_STATUSES.map((s) => <option key={s}>{s}</option>)}</select>
       </div>
       <Card className="overflow-hidden">
         <div className="divide-y divide-border">
-          {loading ? <p className="p-6 text-sm text-muted-foreground">Loading orders…</p> : null}
-          {!loading && !rows.length ? <p className="p-6 text-sm text-muted-foreground">No matching orders.</p> : null}
+          {loading ? <p className="p-6 text-sm text-muted-foreground">Loading active orders…</p> : null}
+          {!loading && !rows.length ? <p className="p-6 text-sm text-muted-foreground">No matching active orders.</p> : null}
           {!loading && rows.map((t) => (
             <div key={t.id} className="flex flex-wrap items-center gap-3 p-4">
               <span className="min-w-0 flex-1"><span className="block truncate font-medium">{t.listing_name}</span><span className="font-mono text-[11px] text-muted-foreground">{t.id}</span></span>
               <span className="font-semibold">{ngn(t.amount_naira)}</span><Badge variant={t.status === "Pending Verification" ? "destructive" : "outline"}>{t.status}</Badge>
               <Button size="sm" variant="outline" onClick={() => setSelected(t)}>Details</Button>
               {t.status === "Pending Verification" ? <Button size="sm" onClick={() => void verify(t.id)}><CheckCircle2 className="size-4" /> Verify payment</Button> : null}
-              {!["Delivered", "Completed", "Refunded to Buyer", "Disputed"].includes(t.status) ? <Button size="sm" variant="outline" onClick={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); } }}><Truck className="size-4" /> Delivery override</Button> : null}
+              {!["Delivered", "Disputed"].includes(t.status) ? <Button size="sm" variant="outline" onClick={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); } }}><Truck className="size-4" /> Delivery override</Button> : null}
             </div>
           ))}
         </div>
