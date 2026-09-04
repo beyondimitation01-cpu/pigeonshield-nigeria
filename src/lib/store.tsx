@@ -654,12 +654,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     retireBroadcast: async (id) => {
-      await supabase.from("broadcasts").update({ is_active: false }).eq("id", id);
+      const { error } = await supabase.from("broadcasts").update({ is_active: false }).eq("id", id).select("id").single();
+      if (error) throw new Error(error.message);
       await refresh();
     },
 
     setUserFlags: async (userId, patch) => {
-      await supabase.from("profiles").update(patch).eq("id", userId);
+      const { error } = await supabase.from("profiles").update(patch).eq("id", userId).select("id").single();
+      if (error) throw new Error(error.message);
       // Verified badge mirrors onto that breeder's live listings.
       if (patch.is_verified_seller !== undefined) {
         await supabase
@@ -753,7 +755,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     deleteListing: async (id) => {
-      await supabase.from("listings").delete().eq("id", id);
+      const { error } = await supabase.from("listings").delete().eq("id", id).select("id").single();
+      if (error) throw new Error(error.message);
       await refresh();
     },
 
@@ -767,7 +770,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
 
     setListingFlags: async (id, patch) => {
-      await supabase.from("listings").update(patch).eq("id", id);
+      const { error } = await supabase.from("listings").update(patch).eq("id", id).select("id").single();
+      if (error) throw new Error(error.message);
       await refresh();
     },
 
