@@ -17,6 +17,7 @@ import { useStore } from "@/lib/store";
 import { ngn, type Listing } from "@/lib/pigeon-data";
 import { listingCover, onImageError, categoryFallback } from "@/lib/listing-images";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 
 function statusOf(l: Listing) {
   if (!l.is_active) return { label: "Frozen", variant: "secondary" as const };
@@ -65,7 +66,6 @@ export function AdminListingsTable() {
         price_ngn: Math.max(0, Number(draft.price) || 0),
         batch_quantity: Math.max(0, Number(draft.qty) || 0),
         state: draft.state.trim(),
-        // Photo swaps persist straight into the listing row.
         images: photos.map((p) => p.url),
       });
       setEditing(null);
@@ -81,31 +81,14 @@ export function AdminListingsTable() {
         <h2 className="font-semibold">Listings &amp; products ({db.listings.length})</h2>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-2.5 size-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search product, seller, breed…"
-            className="h-9 w-64 pl-8"
-          />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product, seller, breed…" className="h-9 w-64 pl-8" />
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Every post on the platform, updating live as users create listings.
-      </p>
-
+      <p className="text-xs text-muted-foreground">Every post on the platform, updating live as users create listings.</p>
       <div className="max-h-[32rem] overflow-auto">
         <table className="w-full min-w-[1000px] text-sm">
           <thead className="sticky top-0 bg-card text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="p-2">Product</th>
-              <th className="p-2">Seller</th>
-              <th className="p-2">Price</th>
-              <th className="p-2">Breed / Category</th>
-              <th className="p-2">Posted</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Commission %</th>
-              <th className="p-2">Actions</th>
-            </tr>
+            <tr><th className="p-2">Product</th><th className="p-2">Seller</th><th className="p-2">Price</th><th className="p-2">Breed / Category</th><th className="p-2">Posted</th><th className="p-2">Status</th><th className="p-2">Commission %</th><th className="p-2">Actions</th></tr>
           </thead>
           <tbody>
             {rows.map((l) => {
@@ -113,160 +96,40 @@ export function AdminListingsTable() {
               const st = statusOf(l);
               return (
                 <tr key={l.id} className="border-t border-border align-top">
-                  <td className="p-2">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={listingCover(l)}
-                        onError={onImageError(categoryFallback(l.category_type, l.id))}
-                        alt={l.custom_bird_name}
-                        loading="lazy"
-                        className="size-12 shrink-0 rounded-md object-cover"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{l.custom_bird_name}</p>
-                        {l.is_featured ? (
-                          <Badge variant="default" className="mt-1">Featured</Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-2">
-                    <p className="truncate">{seller?.real_name || l.breeder_handle}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {seller?.phone_number || "—"}
-                    </p>
-                  </td>
+                  <td className="p-2"><div className="flex items-center gap-2"><img src={listingCover(l)} onError={onImageError(categoryFallback(l.category_type, l.id))} alt={l.custom_bird_name} loading="lazy" className="size-12 shrink-0 rounded-md object-cover" /><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p>{l.is_featured ? <Badge variant="default" className="mt-1">Featured</Badge> : null}</div></div></td>
+                  <td className="p-2"><p className="truncate">{seller?.real_name || l.breeder_handle}</p><p className="text-xs text-muted-foreground">{seller?.phone_number || "—"}</p></td>
                   <td className="p-2 font-semibold">{ngn(l.price_ngn)}</td>
-                  <td className="p-2">
-                    {l.breed_type}
-                    <p className="text-xs text-muted-foreground">{l.category_type}</p>
-                  </td>
-                  <td className="p-2 text-xs text-muted-foreground">
-                    {new Date(l.creation_timestamp).toLocaleDateString("en-NG", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </td>
+                  <td className="p-2">{l.breed_type}<p className="text-xs text-muted-foreground">{l.category_type}</p></td>
+                  <td className="p-2 text-xs text-muted-foreground">{new Date(l.creation_timestamp).toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" })}</td>
                   <td className="p-2"><Badge variant={st.variant}>{st.label}</Badge></td>
-                  <td className="p-2">
-                    <Input
-                      className="h-8 w-20"
-                      type="number"
-                      placeholder="default"
-                      defaultValue={l.commission_override ?? ""}
-                      onBlur={(e) => {
-                        void setListingOverride(
-                          l.id,
-                          e.target.value === "" ? null : Number(e.target.value),
-                        ).catch((error) => {
-                          toast.error(error instanceof Error ? error.message : "Could not update commission.");
-                        });
-                      }}
-                    />
-                  </td>
-                  <td className="p-2">
-                    <div className="flex flex-wrap gap-1">
-                      <Button size="sm" variant="outline" onClick={() => openEdit(l)}>
-                        <Pencil className="size-3" /> Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={l.is_featured ? "default" : "outline"}
-                        onClick={async () => {
-                          try {
-                            await setListingFlags(l.id, { is_featured: !l.is_featured });
-                            toast.success(l.is_featured ? "Removed from homepage." : "Featured on homepage.");
-                          } catch (error) {
-                            toast.error(error instanceof Error ? error.message : "Could not update listing.");
-                          }
-                        }}
-                      >
-                        <Star className="size-3" /> Feature
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={async () => {
-                          try {
-                            await deleteListing(l.id);
-                            toast.success("Listing deleted.");
-                          } catch (error) {
-                            toast.error(error instanceof Error ? error.message : "Could not delete listing.");
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-3" /> Delete
-                      </Button>
-                    </div>
-                  </td>
+                  <td className="p-2"><Input className="h-8 w-20" type="number" placeholder="default" defaultValue={l.commission_override ?? ""} onBlur={(e) => { void setListingOverride(l.id, e.target.value === "" ? null : Number(e.target.value)).catch((error) => { toast.error(error instanceof Error ? error.message : "Could not update commission."); }); }} /></td>
+                  <td className="p-2"><div className="flex flex-wrap gap-1">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(l)}><Pencil className="size-3" /> Edit</Button>
+                    <Button size="sm" variant={l.is_featured ? "default" : "outline"} onClick={async () => { try { await setListingFlags(l.id, { is_featured: !l.is_featured }); toast.success(l.is_featured ? "Removed from homepage." : "Featured on homepage."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not update listing."); } }}><Star className="size-3" /> Feature</Button>
+                    <ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="sm" variant="destructive"><Trash2 className="size-3" /> Delete</Button></ConfirmActionDialog>
+                  </div></td>
                 </tr>
               );
             })}
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="p-4 text-center text-muted-foreground">
-                  No listings match that search.
-                </td>
-              </tr>
-            ) : null}
+            {rows.length === 0 ? <tr><td colSpan={8} className="p-4 text-center text-muted-foreground">No listings match that search.</td></tr> : null}
           </tbody>
         </table>
       </div>
-
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit listing</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            {user ? (
-              <div className="space-y-1.5">
-                <Label>Listing photos</Label>
-                <PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} />
-              </div>
-            ) : null}
-            <div className="space-y-1.5">
-              <Label htmlFor="ed-name">Title</Label>
-              <Input id="ed-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-            </div>
+            {user ? <div className="space-y-1.5"><Label>Listing photos</Label><PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} /></div> : null}
+            <div className="space-y-1.5"><Label htmlFor="ed-name">Title</Label><Input id="ed-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="ed-breed">Breed</Label>
-                <Input id="ed-breed" value={draft.breed} onChange={(e) => setDraft({ ...draft, breed: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="ed-state">State</Label>
-                <Input id="ed-state" value={draft.state} onChange={(e) => setDraft({ ...draft, state: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="ed-price">Price (₦)</Label>
-                <Input id="ed-price" type="number" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="ed-qty">Quantity</Label>
-                <Input id="ed-qty" type="number" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.target.value })} />
-              </div>
+              <div className="space-y-1.5"><Label htmlFor="ed-breed">Breed</Label><Input id="ed-breed" value={draft.breed} onChange={(e) => setDraft({ ...draft, breed: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ed-state">State</Label><Input id="ed-state" value={draft.state} onChange={(e) => setDraft({ ...draft, state: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ed-price">Price (₦)</Label><Input id="ed-price" type="number" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label htmlFor="ed-qty">Quantity</Label><Input id="ed-qty" type="number" value={draft.qty} onChange={(e) => setDraft({ ...draft, qty: e.target.value })} /></div>
             </div>
-            {editing ? (
-              <Button
-                variant={editing.is_active ? "secondary" : "outline"}
-                onClick={async () => {
-                  try {
-                    await setListingFlags(editing.id, { is_active: !editing.is_active });
-                    setEditing(null);
-                    toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated.");
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not change listing status.");
-                  }
-                }}
-              >
-                {editing.is_active ? "Freeze listing" : "Re-activate listing"}
-              </Button>
-            ) : null}
+            {editing ? <ConfirmActionDialog title={editing.is_active ? "Confirm Freeze Listing" : "Confirm Re-activation"} description={editing.is_active ? "Are you sure you want to freeze this listing? It will no longer be active in the marketplace." : "Are you sure you want to re-activate this listing?"} confirmLabel={editing.is_active ? "Confirm Freeze" : "Confirm Re-activate"} onConfirm={async () => { try { await setListingFlags(editing.id, { is_active: !editing.is_active }); setEditing(null); toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not change listing status."); return false; } }}><Button variant={editing.is_active ? "secondary" : "outline"}>{editing.is_active ? "Freeze listing" : "Re-activate listing"}</Button></ConfirmActionDialog> : null}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-            <Button onClick={() => void saveEdit()}>Save changes</Button>
-          </DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={() => void saveEdit()}>Save changes</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
