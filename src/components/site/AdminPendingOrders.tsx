@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useStore } from "@/lib/store";
 import { ngn } from "@/lib/pigeon-data";
 import { onImageError } from "@/lib/listing-images";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 
 /** Pending Orders & Receipts — manual OPay transfer verification. */
 export function AdminPendingOrders() {
@@ -52,20 +53,11 @@ export function AdminPendingOrders() {
                 </p>
                 <Badge variant={t.status === "Pending Verification" ? "destructive" : "outline"}>{t.status}</Badge>
               </div>
-              <Button
-                size="sm"
-                disabled={t.status !== "Pending Verification"}
-                onClick={async () => {
-                  try {
-                    await verifyPayment(t.id);
-                    toast.success("Payment verified — order is now funded and ready for dispatch.");
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Could not verify payment.");
-                  }
-                }}
-              >
-                <CheckCircle2 className="size-4" /> Mark Payment Verified
-              </Button>
+              <ConfirmActionDialog title="Confirm Payment Verification" description="Are you sure you want to verify this payment? This will fund the order and make it ready for dispatch." confirmLabel="Confirm Verification" destructive={false} onConfirm={async () => { try { await verifyPayment(t.id); toast.success("Payment verified — order is now funded and ready for dispatch."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not verify payment."); return false; } }}>
+                <Button size="sm" disabled={t.status !== "Pending Verification"}>
+                  <CheckCircle2 className="size-4" /> Mark Payment Verified
+                </Button>
+              </ConfirmActionDialog>
             </div>
           ))}
         </div>
