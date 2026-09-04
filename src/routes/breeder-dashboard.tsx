@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { Combobox } from "@/components/site/Combobox";
 import { Card } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { referralLink } from "@/lib/site";
+import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -136,6 +138,7 @@ function AccountPanel() {
   const [loft, setLoft] = useState(user?.loft_name ?? "");
   const [homeState, setHomeState] = useState(user?.home_state ?? "");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => { if (!user) return; setPhone(user.phone_number); setFullName(user.real_name); setLoft(user.loft_name); setHomeState(user.home_state); }, [user]);
   if (!user) return null;
   async function saveProfile(e: React.FormEvent<HTMLFormElement>) {
@@ -144,7 +147,21 @@ function AccountPanel() {
     if (phone.trim() && !isValidNigerianPhone(phone)) { toast.error("Enter a valid Nigerian phone number."); return; }
     setSaving(true); const err = await updateProfile({ real_name: name, public_handle: name, phone_number: normalizedPhone, loft_name: loft.trim(), home_state: homeState }); setSaving(false); if (err) toast.error(err); else toast.success("Profile saved.");
   }
-  return <Card className="max-w-xl p-5"><h2 className="font-semibold">Your profile</h2><form onSubmit={saveProfile} className="mt-5 space-y-5"><AvatarUploader userId={user.id} value={user.avatar_url} onChange={async (url) => { const err = await updateProfile({ avatar_url: url }); if (err) toast.error(err); }} label="Change profile picture" /><div className="space-y-1.5"><Label htmlFor="full-name">Full name / username (public)</Label><Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required /></div><div className="grid gap-5 sm:grid-cols-2"><div className="space-y-1.5"><Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label><Input id="payout-phone" value={phone} inputMode="tel" autoComplete="tel" placeholder="0803 123 4567" onChange={(e) => setPhone(e.target.value)} /></div><div className="space-y-1.5"><Label htmlFor="home-state">Location / state</Label><Select value={homeState} onValueChange={setHomeState}><SelectTrigger id="home-state"><SelectValue placeholder="Select state" /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((stateName) => <SelectItem key={stateName} value={stateName}>{stateName}</SelectItem>)}</SelectContent></Select></div></div><div className="space-y-1.5"><Label htmlFor="loft-name">Loft / farm name (optional, public)</Label><Input id="loft-name" value={loft} onChange={(e) => setLoft(e.target.value)} /></div><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</Button><p className="text-xs text-muted-foreground">Buyers see your name, loft, location and phone number on your listings.</p></form></Card>;
+  async function deleteAccount() {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.rpc("delete_my_account");
+      if (error) throw new Error(error.message);
+      await supabase.auth.signOut();
+      toast.success("Your account has been permanently deleted.");
+      window.location.assign("/");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete your account. Your account was not changed.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+  return <div className="space-y-6"><Card className="max-w-xl p-5"><h2 className="font-semibold">Your profile</h2><form onSubmit={saveProfile} className="mt-5 space-y-5"><AvatarUploader userId={user.id} value={user.avatar_url} onChange={async (url) => { const err = await updateProfile({ avatar_url: url }); if (err) toast.error(err); }} label="Change profile picture" /><div className="space-y-1.5"><Label htmlFor="full-name">Full name / username (public)</Label><Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required /></div><div className="grid gap-5 sm:grid-cols-2"><div className="space-y-1.5"><Label htmlFor="payout-phone">Contact &amp; payout phone (public)</Label><Input id="payout-phone" value={phone} inputMode="tel" autoComplete="tel" placeholder="0803 123 4567" onChange={(e) => setPhone(e.target.value)} /></div><div className="space-y-1.5"><Label htmlFor="home-state">Location / state</Label><Select value={homeState} onValueChange={setHomeState}><SelectTrigger id="home-state"><SelectValue placeholder="Select state" /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((stateName) => <SelectItem key={stateName} value={stateName}>{stateName}</SelectItem>)}</SelectContent></Select></div></div><div className="space-y-1.5"><Label htmlFor="loft-name">Loft / farm name (optional, public)</Label><Input id="loft-name" value={loft} onChange={(e) => setLoft(e.target.value)} /></div><Button type="submit" disabled={saving}>{saving ? "Saving..." : "Save profile"}</Button><p className="text-xs text-muted-foreground">Buyers see your name, loft, location and phone number on your listings.</p></form></Card><Card className="max-w-xl border-destructive/40 p-5"><div className="space-y-2"><h2 className="font-semibold text-destructive">Danger Zone</h2><p className="text-sm text-muted-foreground">Permanently delete your account. This cannot be undone.</p></div><AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" className="mt-4" disabled={deleting}><Trash2 className="size-4" /> Delete Account</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Permanently delete your account?</AlertDialogTitle><AlertDialogDescription>This permanently deletes your authenticated account and personal profile data. Completed transaction history is retained as required by the marketplace. If you have active or unresolved marketplace activity, deletion will be blocked until it is resolved. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleting} onClick={(event) => { event.preventDefault(); void deleteAccount(); }}>{deleting ? "Deleting..." : "Delete My Account"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></Card></div>;
 }
 
 function ReferBoost() {
