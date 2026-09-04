@@ -30,6 +30,7 @@ export function ConfirmActionDialog({
   destructive = true,
   onConfirm,
 }: ConfirmActionDialogProps) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function handleConfirm(event: React.MouseEvent) {
@@ -38,17 +39,14 @@ export function ConfirmActionDialog({
     setBusy(true);
     try {
       const success = await onConfirm();
-      if (success) {
-        // Allow Radix to close only after the protected action succeeds.
-        (event.currentTarget as HTMLElement).click();
-      }
+      if (success) setOpen(false);
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
