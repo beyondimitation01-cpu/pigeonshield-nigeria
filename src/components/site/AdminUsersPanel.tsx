@@ -60,9 +60,25 @@ export function AdminUsersPanel() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   async function toggleBan(user: AdminUser) {
-    await banUser(user.id);
-    setSelected(null);
-    await load();
+    try {
+      await banUser(user.id);
+      setSelected(null);
+      await load();
+    } catch (error) {
+      // Keep the selected user visible when the backend rejects the mutation.
+      // The UI must not imply that the moderation action succeeded.
+      setSelected(user);
+    }
+  }
+
+  async function updateFlag(user: AdminUser, patch: { is_verified_seller?: boolean; is_frozen?: boolean; escrow_paused?: boolean }) {
+    try {
+      await setUserFlags(user.id, patch);
+      setSelected({ ...user, ...patch });
+      await load();
+    } catch {
+      setSelected(user);
+    }
   }
 
   return (
@@ -74,7 +90,7 @@ export function AdminUsersPanel() {
       <div className="flex flex-col gap-2 lg:flex-row">
         <div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search name, handle or email…" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></div>
         <div className="flex flex-wrap gap-2">
-          {(["all", "active", "banned"] as const).map((value) => <Button key={value} size="sm" variant={filter === value ? "default" : "outline"} onClick={() => { setFilter(value); setPage(1); }}>{value[0].toUpperCase() + value.slice(1)}</Button>)}
+          {["all", "active", "banned"].map((value) => <Button key={value} size="sm" variant={filter === value ? "default" : "outline"} onClick={() => { setFilter(value as typeof filter); setPage(1); }}>{value[0].toUpperCase() + value.slice(1)}</Button>)}
           <select aria-label="Sort users" value={sort} onChange={(e) => { setSort(e.target.value as typeof sort); setPage(1); }} className="h-9 rounded-md border border-input bg-background px-3 text-sm"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name">Name A–Z</option></select>
         </div>
       </div>
@@ -90,9 +106,9 @@ export function AdminUsersPanel() {
             <Detail label="Bank / provider" value={selected.bank_name || "—"} /><Detail label="Account number" value={selected.account_number || "—"} /><Detail label="Status" value={selected.is_banned ? "Banned" : "Active"} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Button variant={selected.is_verified_seller ? "default" : "outline"} onClick={async () => { await setUserFlags(selected.id, { is_verified_seller: !selected.is_verified_seller }); setSelected({ ...selected, is_verified_seller: !selected.is_verified_seller }); await load(); }}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button>
-            <Button variant={selected.is_frozen ? "destructive" : "outline"} onClick={async () => { await setUserFlags(selected.id, { is_frozen: !selected.is_frozen }); setSelected({ ...selected, is_frozen: !selected.is_frozen }); await load(); }}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button>
-            <Button variant={selected.escrow_paused ? "secondary" : "outline"} onClick={async () => { await setUserFlags(selected.id, { escrow_paused: !selected.escrow_paused }); setSelected({ ...selected, escrow_paused: !selected.escrow_paused }); await load(); }}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button>
+            <Button variant={selected.is_verified_seller ? "default" : "outline"} onClick={() => void updateFlag(selected, { is_verified_seller: !selected.is_verified_seller })}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button>
+            <Button variant={selected.is_frozen ? "destructive" : "outline"} onClick={() => void updateFlag(selected, { is_frozen: !selected.is_frozen })}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button>
+            <Button variant={selected.escrow_paused ? "secondary" : "outline"} onClick={() => void updateFlag(selected, { escrow_paused: !selected.escrow_paused })}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button>
             <Button variant={selected.is_banned ? "outline" : "destructive"} onClick={() => void toggleBan(selected)}>{selected.is_banned ? "Unban" : "Ban"}</Button>
           </div>
         </Card>
