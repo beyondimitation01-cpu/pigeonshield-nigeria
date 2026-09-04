@@ -74,6 +74,30 @@ const notificationCopy: Record<string, { title: string; body: string }> = {
     title: "Seller verification updated",
     body: "Your seller verification status has changed. Open your account to review the current status.",
   },
+  admin_payment_review: {
+    title: "Payment review required",
+    body: "A new transaction requires payment review. Open the Admin Console to review it.",
+  },
+  admin_receipt_review: {
+    title: "Payment receipt submitted",
+    body: "A buyer has submitted a payment receipt. Open the Admin Console to review and confirm it.",
+  },
+  admin_transaction_advanced: {
+    title: "Transaction advanced",
+    body: "Payment has been confirmed. Review the transaction for any required administrative action.",
+  },
+  admin_payout_required: {
+    title: "Seller payout required",
+    body: "A transaction is ready for manual seller payout. Open the Admin Console to review and process it.",
+  },
+  admin_transaction_review: {
+    title: "Transaction requires attention",
+    body: "A payment or transaction issue requires administrative review. Open the Admin Console to review it.",
+  },
+  admin_dispute_review: {
+    title: "Dispute requires review",
+    body: "A transaction has entered the existing dispute workflow. Open the Admin Console to review it.",
+  },
 };
 
 function getNotificationCopy(kind: string) {
@@ -137,13 +161,16 @@ export function Navbar() {
                   db.notifications.slice(0, 8).map((notification) => {
                     const copy = getNotificationCopy(notification.kind);
                     const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
+                    const isAdminNotification = notification.kind.startsWith("admin_");
                     return (
                       <DropdownMenuItem
                         key={notification.id}
                         className="items-start gap-2 py-3"
                         onSelect={() => {
                           void markNotificationRead(notification.id);
-                          if (isMessage && notification.conversation_id) {
+                          if (isAdminNotification) {
+                            void navigate({ to: "/pigeon-boss-admin" });
+                          } else if (isMessage && notification.conversation_id) {
                             void navigate({
                               to: "/messages",
                               search: { listing: undefined, conversation: notification.conversation_id },
