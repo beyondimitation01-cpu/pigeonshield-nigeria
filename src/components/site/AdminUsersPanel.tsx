@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 
 type AdminUser = {
   id: string;
@@ -40,9 +41,7 @@ export function AdminUsersPanel() {
     setLoading(true);
     let request = supabase.from("profiles").select("id, public_handle, real_name, email, phone_number, bank_name, account_number, is_banned, is_verified_seller, is_frozen, escrow_paused, created_at", { count: "exact" });
     const clean = escapeSearch(query.trim());
-    if (clean) {
-      request = request.or(`public_handle.ilike.%${clean}%,real_name.ilike.%${clean}%,email.ilike.%${clean}%`);
-    }
+    if (clean) request = request.or(`public_handle.ilike.%${clean}%,real_name.ilike.%${clean}%,email.ilike.%${clean}%`);
     if (filter === "banned") request = request.eq("is_banned", true);
     if (filter === "active") request = request.eq("is_banned", false);
     if (sort === "name") request = request.order("public_handle", { ascending: true });
@@ -69,6 +68,7 @@ export function AdminUsersPanel() {
     } catch (error) {
       setSelected(user);
       toast.error(error instanceof Error ? error.message : "Could not update user status.");
+      throw error;
     }
   }
 
@@ -83,6 +83,7 @@ export function AdminUsersPanel() {
     } catch (error) {
       setSelected(user);
       toast.error(error instanceof Error ? error.message : "Could not update user settings.");
+      throw error;
     }
   }
 
@@ -111,10 +112,10 @@ export function AdminUsersPanel() {
             <Detail label="Bank / provider" value={selected.bank_name || "—"} /><Detail label="Account number" value={selected.account_number || "—"} /><Detail label="Status" value={selected.is_banned ? "Banned" : "Active"} />
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Button variant={selected.is_verified_seller ? "default" : "outline"} onClick={() => void updateFlag(selected, { is_verified_seller: !selected.is_verified_seller })}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button>
-            <Button variant={selected.is_frozen ? "destructive" : "outline"} onClick={() => void updateFlag(selected, { is_frozen: !selected.is_frozen })}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button>
-            <Button variant={selected.escrow_paused ? "secondary" : "outline"} onClick={() => void updateFlag(selected, { escrow_paused: !selected.escrow_paused })}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button>
-            <Button variant={selected.is_banned ? "outline" : "destructive"} onClick={() => void toggleBan(selected)}>{selected.is_banned ? "Unban" : "Ban"}</Button>
+            <ConfirmActionDialog title={selected.is_verified_seller ? "Confirm Remove Verification" : "Confirm Seller Verification"} description={selected.is_verified_seller ? "Are you sure you want to remove this seller verification?" : "Are you sure you want to verify this seller? This changes their marketplace verification status."} confirmLabel={selected.is_verified_seller ? "Remove Verification" : "Confirm Verification"} destructive={false} onConfirm={async () => { try { await updateFlag(selected, { is_verified_seller: !selected.is_verified_seller }); return true; } catch { return false; } }}><Button variant={selected.is_verified_seller ? "default" : "outline"}><ShieldCheck className="size-4" /> {selected.is_verified_seller ? "Verified" : "Verify seller"}</Button></ConfirmActionDialog>
+            <ConfirmActionDialog title={selected.is_frozen ? "Confirm Unfreeze" : "Confirm Freeze"} description={selected.is_frozen ? "Are you sure you want to unfreeze this account?" : "Are you sure you want to freeze this account? This may restrict affected marketplace actions."} confirmLabel={selected.is_frozen ? "Confirm Unfreeze" : "Confirm Freeze"} onConfirm={async () => { try { await updateFlag(selected, { is_frozen: !selected.is_frozen }); return true; } catch { return false; } }}><Button variant={selected.is_frozen ? "destructive" : "outline"}><Snowflake className="size-4" /> {selected.is_frozen ? "Unfreeze" : "Freeze"}</Button></ConfirmActionDialog>
+            <ConfirmActionDialog title={selected.escrow_paused ? "Confirm Resume Escrow" : "Confirm Pause Escrow"} description={selected.escrow_paused ? "Are you sure you want to resume escrow for this user?" : "Are you sure you want to pause escrow for this user? This can restrict affected escrow activity."} confirmLabel={selected.escrow_paused ? "Resume Escrow" : "Pause Escrow"} onConfirm={async () => { try { await updateFlag(selected, { escrow_paused: !selected.escrow_paused }); return true; } catch { return false; } }}><Button variant={selected.escrow_paused ? "secondary" : "outline"}><PauseCircle className="size-4" /> {selected.escrow_paused ? "Resume escrow" : "Pause escrow"}</Button></ConfirmActionDialog>
+            <ConfirmActionDialog title={selected.is_banned ? "Confirm Unban" : "Confirm Ban"} description={selected.is_banned ? "Are you sure you want to unban this user?" : "Are you sure you want to ban this user? This will restrict their affected marketplace access."} confirmLabel={selected.is_banned ? "Confirm Unban" : "Confirm Ban"} onConfirm={async () => { try { await toggleBan(selected); return true; } catch { return false; } }}><Button variant={selected.is_banned ? "outline" : "destructive"}>{selected.is_banned ? "Unban" : "Ban"}</Button></ConfirmActionDialog>
           </div>
         </Card>
       ) : (
