@@ -56,7 +56,7 @@ export const QUICK_INQUIRIES = [
 ];
 
 export const TERMS_TEXT =
-  "I agree to the PigeonShield Nigeria Terms of Service, including the strict 7-day listing expiration rule, the instant manual confirmation escrow validation framework, and understand that platform commission rates are variable and set dynamically by the administrator. I understand that sharing personal contact information (like phone numbers or WhatsApp links) in public chats to bypass platform transaction fees results in immediate account termination and freezing of active funds.";
+  "I agree to the PigeonShield Nigeria Terms of Service, including the strict 7-day listing expiration rule, the instant manual confirmation escrow validation framework, and understand that platform commission rates are variable and set dynamically by the administrator. I understand that users may communicate or exchange personal contact information off-platform if they choose, but PigeonShield’s escrow protections apply only to transactions completed through the platform.";
 
 export type DisputeStatus =
   | "None"
@@ -418,53 +418,35 @@ function seedListings(): Listing[] {
     ["Dog", "Caucasian Shepherd Pup", "Caucasian Shepherd", 950000, null],
     ["Dog", "Alsatian Trained Male", "German Shepherd (Alsatian)", 610000, null],
     ["Horse", "Northern Pony Gelding", "Local Northern Pony", 1450000, null],
-    ["Horse", "Sudanour Stallion", "Sudanese Sudanour", 3200000, null],
+    ["Horse", "Sudanour Stallion", "Sudanese Sudanour", 2300000, null],
+    ["Horse", "Arabian Cross Mare", "Arabian Thoroughbred Cross", 3100000, null],
   ];
-  others.forEach(([cat, name, breed, price, img], i) => {
-    const owner = breeders[i % breeders.length]!;
-    const created = Date.now() - (i % 5) * DAY_MS;
+  others.forEach(([category, name, breed, price, image], i) => {
+    const owner = breeders[(i + 1) % breeders.length]!;
+    const created = Date.now() - (i % 4) * DAY_MS;
     out.push({
-      id: `lst_ot_${i}`,
-      category_type: cat,
+      id: `lst_other_${i}`,
+      category_type: category,
       breeder_id: owner.id,
       breeder_handle: owner.public_handle,
       custom_bird_name: name,
       breed_type: breed,
       gender: i % 2 === 0 ? "Male" : "Female",
       price_ngn: price,
-      images: img ? [img] : [],
+      images: image ? [image] : [],
       pedigree_json: null,
-      vaccinated: cat === "Dog",
-      state: NIGERIAN_STATES[(i * 5) % NIGERIAN_STATES.length]!,
-      description: "Healthy, farm inspected and escrow protected. Delivery arranged with vetted logistics.",
-      batch_quantity: 1 + (i % 3),
+      vaccinated: true,
+      state: NIGERIAN_STATES[(i * 4 + 1) % NIGERIAN_STATES.length]!,
+      description: "Verified marketplace listing with escrow-protected purchase flow.",
+      batch_quantity: 1,
       commission_override: null,
       is_active: true,
       creation_timestamp: created,
       expiry_date: created + LISTING_LIFESPAN_DAYS * DAY_MS,
     });
   });
+
   return out;
 }
 
-export function seedState(): DBState {
-  return {
-    users: SEED_USERS,
-    listings: seedListings(),
-    transactions: [],
-    messages: [],
-    notifications: [],
-    conversations: [],
-    sellers: {},
-    referrals: [],
-    feedback: [],
-    broadcast: null,
-    commission_pct: 7,
-    whatsapp_alert_number: ADMIN_WHATSAPP,
-    referral_code: "",
-    referral_credits: 0,
-    referred_count: 0,
-    current_user_id: null,
-    jwt: null,
-  };
-}
+export const SEED_LISTINGS = seedListings();
