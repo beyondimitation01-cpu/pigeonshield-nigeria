@@ -8,6 +8,7 @@ import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { ngn } from "@/lib/pigeon-data";
 import { toast } from "sonner";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 
 type OrderRow = {
   id: string; listing_name: string; buyer_id: string; breeder_id: string; amount_naira: number;
@@ -45,8 +46,8 @@ export function AdminOrdersPanel() {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   async function verify(id: string) {
-    try { await verifyPayment(id); toast.success("Payment verified."); await load(); }
-    catch (e) { toast.error(e instanceof Error ? e.message : "Could not verify payment."); }
+    try { await verifyPayment(id); toast.success("Payment verified."); await load(); return true; }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Could not verify payment."); return false; }
   }
 
   return (
@@ -65,8 +66,8 @@ export function AdminOrdersPanel() {
               <span className="min-w-0 flex-1"><span className="block truncate font-medium">{t.listing_name}</span><span className="font-mono text-[11px] text-muted-foreground">{t.id}</span></span>
               <span className="font-semibold">{ngn(t.amount_naira)}</span><Badge variant={t.status === "Pending Verification" ? "destructive" : "outline"}>{t.status}</Badge>
               <Button size="sm" variant="outline" onClick={() => setSelected(t)}>Details</Button>
-              {t.status === "Pending Verification" ? <Button size="sm" onClick={() => void verify(t.id)}><CheckCircle2 className="size-4" /> Verify payment</Button> : null}
-              {!["Delivered", "Disputed"].includes(t.status) ? <Button size="sm" variant="outline" onClick={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); } }}><Truck className="size-4" /> Delivery override</Button> : null}
+              {t.status === "Pending Verification" ? <ConfirmActionDialog title="Confirm Payment Verification" description="Are you sure you want to verify this payment? This will change the transaction payment state." confirmLabel="Confirm Verification" destructive={false} onConfirm={() => verify(t.id)}><Button size="sm"><CheckCircle2 className="size-4" /> Verify payment</Button></ConfirmActionDialog> : null}
+              {!["Delivered", "Disputed"].includes(t.status) ? <ConfirmActionDialog title="Confirm Delivery Override" description="Are you sure you want to mark this order as delivered? This changes the transaction state and may reveal the buyer pickup PIN." confirmLabel="Confirm Delivery" onConfirm={async () => { try { await forceMarkDelivered(t.id); toast.success("Order marked delivered."); await load(); return true; } catch (e) { toast.error(e instanceof Error ? e.message : "Could not update order."); return false; } }}><Button size="sm" variant="outline"><Truck className="size-4" /> Delivery override</Button></ConfirmActionDialog> : null}
             </div>
           ))}
         </div>
