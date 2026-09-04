@@ -34,10 +34,6 @@ const TERMINAL_STATUSES: TxStatus[] = ["Seller Paid", "Completed", "Refunded to 
 const TRANSACTION_SELECT =
   "id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, receipt_uploaded_at, payout_paid_at, payout_paid_by, payout_reference, payout_notes, created_at";
 
-function hoursLeft(tx: EscrowTransaction) {
-  return Math.max(0, Math.ceil((tx.auto_release_at - Date.now()) / 3600_000));
-}
-
 function mapTransaction(row: Record<string, unknown>, pin: string | null = null): EscrowTransaction {
   const toMs = (value: unknown) => (value ? new Date(String(value)).getTime() : 0);
   return {
@@ -67,7 +63,7 @@ function mapTransaction(row: Record<string, unknown>, pin: string | null = null)
   };
 }
 
-function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buyer" | "breeder"; onChanged: () => void }) {
+function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buyer" | "breeder"; onChanged: () => Promise<void> }) {
   const { dispatchOrder, confirmReceiptAndRevealPin, reportDOA, submitBreederProof } = useStore();
   const [revealedPin, setRevealedPin] = useState<string | null>(null);
   const [dispatching, setDispatching] = useState(false);
@@ -106,7 +102,7 @@ function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buye
               try {
                 await dispatchOrder(tx.id);
                 toast.success("Order dispatched. Give the PIN to the driver.");
-                onChanged();
+                await onChanged();
               } catch (error) {
                 toast.error(error instanceof Error ? error.message : "Could not dispatch order.");
               } finally {
@@ -148,7 +144,7 @@ function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buye
                   const pin = await confirmReceiptAndRevealPin(tx.id);
                   setRevealedPin(pin);
                   toast.success("Receipt confirmed. Pickup PIN revealed.");
-                  onChanged();
+                  await onChanged();
                 } catch (error) {
                   toast.error(error instanceof Error ? error.message : "Could not confirm receipt.");
                 }
@@ -171,10 +167,14 @@ function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buye
           <Button
             size="sm"
             variant="destructive"
-            onClick={() => {
-              reportDOA(tx.id, "doa_proof_video.mp4");
-              toast.error("DOA reported. Auto-release clock halted for admin review.");
-              onChanged();
+            onClick={async () => {
+              try {
+                await reportDOA(tx.id, "doa_proof_video.mp4");
+                toast.error("DOA reported. Auto-release clock halted for admin review.");
+                await onChanged();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Could not report DOA.");
+              }
             }}
           >
             <AlertTriangle className="size-4" /> Report Dead on Arrival
@@ -192,10 +192,14 @@ function OrderCard({ tx, side, onChanged }: { tx: EscrowTransaction; side: "buye
           <Button
             size="sm"
             disabled={!driver || !waybill}
-            onClick={() => {
-              submitBreederProof(tx.id, driver, waybill);
-              toast.success("Proof submitted for admin review.");
-              onChanged();
+            onClick={async () => {
+              try {
+                await submitBreederProof(tx.id, driver, waybill);
+                toast.success("Proof submitted for admin review.");
+                await onChanged();
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "Could not submit delivery proof.");
+              }
             }}
           >
             Escalate to admin
