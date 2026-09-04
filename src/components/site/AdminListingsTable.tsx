@@ -58,17 +58,21 @@ export function AdminListingsTable() {
 
   async function saveEdit() {
     if (!editing) return;
-    await setListingFlags(editing.id, {
-      custom_bird_name: draft.name.trim(),
-      breed_type: draft.breed.trim(),
-      price_ngn: Math.max(0, Number(draft.price) || 0),
-      batch_quantity: Math.max(0, Number(draft.qty) || 0),
-      state: draft.state.trim(),
-      // Photo swaps persist straight into the listing row.
-      images: photos.map((p) => p.url),
-    });
-    setEditing(null);
-    toast.success("Listing updated.");
+    try {
+      await setListingFlags(editing.id, {
+        custom_bird_name: draft.name.trim(),
+        breed_type: draft.breed.trim(),
+        price_ngn: Math.max(0, Number(draft.price) || 0),
+        batch_quantity: Math.max(0, Number(draft.qty) || 0),
+        state: draft.state.trim(),
+        // Photo swaps persist straight into the listing row.
+        images: photos.map((p) => p.url),
+      });
+      setEditing(null);
+      toast.success("Listing updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update listing.");
+    }
   }
 
   return (
@@ -151,12 +155,14 @@ export function AdminListingsTable() {
                       type="number"
                       placeholder="default"
                       defaultValue={l.commission_override ?? ""}
-                      onBlur={(e) =>
+                      onBlur={(e) => {
                         void setListingOverride(
                           l.id,
                           e.target.value === "" ? null : Number(e.target.value),
-                        )
-                      }
+                        ).catch((error) => {
+                          toast.error(error instanceof Error ? error.message : "Could not update commission.");
+                        });
+                      }}
                     />
                   </td>
                   <td className="p-2">
@@ -168,8 +174,12 @@ export function AdminListingsTable() {
                         size="sm"
                         variant={l.is_featured ? "default" : "outline"}
                         onClick={async () => {
-                          await setListingFlags(l.id, { is_featured: !l.is_featured });
-                          toast.success(l.is_featured ? "Removed from homepage." : "Featured on homepage.");
+                          try {
+                            await setListingFlags(l.id, { is_featured: !l.is_featured });
+                            toast.success(l.is_featured ? "Removed from homepage." : "Featured on homepage.");
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "Could not update listing.");
+                          }
                         }}
                       >
                         <Star className="size-3" /> Feature
@@ -178,8 +188,12 @@ export function AdminListingsTable() {
                         size="sm"
                         variant="destructive"
                         onClick={async () => {
-                          await deleteListing(l.id);
-                          toast.success("Listing deleted.");
+                          try {
+                            await deleteListing(l.id);
+                            toast.success("Listing deleted.");
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "Could not delete listing.");
+                          }
                         }}
                       >
                         <Trash2 className="size-3" /> Delete
@@ -236,9 +250,13 @@ export function AdminListingsTable() {
               <Button
                 variant={editing.is_active ? "secondary" : "outline"}
                 onClick={async () => {
-                  await setListingFlags(editing.id, { is_active: !editing.is_active });
-                  setEditing(null);
-                  toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated.");
+                  try {
+                    await setListingFlags(editing.id, { is_active: !editing.is_active });
+                    setEditing(null);
+                    toast.success(editing.is_active ? "Listing frozen." : "Listing re-activated.");
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Could not change listing status.");
+                  }
                 }}
               >
                 {editing.is_active ? "Freeze listing" : "Re-activate listing"}
