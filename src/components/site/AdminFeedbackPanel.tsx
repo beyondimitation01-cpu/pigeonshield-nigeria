@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useStore } from "@/lib/store";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
 
 /** User Feedback & Complaints — live table over app_feedback. */
 export function AdminFeedbackPanel() {
@@ -64,17 +65,25 @@ export function AdminFeedbackPanel() {
                       >
                         <CheckCircle2 className="size-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label="Delete feedback"
-                        onClick={async () => {
-                          await deleteFeedback(r.id);
-                          toast.success("Feedback deleted.");
+                      <ConfirmActionDialog
+                        title="Confirm Delete"
+                        description="Are you sure you want to permanently delete this feedback? This action cannot be undone."
+                        confirmLabel="Confirm Delete"
+                        onConfirm={async () => {
+                          try {
+                            await deleteFeedback(r.id);
+                            toast.success("Feedback deleted.");
+                            return true;
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "Could not delete feedback.");
+                            return false;
+                          }
                         }}
                       >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
+                        <Button size="sm" variant="ghost" aria-label="Delete feedback">
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </ConfirmActionDialog>
                     </div>
                   </td>
                 </tr>
