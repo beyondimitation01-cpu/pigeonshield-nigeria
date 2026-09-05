@@ -16,6 +16,8 @@ import { UserAvatar } from "@/components/site/UserAvatar";
 import { displayNigerianPhone, whatsappLink, formatNigerianPhone } from "@/lib/phone";
 import { canonicalUrl } from "@/lib/site";
 
+type PricingUnit = "listing" | "each" | "pair";
+
 export const Route = createFileRoute("/listing/$id")({
   head: ({ params }) => ({
     meta: [
@@ -38,21 +40,31 @@ function ListingDetail() {
   const [active, setActive] = useState(0);
   const [checkout, setCheckout] = useState(false);
   const [revealedPhone, setRevealedPhone] = useState("");
+  const [pricingUnit, setPricingUnit] = useState<PricingUnit>("listing");
   const listing = db.listings.find((l) => l.id === id || l.slug === id);
   const breederId = listing?.breeder_id ?? "";
 
   useEffect(() => {
     let cancelled = false;
-    // Seller phone numbers are not public. Signed-in buyers fetch them on demand.
     if (!user || !breederId || user.id === breederId) {
       setRevealedPhone("");
-      return;
+    } else {
+      void supabase.rpc("get_seller_phone", { _seller_id: breederId }).then(({ data }) => {
+        if (!cancelled) setRevealedPhone(String(data ?? ""));
+      });
     }
-    void supabase.rpc("get_seller_phone", { _seller_id: breederId }).then(({ data }) => {
-      if (!cancelled) setRevealedPhone(String(data ?? ""));
-    });
+
+    if (listing) {
+      void supabase.from("listings").select("pricing_unit").eq("id", listing.id).maybeSingle().then(({ data }) => {
+        if (cancelled) return;
+        const unit = String((data as Record<string, unknown> | null)?.["pricing_unit"] ?? "listing");
+        setPricingUnit(unit === "each" || unit === "pair" ? unit : "listing");
+      });
+    } else {
+      setPricingUnit("listing");
+    }
     return () => { cancelled = true; };
-  }, [user, breederId]);
+  }, [user, breederId, listing?.id]);
 
   if (!listing) return <div className="mx-auto max-w-3xl px-4 py-24 text-center text-muted-foreground">Listing not found or expired.</div>;
 
@@ -65,6 +77,8 @@ function ListingDetail() {
   const pct = commissionFor(listing);
   const gallery = listingGallery(listing);
   const cover = gallery[active] ?? gallery[0]!;
+  const isUnitPriced = pricingUnit !== "listing";
+  const unitLabel = pricingUnit === "pair" ? "per pair" : pricingUnit === "each" ? "each" : "per listing";
 
   function purchase() {
     if (isOwner) { toast.error("You cannot message or buy your own product"); return; }
@@ -80,17 +94,17 @@ function ListingDetail() {
           {gallery.length > 1 ? <div className="mt-3 flex gap-2">{gallery.map((img, i) => <button key={img + i} onClick={() => setActive(i)} className={`size-16 overflow-hidden rounded-md border ${i === active ? "border-primary" : "border-border"}`}><img src={img} alt="" loading="lazy" decoding="async" onError={onImageError()} className="size-full object-cover" /></button>)}</div> : null}
         </div>
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2"><Badge variant="secondary">{listing.category_type}</Badge><Badge>Days Remaining: {daysRemaining(listing.expiry_date)}</Badge><Badge variant="outline">Qty available: {listing.batch_quantity}</Badge></div>
+          <div className="flex flex-wrap gap-2"><Badge variant="secondary">{listing.category_type}</Badge><Badge>Days Remaining: {daysRemaining(listing.expiry_date)}</Badge><Badge variant="outline">{isUnitPriced ? `${listing.batch_quantity} ${pricingUnit === "pair" ? "pairs" : "units"} available` : `Qty available: ${listing.batch_quantity}`}</Badge></div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">{listing.custom_bird_name}</h1>
           <p className="text-muted-foreground">{listing.breed_type} · {listing.gender}</p>
-          <p className="text-3xl font-bold text-foreground">{ngn(listing.price_ngn)}</p>
+          <p className="text-3xl font-bold text-foreground">{ngn(listing.price_ngn)} {isUnitPriced ? <span className="text-base font-medium text-muted-foreground">{unitLabel}</span> : null}</p>
           <p className="text-sm text-muted-foreground">{listing.description}</p>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1"><MapPin className="size-4" /> {listing.state}</span>
             <span className="inline-flex items-center gap-1"><UserAvatar url={sellerCard?.avatar_url ?? null} name={sellerDisplayName} size={20} />{sellerDisplayName}{sellerCard?.loft_name ? <span className="text-xs">· {sellerCard.loft_name}</span> : null}</span>
             {listing.category_type === "Dog" ? <span className="inline-flex items-center gap-1"><Syringe className="size-4" /> {listing.vaccinated ? "Vaccinated" : "Not vaccinated"}</span> : null}
           </div>
-          <Card className="space-y-1 bg-muted/50 p-4 text-sm"><p className="font-semibold text-foreground">Escrow breakdown</p><p className="text-muted-foreground">Platform commission: {pct}% ({ngn((listing.price_ngn * pct) / 100)})</p><p className="text-muted-foreground">Breeder receives on confirmation: {ngn(listing.price_ngn - (listing.price_ngn * pct) / 100)}</p></Card>
+          <Card className="space-y-1 bg-muted/50 p-4 text-sm"><p className="font-semibold text-foreground">Escrow breakdown</p><p className="text-muted-foreground">{isUnitPriced ? `Commission is calculated from the final quantity purchased. Current unit price: ${""}` : ""}</p><p className="text-muted-foreground">Platform commission: {pct}% ({isUnitPriced ? "calculated at checkout" : ngn((listing.price_ngn * pct) / 100)})</p><p className="text-muted-foreground">{isUnitPriced ? "The final breeder payout is based on the purchased quantity after commission." : `Breeder receives on confirmation: ${""}`}{!isUnitPriced ? ngn(listing.price_ngn - (listing.price_ngn * pct) / 100) : null}</p></Card>
           <div className="flex flex-wrap gap-3">
             {!isOwner ? <Button size="lg" onClick={purchase}>Buy with Escrow Protection</Button> : null}
             {formatNigerianPhone(sellerPhone) ? <><Button size="lg" variant="secondary" asChild><a href={`tel:+${formatNigerianPhone(sellerPhone)}`}><Phone className="size-4" /> Call Seller ({displayNigerianPhone(sellerPhone)})</a></Button>{sellerWa ? <Button size="lg" variant="secondary" asChild><a href={sellerWa} target="_blank" rel="noopener noreferrer"><MessageCircle className="size-4" /> WhatsApp Chat</a></Button> : null}</> : null}
