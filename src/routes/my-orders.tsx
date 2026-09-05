@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Timer, FileImage, Truck } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { AlertTriangle, ArrowRight, Timer, FileImage, Truck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ export const Route = createFileRoute("/my-orders")({
 });
 
 const TERMINAL_STATUSES: TxStatus[] = ["Seller Paid", "Completed", "Refunded to Buyer"];
+const HISTORY_PREVIEW_SIZE = 5;
+const HISTORY_FETCH_SIZE = HISTORY_PREVIEW_SIZE + 1;
 const TRANSACTION_SELECT = "id, listing_id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, delivery_marked_at, auto_release_at, driver_phone, waybill_image_url, proof_file_name, dispute_status, status, payment_reference, receipt_url, receipt_uploaded_at, payout_paid_at, payout_paid_by, payout_reference, payout_notes, created_at";
 
 function mapTransaction(row: Record<string, unknown>, pin: string | null = null): EscrowTransaction {
@@ -71,15 +73,24 @@ function MyOrders() {
     setLoading(true);
     try {
       const activeQuery = supabase.from("transactions").select(TRANSACTION_SELECT).not("status", "in", `(${TERMINAL_STATUSES.map((status) => `"${status}"`).join(",")})`).or(`buyer_id.eq.${user.id},breeder_id.eq.${user.id}`).order("created_at", { ascending: false });
-      const [{ data: activeRows, error: activeError }, { data: historyRows, error: historyError }] = await Promise.all([activeQuery, supabase.rpc("get_transaction_history")]);
-      if (activeError) throw activeError;
-      if (historyError) throw historyError;
+      const [activeResult, purchaseHistoryResult, salesHistoryResult] = await Promise.all([
+        activeQuery,
+        supabase.rpc("get_transaction_history_page", { _direction: "purchase", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
+        supabase.rpc("get_transaction_history_page", { _direction: "sale", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
+      ]);
+      if (activeResult.error) throw activeResult.error;
+      if (purchaseHistoryResult.error) throw purchaseHistoryResult.error;
+      if (salesHistoryResult.error) throw salesHistoryResult.error;
       const { data: visiblePins } = await supabase.rpc("get_visible_handover_pins");
       const pinMap = new Map<string, string>();
       for (const row of (visiblePins ?? []) as Record<string, unknown>[]) if (row["transaction_id"] && typeof row["verification_pin"] === "string") pinMap.set(String(row["transaction_id"]), String(row["verification_pin"]));
-      const active = ((activeRows ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row, pinMap.get(String(row["id"])) ?? null));
-      const history = ((historyRows ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row));
-      setPurchases(active.filter((tx) => tx.buyer_id === user.id)); setSales(active.filter((tx) => tx.breeder_id === user.id)); setPurchaseHistory(history.filter((tx) => tx.buyer_id === user.id)); setSalesHistory(history.filter((tx) => tx.breeder_id === user.id));
+      const active = ((activeResult.data ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row, pinMap.get(String(row["id"])) ?? null));
+      const purchaseHistoryRows = ((purchaseHistoryResult.data ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row));
+      const salesHistoryRows = ((salesHistoryResult.data ?? []) as Record<string, unknown>[]).map((row) => mapTransaction(row));
+      setPurchases(active.filter((tx) => tx.buyer_id === user.id));
+      setSales(active.filter((tx) => tx.breeder_id === user.id));
+      setPurchaseHistory(purchaseHistoryRows.slice(0, HISTORY_PREVIEW_SIZE));
+      setSalesHistory(salesHistoryRows.slice(0, HISTORY_PREVIEW_SIZE));
     } catch (error) { toast.error(error instanceof Error ? error.message : "Could not load your transactions."); } finally { setLoading(false); }
   }, [user]);
 
@@ -92,11 +103,11 @@ function MyOrders() {
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) return <AuthRequired title="My Orders" description="Log in to view your escrow orders." />;
-  return <main className="mx-auto max-w-5xl px-4 py-10"><h1 className="text-3xl font-bold tracking-tight">My Orders</h1><p className="mt-1 text-muted-foreground">Escrow-protected purchases and sales.</p><section className="mt-8"><h2 className="text-lg font-semibold">Purchases ({purchases.length})</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{loading && purchases.length === 0 ? <p className="text-sm text-muted-foreground">Loading active purchases…</p> : purchases.length === 0 ? <p className="text-sm text-muted-foreground">No active purchases.</p> : purchases.map((t) => <OrderCard key={t.id} tx={t} side="buyer" onChanged={loadTransactions} />)}</div></section><section className="mt-10"><h2 className="text-lg font-semibold">Sales ({sales.length})</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{loading && sales.length === 0 ? <p className="text-sm text-muted-foreground">Loading active sales…</p> : sales.length === 0 ? <p className="text-sm text-muted-foreground">No active sales.</p> : sales.map((t) => <OrderCard key={t.id} tx={t} side="breeder" onChanged={loadTransactions} />)}</div></section><section className="mt-10 border-t border-border pt-8"><h2 className="text-lg font-semibold">Transaction History</h2><p className="mt-1 text-sm text-muted-foreground">Completed and refunded transactions remain available here without cluttering your active workflow.</p><div className="mt-4 grid gap-6 md:grid-cols-2"><HistoryList title="Purchases" rows={purchaseHistory} /><HistoryList title="Sales" rows={salesHistory} /></div></section></main>;
+  return <main className="mx-auto max-w-5xl px-4 py-10"><h1 className="text-3xl font-bold tracking-tight">My Orders</h1><p className="mt-1 text-muted-foreground">Escrow-protected purchases and sales.</p><section className="mt-8"><h2 className="text-lg font-semibold">Purchases ({purchases.length})</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{loading && purchases.length === 0 ? <p className="text-sm text-muted-foreground">Loading active purchases…</p> : purchases.length === 0 ? <p className="text-sm text-muted-foreground">No active purchases.</p> : purchases.map((t) => <OrderCard key={t.id} tx={t} side="buyer" onChanged={loadTransactions} />)}</div></section><section className="mt-10"><h2 className="text-lg font-semibold">Sales ({sales.length})</h2><div className="mt-4 grid gap-4 md:grid-cols-2">{loading && sales.length === 0 ? <p className="text-sm text-muted-foreground">Loading active sales…</p> : sales.length === 0 ? <p className="text-sm text-muted-foreground">No active sales.</p> : sales.map((t) => <OrderCard key={t.id} tx={t} side="breeder" onChanged={loadTransactions} />)}</div></section><section className="mt-10 border-t border-border pt-8"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-lg font-semibold">Transaction History</h2><p className="mt-1 text-sm text-muted-foreground">Your recent completed and refunded transactions are shown here. Older records remain available in the full history.</p></div><Button asChild variant="outline" size="sm"><Link to="/transaction-history">View full history <ArrowRight className="size-4" /></Link></Button></div><div className="mt-4 grid gap-6 md:grid-cols-2"><HistoryList title="Purchases" rows={purchaseHistory} /><HistoryList title="Sales" rows={salesHistory} /></div></section></main>;
 }
 
 function HistoryList({ title, rows }: { title: string; rows: EscrowTransaction[] }) {
-  return <div className="rounded-lg border border-border/70 bg-card p-4"><h3 className="font-medium">{title} ({rows.length})</h3><div className="mt-3 space-y-2">{rows.length === 0 ? <p className="text-sm text-muted-foreground">No completed transactions.</p> : rows.map((tx) => <div key={tx.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 text-sm"><div className="min-w-0"><p className="truncate font-medium">{tx.listing_name}</p><p className="text-xs text-muted-foreground">{tx.id}</p></div><div className="shrink-0 text-right"><p className="font-semibold">{ngn(tx.amount_naira)}</p><Badge variant="outline" className="mt-1">{tx.status}</Badge></div></div>)}</div></div>;
+  return <div className="rounded-lg border border-border/70 bg-card p-4"><h3 className="font-medium">{title}</h3><div className="mt-3 space-y-2">{rows.length === 0 ? <p className="text-sm text-muted-foreground">No completed transactions.</p> : rows.map((tx) => <div key={tx.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 text-sm"><div className="min-w-0"><p className="truncate font-medium">{tx.listing_name}</p><p className="text-xs text-muted-foreground">{tx.id}</p></div><div className="shrink-0 text-right"><p className="font-semibold">{ngn(tx.amount_naira)}</p><Badge variant="outline" className="mt-1">{tx.status}</Badge></div></div>)}</div></div>;
 }
 
 function GuardedMyOrders() { return <ProtectedRoute title="My Orders" description="Log in to view your escrow orders."><MyOrders /></ProtectedRoute>; }
