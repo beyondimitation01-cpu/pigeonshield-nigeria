@@ -104,7 +104,7 @@ function AdminPage() {
       toast.success("Administrator authenticated.");
     } else {
       setShowConsole(false);
-      toast.error("Incorrect master password.");
+      toast.error("Authentication failed. Please verify the master password and try again.");
     }
   }
 
