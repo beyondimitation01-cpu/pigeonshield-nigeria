@@ -14,7 +14,7 @@ import { daysRemaining, ngn } from "@/lib/pigeon-data";
 import { listingGallery, onImageError } from "@/lib/listing-images";
 import { UserAvatar } from "@/components/site/UserAvatar";
 import { displayNigerianPhone, whatsappLink, formatNigerianPhone } from "@/lib/phone";
-import { canonicalUrl, listingSlug } from "@/lib/site";
+import { canonicalUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/listing/$id")({
   head: ({ params }) => ({
@@ -38,11 +38,12 @@ function ListingDetail() {
   const [active, setActive] = useState(0);
   const [checkout, setCheckout] = useState(false);
   const [revealedPhone, setRevealedPhone] = useState("");
-  const listing = db.listings.find((l) => l.id === id) ?? db.listings.find((l) => listingSlug(l.custom_bird_name, l.id) === id);
+  const listing = db.listings.find((l) => l.id === id || l.slug === id);
   const breederId = listing?.breeder_id ?? "";
 
   useEffect(() => {
     let cancelled = false;
+    // Seller phone numbers are not public. Signed-in buyers fetch them on demand.
     if (!user || !breederId || user.id === breederId) {
       setRevealedPhone("");
       return;
@@ -109,4 +110,3 @@ function ListingDetail() {
 function PedigreeCol({ title, nodes }: { title: string; nodes: { name: string; breed: string }[] }) {
   return <div className="rounded-lg border border-border p-4"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p><ul className="mt-2 space-y-2">{nodes.map((n) => <li key={n.name} className="text-sm"><span className="font-medium text-foreground">{n.name}</span><span className="block text-muted-foreground">{n.breed}</span></li>)}</ul></div>;
 }
-
