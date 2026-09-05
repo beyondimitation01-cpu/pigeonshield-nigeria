@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, LogOut, ShieldCheck, LayoutDashboard, Package, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { UserAvatar } from "@/components/site/UserAvatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 import { ADMIN_OPAY } from "@/lib/pigeon-data";
 
 const NAV_LINKS = [
@@ -24,6 +25,8 @@ const NAV_LINKS = [
   { to: "/messages", label: "Messages" },
   { to: "/feedback", label: "Feedback" },
 ] as const;
+
+const NOTIFICATION_RETENTION_MS = 48 * 60 * 60 * 1000;
 
 const notificationCopy: Record<string, { title: string; body: string }> = {
   payment_submitted: {
@@ -111,16 +114,137 @@ function getNotificationCopy(kind: string) {
   };
 }
 
+function isNotificationTaskUnresolved(notification: { kind: string; transaction_id?: string | null }, transaction: { status: string; payout_paid_at?: string | null; payout_paid_by?: string | null } | undefined) {
+  if (!transaction) return true;
+
+  switch (notification.kind) {
+    case "admin_payment_review":
+    case "admin_receipt_review":
+      return transaction.status === "Pending Verification";
+    case "admin_payout_required":
+    case "payout_pending":
+      return (
+        (transaction.status === "Ready for Admin Payout" || transaction.status === "Delivered") &&
+        !transaction.payout_paid_at &&
+        !transaction.payout_paid_by
+      );
+    case "admin_transaction_review":
+    case "payment_attention":
+      return transaction.status === "Payment Error" || transaction.status === "Transaction Error";
+    case "admin_dispute_review":
+      return transaction.status === "Disputed";
+    case "receipt_confirmation_required":
+      return transaction.status === "In Transit";
+    default:
+      return false;
+  }
+}
+
 export function Navbar() {
   const { isLoading, isAuthenticated } = useAuth();
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const cleanupEligibleNotifications = async () => {
+      const cutoff = new Date(Date.now() - NOTIFICATION_RETENTION_MS).toISOString();
+      const { error } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("recipient_id", user.id)
+        .not("read_at", "is", null)
+        .lt("read_at", cutoff);
+      if (error) console.warn("Notification retention cleanup failed:", error.message);
+    };
+
+    void cleanupEligibleNotifications();
+    const interval = window.setInterval(() => void cleanupEligibleNotifications(), 60 * 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [user]);
+
+  const activeNotifications = useMemo(() => {
+    const cutoff = Date.now() - NOTIFICATION_RETENTION_MS;
+    return db.notifications.filter((notification) => {
+      if (!notification.read_at) return true;
+      if (new Date(notification.read_at).getTime() >= cutoff) return true;
+      const transaction = notification.transaction_id
+        ? db.transactions.find((tx) => tx.id === notification.transaction_id)
+        : undefined;
+      return isNotificationTaskUnresolved(notification, transaction);
+    });
+  }, [db.notifications, db.transactions]);
+
+  const notificationGroups = useMemo(() => {
+    type NotificationItem = (typeof activeNotifications)[number];
+    type NotificationGroup = { key: string; items: NotificationItem[]; isMessageGroup: boolean };
+
+    const groups: NotificationGroup[] = [];
+    const messageGroups = new Map<string, NotificationGroup>();
+
+    for (const notification of activeNotifications) {
+      const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
+      if (!isMessage) {
+        groups.push({ key: `notification:${notification.id}`, items: [notification], isMessageGroup: false });
+        continue;
+      }
+
+      const groupKey = notification.conversation_id
+        ? `conversation:${notification.conversation_id}`
+        : notification.listing_id
+          ? `listing:${notification.listing_id}`
+          : "messages:general";
+      const existing = messageGroups.get(groupKey);
+      if (existing) {
+        existing.items.push(notification);
+      } else {
+        const group: NotificationGroup = { key: groupKey, items: [notification], isMessageGroup: true };
+        messageGroups.set(groupKey, group);
+        groups.push(group);
+      }
+    }
+
+    return groups;
+  }, [activeNotifications]);
+
   const handleLogout = async () => {
     setOpen(false);
     await logout();
     await navigate({ to: "/" });
+  };
+
+  const handleNotificationSelect = async (items: typeof activeNotifications) => {
+    const unreadIds = items.filter((item) => !item.read_at).map((item) => item.id);
+    if (unreadIds.length > 0) {
+      await Promise.all(
+        unreadIds.map((id) => supabase.rpc("mark_notification_read", { _notification_id: id })),
+      );
+      // The existing store RPC also refreshes the shared notification state.
+      // Reusing it once avoids adding a parallel refresh mechanism.
+      void markNotificationRead(unreadIds[0]);
+    }
+
+    const notification = items[0];
+    const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
+    const isAdminNotification = notification.kind.startsWith("admin_");
+
+    if (isAdminNotification) {
+      void navigate({ to: "/pigeon-boss-admin" });
+    } else if (isMessage && notification.conversation_id) {
+      void navigate({
+        to: "/messages",
+        search: { listing: undefined, conversation: notification.conversation_id },
+      });
+    } else if (isMessage && notification.listing_id) {
+      void navigate({
+        to: "/messages",
+        search: { listing: notification.listing_id, conversation: undefined },
+      });
+    } else {
+      void navigate({ to: "/my-orders" });
+    }
   };
 
   const links = NAV_LINKS.map((l) => (
@@ -156,47 +280,50 @@ export function Navbar() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-[min(92vw,24rem)] overflow-hidden p-0">
+                <DropdownMenuLabel className="px-4 py-3">Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {db.notifications.length === 0 ? (
-                  <DropdownMenuItem disabled>No new notifications</DropdownMenuItem>
+                {notificationGroups.length === 0 ? (
+                  <DropdownMenuItem disabled className="px-4 py-5 text-sm text-muted-foreground">
+                    No notifications
+                  </DropdownMenuItem>
                 ) : (
-                  db.notifications.slice(0, 8).map((notification) => {
-                    const copy = getNotificationCopy(notification.kind);
-                    const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
-                    const isAdminNotification = notification.kind.startsWith("admin_");
-                    return (
-                      <DropdownMenuItem
-                        key={notification.id}
-                        className="items-start gap-2 py-3"
-                        onSelect={() => {
-                          void markNotificationRead(notification.id);
-                          if (isAdminNotification) {
-                            void navigate({ to: "/pigeon-boss-admin" });
-                          } else if (isMessage && notification.conversation_id) {
-                            void navigate({
-                              to: "/messages",
-                              search: { listing: undefined, conversation: notification.conversation_id },
-                            });
-                          } else if (isMessage && notification.listing_id) {
-                            void navigate({
-                              to: "/messages",
-                              search: { listing: notification.listing_id, conversation: undefined },
-                            });
-                          } else {
-                            void navigate({ to: "/my-orders" });
-                          }
-                        }}
-                      >
-                        <div className="min-w-0">
-                          <p className={notification.read_at ? "font-medium" : "font-semibold"}>{copy.title}</p>
-                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{copy.body}</p>
-                          {!notification.read_at && <span className="mt-1 block text-[11px] text-primary">Unread</span>}
-                        </div>
-                      </DropdownMenuItem>
-                    );
-                  })
+                  <div className="max-h-[min(70vh,34rem)] overflow-y-auto">
+                    {notificationGroups.map((group) => {
+                      const notification = group.items[0];
+                      const copy = getNotificationCopy(notification.kind);
+                      const unreadCount = group.items.filter((item) => !item.read_at).length;
+                      const totalCount = group.items.length;
+                      const title = group.isMessageGroup
+                        ? unreadCount > 0
+                          ? `New messages · ${totalCount}`
+                          : `Messages · ${totalCount}`
+                        : copy.title;
+                      const body = group.isMessageGroup
+                        ? unreadCount > 0
+                          ? `${unreadCount} unread marketplace message${unreadCount === 1 ? "" : "s"}.`
+                          : `${totalCount} recent marketplace message${totalCount === 1 ? "" : "s"}.`
+                        : copy.body;
+
+                      return (
+                        <DropdownMenuItem
+                          key={group.key}
+                          className="items-start gap-2 border-b border-border/60 px-4 py-3 last:border-b-0"
+                          onSelect={() => void handleNotificationSelect(group.items)}
+                        >
+                          <div className="min-w-0">
+                            <p className={unreadCount > 0 ? "font-semibold" : "font-medium"}>{title}</p>
+                            <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{body}</p>
+                            {unreadCount > 0 && (
+                              <span className="mt-1 block text-[11px] text-primary">
+                                {unreadCount} unread
+                              </span>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
