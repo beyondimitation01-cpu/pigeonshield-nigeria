@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Copy, Loader2, ShieldCheck, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { compressImage } from "@/lib/image-compress";
 import { useStore } from "@/lib/store";
@@ -18,8 +20,9 @@ import { makeOrderReference, ngn, OPAY_ACCOUNT, type Listing } from "@/lib/pigeo
 
 const RECEIPT_BUCKET = "payment-receipts";
 const RECEIPT_TTL_SECONDS = 60 * 60 * 24 * 365;
+type PricingUnit = "listing" | "each" | "pair";
 
-/** Manual OPay transfer checkout — no card gateway, zero gateway fees. */
+/** Manual OPay transfer checkout — quantity and total are confirmed server-side. */
 export function CheckoutModal({
   listing,
   open,
@@ -29,14 +32,50 @@ export function CheckoutModal({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { user, buyListing } = useStore();
+  const { user } = useStore();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [receipt, setReceipt] = useState<{ url: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pricingUnit, setPricingUnit] = useState<PricingUnit>("listing");
+  const [availableQty, setAvailableQty] = useState(1);
+  const [unitPrice, setUnitPrice] = useState(listing.price_ngn);
+  const [quantity, setQuantity] = useState(1);
+  const [loadingPricing, setLoadingPricing] = useState(false);
 
   const reference = useMemo(() => makeOrderReference(), [listing.id, open]);
+  const isUnitPriced = pricingUnit !== "listing";
+  const totalAmount = isUnitPriced ? unitPrice * quantity : unitPrice;
+  const unitLabel = pricingUnit === "pair" ? "pair" : "each";
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoadingPricing(true);
+    setPricingUnit("listing");
+    setAvailableQty(1);
+    setUnitPrice(listing.price_ngn);
+    setQuantity(1);
+    void supabase.from("listings").select("price_ngn, pricing_unit, batch_quantity, is_active").eq("id", listing.id).maybeSingle().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data) {
+        toast.error(error?.message ?? "Could not load the current listing price. Please try again.");
+        setLoadingPricing(false);
+        return;
+      }
+      const nextUnit = String((data as Record<string, unknown>)["pricing_unit"] ?? "listing") as PricingUnit;
+      const nextPrice = Number((data as Record<string, unknown>)["price_ngn"] ?? listing.price_ngn);
+      const nextQty = Math.max(1, Number((data as Record<string, unknown>)["batch_quantity"] ?? 1));
+      setPricingUnit(nextUnit === "each" || nextUnit === "pair" ? nextUnit : "listing");
+      setUnitPrice(nextPrice);
+      setAvailableQty(nextUnit === "listing" ? 1 : nextQty);
+      setQuantity(1);
+      if ((data as Record<string, unknown>)["is_active"] !== true) toast.error("This listing is no longer available.");
+      setLoadingPricing(false);
+    });
+    return () => { cancelled = true; };
+  }, [listing.id, listing.price_ngn, open]);
 
   async function copy(value: string, label: string) {
     try {
@@ -76,13 +115,24 @@ export function CheckoutModal({
       toast.error("Attach your payment receipt screenshot first.");
       return;
     }
+    const safeQuantity = isUnitPriced ? Math.min(Math.max(Math.trunc(quantity), 1), availableQty) : 1;
+    if (isUnitPriced && safeQuantity !== quantity) {
+      toast.error("Choose a valid quantity before submitting.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const tx = await buyListing(listing, { reference, receiptUrl: receipt.url });
-      if (!tx) {
-        toast.error("Could not submit the order. Please try again.");
-        return;
-      }
+      const { data, error } = await supabase.from("transactions").insert({
+        listing_id: listing.id,
+        buyer_id: user?.id,
+        quantity_purchased: safeQuantity,
+        pricing_unit: pricingUnit,
+        payment_reference: reference,
+        receipt_url: receipt.url,
+        receipt_uploaded_at: new Date().toISOString(),
+      } as never).select("id").single();
+      if (error) throw new Error(error.message);
+      if (!data?.id) throw new Error("Could not create the order.");
       onOpenChange(false);
       toast.success("Payment submitted for verification. Admin will confirm your transfer shortly.");
       void navigate({ to: "/my-orders" });
@@ -101,8 +151,7 @@ export function CheckoutModal({
             <ShieldCheck className="size-5 text-primary" /> Manual OPay Transfer
           </DialogTitle>
           <DialogDescription>
-            Transfer {ngn(listing.price_ngn)} to the PigeonShield escrow account, then attach your receipt.
-            Funds are only released to the breeder after you confirm safe delivery.
+            {loadingPricing ? "Loading the current listing price…" : isUnitPriced ? `Transfer ${ngn(totalAmount)} for ${quantity} ${unitLabel}${quantity === 1 ? "" : "s"}.` : `Transfer ${ngn(totalAmount)} for this complete listing.`} Funds are only released to the breeder after you confirm safe delivery.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,9 +159,19 @@ export function CheckoutModal({
           <Row label="Bank Name" value={OPAY_ACCOUNT.bank} />
           <Row label="Account Number" value={OPAY_ACCOUNT.number} onCopy={() => copy(OPAY_ACCOUNT.number, "Account number")} />
           <Row label="Account Name" value={OPAY_ACCOUNT.name} />
-          <Row label="Amount" value={ngn(listing.price_ngn)} />
+          {isUnitPriced ? <Row label={`Price per ${unitLabel}`} value={ngn(unitPrice)} /> : null}
+          {isUnitPriced ? <Row label="Quantity" value={`${quantity} ${unitLabel}${quantity === 1 ? "" : "s"}`} /> : null}
+          <Row label="Amount" value={ngn(totalAmount)} />
+          {isUnitPriced ? <p className="text-xs text-muted-foreground">{availableQty} {pricingUnit === "pair" ? "pairs" : "units"} available.</p> : null}
           <Row label="Narration / Reference" value={reference} onCopy={() => copy(reference, "Reference code")} />
         </Card>
+
+        {isUnitPriced ? (
+          <div className="space-y-2">
+            <Label htmlFor="purchase-quantity">Quantity to purchase</Label>
+            <Input id="purchase-quantity" type="number" min={1} max={availableQty} step={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.min(availableQty, Math.trunc(Number(e.target.value) || 1))))} disabled={loadingPricing || availableQty < 1} />
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <input
@@ -131,7 +190,7 @@ export function CheckoutModal({
           </p>
         </div>
 
-        <Button size="lg" disabled={!receipt || submitting} onClick={() => void submit()}>
+        <Button size="lg" disabled={!receipt || submitting || loadingPricing || (isUnitPriced && availableQty < 1)} onClick={() => void submit()}>
           {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
           Submit Payment for Verification
         </Button>
