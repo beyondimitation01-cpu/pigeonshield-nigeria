@@ -1,4 +1,4 @@
-import { SITE_SLUG, SITE_URL } from "./site";
+import { SITE_URL } from "./site";
 
 const CANONICAL_HOST = new URL(SITE_URL).hostname;
 
