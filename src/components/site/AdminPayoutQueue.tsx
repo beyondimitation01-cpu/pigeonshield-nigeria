@@ -62,19 +62,25 @@ export function AdminPayoutQueue() {
     if (view !== "history") return;
     setLoading(true);
     try {
-      const clean = query.trim().replace(/[\\%_(),]/g, (char) => `\\${char}`);
+      const rawQuery = query.trim();
+      const clean = rawQuery.replace(/[\\%_(),]/g, (char) => `\\${char}`);
       let request = supabase
         .from("transactions")
         .select(PAYOUT_SELECT, { count: "exact" })
         .not("payout_paid_at", "is", null);
 
       if (clean) {
-        const clauses = [`id.ilike.%${clean}%`, `listing_name.ilike.%${clean}%`, `payout_reference.ilike.%${clean}%`];
-        if (searchableUserIds.length) {
-          const ids = searchableUserIds.map((id) => id.replace(/[\\(),]/g, (char) => `\\${char}`)).join(",");
-          clauses.push(`buyer_id.in.(${ids})`, `breeder_id.in.(${ids})`);
+        const clauses = [`listing_name.ilike.%${clean}%`, `payout_reference.ilike.%${clean}%`];
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawQuery);
+        if (isUuid) {
+          request = request.eq("id", rawQuery);
+        } else {
+          if (searchableUserIds.length) {
+            const ids = searchableUserIds.map((id) => id.replace(/[\\(),]/g, (char) => `\\${char}`)).join(",");
+            clauses.push(`buyer_id.in.(${ids})`, `breeder_id.in.(${ids})`);
+          }
+          request = request.or(clauses.join(","));
         }
-        request = request.or(clauses.join(","));
       }
       if (fromDate) request = request.gte("payout_paid_at", `${fromDate}T00:00:00.000Z`);
       if (toDate) request = request.lt("payout_paid_at", `${addOneDay(toDate)}T00:00:00.000Z`);
@@ -165,8 +171,8 @@ export function AdminPayoutQueue() {
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold">Seller payout history</h3><p className="mt-1 text-sm text-muted-foreground">Permanent records of completed manual seller payouts.</p></div><Badge variant="outline">{historyTotal.toLocaleString()} total</Badge></div>
             <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_auto_auto]">
               <div className="relative min-w-0"><Search className="pointer-events-none absolute left-3 top-3 size-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search order ID, product, buyer, seller or payout reference…" value={query} onChange={(e) => { setQuery(e.target.value); setHistoryPage(1); }} /></div>
-              <Input aria-label="Filter payout history from date" type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setHistoryPage(1); }} />
-              <Input aria-label="Filter payout history to date" type="date" min={fromDate || undefined} value={toDate} onChange={(e) => { setToDate(e.target.value); setHistoryPage(1); }} />
+              <div className="space-y-1"><Label htmlFor="payout-history-from-date">From date</Label><Input id="payout-history-from-date" aria-label="Filter payout history from date" type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setHistoryPage(1); }} /></div>
+              <div className="space-y-1"><Label htmlFor="payout-history-to-date">To date</Label><Input id="payout-history-to-date" aria-label="Filter payout history to date" type="date" min={fromDate || undefined} value={toDate} onChange={(e) => { setToDate(e.target.value); setHistoryPage(1); }} /></div>
             </div>
           </div>
           <div className="divide-y divide-border">
@@ -195,5 +201,5 @@ function addOneDay(value: string) {
 }
 
 function Info({ label, value, emphasis = false }: { label: string; value: string; emphasis?: boolean }) {
-  return <div className="rounded-lg border border-border/70 bg-background/70 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p><p className={`mt-1 break-words ${emphasis ? "text-lg font-bold text-primary" : "text-sm font-medium"}`}>{value}</p></div>;
+  return <div className="rounded-lg border border-border bg-background p-3"><p className="text-xs text-muted-foreground">{label}</p><p className={emphasis ? "mt-1 font-semibold text-primary" : "mt-1 font-medium"}>{value}</p></div>;
 }
