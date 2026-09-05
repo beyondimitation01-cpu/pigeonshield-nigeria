@@ -25,6 +25,7 @@ export function AuthModal() {
   const mode = authGate.mode;
 
   // A visitor who arrived through /ref/CODE has the inviter code stashed.
+  // Keep this automatic attribution path even though manual entry is removed.
   useEffect(() => {
     if (typeof window === "undefined") return;
     setInvite(window.localStorage.getItem("pigeonshield.ref") ?? "");
@@ -82,6 +83,7 @@ export function AuthModal() {
       home_state: state,
       bank_name: String(f.get("bank_name") ?? ""),
       account_number: String(f.get("account_number") ?? ""),
+      // Preserve automatic referral attribution from /ref/CODE.
       referral_code: invite,
     });
     setError(err);
@@ -198,16 +200,6 @@ export function AuthModal() {
                   <Label htmlFor="account_number">Account number</Label>
                   <Input id="account_number" name="account_number" required placeholder="0123456789" />
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="referral_code">Referral code (optional)</Label>
-                <Input
-                  id="referral_code"
-                  value={invite}
-                  onChange={(e) => setInvite(e.target.value.toUpperCase())}
-                  placeholder="ABC12345"
-                />
               </div>
 
               <label className="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
