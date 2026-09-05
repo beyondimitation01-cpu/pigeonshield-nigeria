@@ -52,6 +52,7 @@ function BreederDashboard() {
   const [state, setState] = useState("Lagos");
   const [vaccinated, setVaccinated] = useState(true);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [publishing, setPublishing] = useState(false);
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) return <AuthRequired title="Breeder Dashboard" description="Log in to manage your listings." />;
@@ -96,12 +97,19 @@ function BreederDashboard() {
     }
   }
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (publishing) return;
     const form = e.currentTarget;
     const f = new FormData(form);
     const price = Number(f.get("price") ?? 0);
     const quantity = Number(f.get("qty") ?? 1);
+    const name = String(f.get("name") ?? "").trim();
+    const description = String(f.get("description") ?? "").trim();
+    if (!name) {
+      toast.error("Enter a custom animal name.");
+      return;
+    }
     if (!Number.isSafeInteger(price) || price < 1000) {
       toast.error("Enter a valid price of at least ₦1,000.");
       return;
@@ -110,27 +118,35 @@ function BreederDashboard() {
       toast.error("Enter a valid quantity of at least 1.");
       return;
     }
-    void supabase.from("listings").insert({
-      category_type: category,
-      breeder_id: user.id,
-      breeder_handle: user.public_handle,
-      custom_bird_name: String(f.get("name") ?? "").trim(),
-      breed_type: breed,
-      gender,
-      price_ngn: price,
-      pricing_unit: pricingUnit,
-      images: photos.map((p) => p.url),
-      pedigree_json: null,
-      vaccinated,
-      state,
-      description: String(f.get("description") ?? "").trim(),
-      batch_quantity: quantity,
-      is_active: true,
-      creation_timestamp: new Date().toISOString(),
-      expiry_date: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-    } as never).then(({ error }) => {
+    setPublishing(true);
+    try {
+      // Only seller-product fields belong in this INSERT. Ownership, verification,
+      // lifecycle, timestamps, expiry and other privileged fields are established
+      // by the database trigger and must never be client-authored.
+      const { error } = await supabase.from("listings").insert({
+        category_type: category,
+        custom_bird_name: name,
+        breed_type: breed,
+        gender,
+        price_ngn: price,
+        pricing_unit: pricingUnit,
+        images: photos.map((p) => p.url),
+        pedigree_json: null,
+        vaccinated,
+        state,
+        description,
+        batch_quantity: quantity,
+      } as never);
       if (error) throw new Error(error.message);
-    }).then(() => { form.reset(); setPhotos([]); setPricingUnit("each"); toast.success("Listing published — live for 7 days."); }).catch((err: unknown) => { toast.error(err instanceof Error ? err.message : "Could not publish listing."); });
+      form.reset();
+      setPhotos([]);
+      setPricingUnit("each");
+      toast.success("Listing published — live for 7 days.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not publish listing.");
+    } finally {
+      setPublishing(false);
+    }
   }
 
   function unitLabel(unit: string | undefined) {
@@ -182,7 +198,7 @@ function BreederDashboard() {
                 <div className="space-y-1.5"><Label>Listing photos</Label><PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} /></div>
                 <div className="space-y-1.5"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" required rows={3} placeholder="Bloodline, age, race record..." /></div>
                 <label className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={vaccinated} onCheckedChange={(v) => setVaccinated(v === true)} /> Vaccinated / health certified</label>
-                <Button type="submit" className="w-full">Publish listing (7-day lifespan)</Button>
+                <Button type="submit" className="w-full" disabled={publishing}>{publishing ? "Publishing..." : "Publish listing (7-day lifespan)"}</Button>
               </form>
             </Card>
             <div className="space-y-6">
