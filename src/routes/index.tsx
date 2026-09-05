@@ -4,7 +4,7 @@ import { ShieldCheck, Search, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListingCard } from "@/components/site/ListingCard";
 import { Combobox } from "@/components/site/Combobox";
 import { useStore } from "@/lib/store";
@@ -97,12 +97,14 @@ function Marketplace() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-72">
-              <SelectLabel>Animal category</SelectLabel>
-              {marketplaceCategories.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectLabel>Animal category</SelectLabel>
+                {marketplaceCategories.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
