@@ -21,20 +21,12 @@ export default defineTool({
   handler: async (input, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthenticated();
     const supabase = supabaseForUser(ctx);
-    const userId = ctx.getUserId()!;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("public_handle, real_name")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    // Only seller-product fields belong in this INSERT. Ownership, verification,
+    // lifecycle, timestamps and expiry are established by the database trigger.
     const { data, error } = await supabase
       .from("listings")
       .insert({
-        breeder_id: userId,
-        breeder_handle: profile?.public_handle ?? profile?.real_name ?? "Breeder",
         category_type: input.category_type,
         breed_type: input.breed_type,
         price_ngn: Math.round(input.price_ngn),
@@ -43,8 +35,6 @@ export default defineTool({
         description: input.description ?? "",
         batch_quantity: input.batch_quantity ?? 1,
         vaccinated: input.vaccinated ?? false,
-        is_active: true,
-        expiry_date: expiry,
       })
       .select()
       .maybeSingle();
