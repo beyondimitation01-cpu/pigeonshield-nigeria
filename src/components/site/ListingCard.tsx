@@ -25,10 +25,11 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const { db } = useStore();
   const { requireAuth } = useAuthGuard();
   const seller = listing.breeder_id ? db.sellers[listing.breeder_id] : undefined;
+  const listingKey = listing.slug || listing.id;
 
   return (
     <Card className="group flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-lg">
-      <Link to="/listing/$id" params={{ id: listing.id }} className="block">
+      <Link to="/listing/$id" params={{ id: listingKey }} className="block">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
           <img
               src={cover}
@@ -65,7 +66,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
         </div>
       </Link>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5 p-2.5 sm:p-4">
-        <Link to="/listing/$id" params={{ id: listing.id }}>
+        <Link to="/listing/$id" params={{ id: listingKey }}>
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground sm:text-base">
             {listing.custom_bird_name}
           </h3>
