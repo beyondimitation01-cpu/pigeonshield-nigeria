@@ -38,6 +38,7 @@ export function AdminTransactionsPanel() {
   const [toDate, setToDate] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const searchableUserIds = useMemo(() => {
     const clean = query.trim().toLocaleLowerCase();
@@ -47,8 +48,17 @@ export function AdminTransactionsPanel() {
       .map((user) => user.id);
   }, [db.users, query]);
 
+  const searchableTransactionIds = useMemo(() => {
+    const clean = query.trim().toLocaleLowerCase();
+    if (!clean) return [];
+    return db.transactions
+      .filter((transaction) => transaction.id.toLocaleLowerCase().includes(clean))
+      .map((transaction) => transaction.id);
+  }, [db.transactions, query]);
+
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const clean = escapeSearch(query.trim());
       const select = "id, listing_name, buyer_id, breeder_id, amount_naira, calculated_commission, status, created_at, payout_paid_at, payout_reference";
@@ -61,7 +71,11 @@ export function AdminTransactionsPanel() {
       }
 
       if (clean) {
-        const clauses = [`id.ilike.%${clean}%`, `listing_name.ilike.%${clean}%`];
+        const clauses: string[] = [`listing_name.ilike.%${clean}%`];
+        if (searchableTransactionIds.length) {
+          const ids = searchableTransactionIds.map((id) => escapeFilterValue(id)).join(",");
+          clauses.push(`id.in.(${ids})`);
+        }
         if (searchableUserIds.length) {
           const ids = searchableUserIds.map((id) => escapeFilterValue(id)).join(",");
           clauses.push(`buyer_id.in.(${ids})`, `breeder_id.in.(${ids})`);
@@ -79,13 +93,12 @@ export function AdminTransactionsPanel() {
       setRows((data ?? []) as Tx[]);
       setTotal(count ?? 0);
     } catch (error) {
-      setRows([]);
-      setTotal(0);
       console.error("Failed to load admin transactions", error);
+      setLoadError(error instanceof Error ? error.message : "Unable to load transactions. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [fromDate, page, query, searchableUserIds, status, toDate, view]);
+  }, [fromDate, page, query, searchableTransactionIds, searchableUserIds, status, toDate, view]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -96,6 +109,7 @@ export function AdminTransactionsPanel() {
     setFromDate("");
     setToDate("");
     setPage(1);
+    setLoadError(null);
   }
 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -120,15 +134,22 @@ export function AdminTransactionsPanel() {
         <select aria-label="Filter transactions by status" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
           {(view === "history" ? HISTORY_STATUSES : ACTIVE_STATUSES).map((s) => <option key={s}>{s}</option>)}
         </select>
-        <Input aria-label="Filter transactions from date" type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} />
-        <Input aria-label="Filter transactions to date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => { setToDate(e.target.value); setPage(1); }} />
+        <div className="min-w-0">
+          <label htmlFor="transactions-from-date" className="mb-1 block text-xs font-medium text-muted-foreground">From date</label>
+          <Input id="transactions-from-date" aria-label="Filter transactions from date" type="date" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setPage(1); }} />
+        </div>
+        <div className="min-w-0">
+          <label htmlFor="transactions-to-date" className="mb-1 block text-xs font-medium text-muted-foreground">To date</label>
+          <Input id="transactions-to-date" aria-label="Filter transactions to date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => { setToDate(e.target.value); setPage(1); }} />
+        </div>
       </div>
 
       <Card className="overflow-hidden">
         <div className="divide-y divide-border">
           {loading ? <p className="p-6 text-sm text-muted-foreground">Loading {view === "history" ? "transaction history" : "active transactions"}…</p> : null}
-          {!loading && rows.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No matching {view === "history" ? "historical transactions" : "active transactions"}.</p> : null}
-          {!loading && rows.map((t) => {
+          {!loading && loadError ? <div className="p-6 text-sm text-destructive"><p>Unable to load transactions.</p><p className="mt-1 text-xs">{loadError}</p></div> : null}
+          {!loading && !loadError && rows.length === 0 ? <p className="p-6 text-sm text-muted-foreground">No matching {view === "history" ? "historical transactions" : "active transactions"}.</p> : null}
+          {!loading && !loadError && rows.map((t) => {
             const buyer = db.users.find((user) => user.id === t.buyer_id);
             const seller = db.users.find((user) => user.id === t.breeder_id);
             return (
