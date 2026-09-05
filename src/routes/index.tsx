@@ -10,7 +10,7 @@ import { Combobox } from "@/components/site/Combobox";
 import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
+import { CATEGORY_OPTIONS, isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
 import { onImageError } from "@/lib/listing-images";
 import { SITE_URL, canonicalUrl } from "@/lib/site";
@@ -18,10 +18,10 @@ import { SITE_URL, canonicalUrl } from "@/lib/site";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PigeonShield Nigeria — Escrow-Protected Pigeon Marketplace" },
+      { title: "PigeonShield Nigeria — Escrow-Protected Animal Marketplace" },
       { name: "description", content: "Buy and sell racing pigeons, chickens, guard dogs and horses anonymously in Nigeria with DOA-refund escrow and secure 4-digit pickup PIN handover." },
-      { property: "og:title", content: "PigeonShield Nigeria — Escrow-Protected Pigeon Marketplace" },
-      { property: "og:description", content: "Nigeria's anonymous livestock marketplace with delivery-fraud-proof escrow." },
+      { property: "og:title", content: "PigeonShield Nigeria — Escrow-Protected Animal Marketplace" },
+      { property: "og:description", content: "Nigeria's anonymous animal marketplace with delivery-fraud-proof escrow." },
       { property: "og:type", content: "website" },
       { property: "og:url", content: SITE_URL },
       { name: "twitter:card", content: "summary_large_image" },
@@ -31,24 +31,53 @@ export const Route = createFileRoute("/")({
   component: Marketplace,
 });
 
+type MarketplaceCategory = "all" | Category;
+
 function Marketplace() {
   const { db } = useStore();
   const { requireAuth } = useAuthGuard();
-  const [tab, setTab] = useState<"pigeons" | "others">("pigeons");
+  const [category, setCategory] = useState<MarketplaceCategory>("all");
   const [state, setState] = useState("All states");
   const [breed, setBreed] = useState("All breeds");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
 
-  const pool = useMemo(() => db.listings.filter((l) => isVisible(l) && (tab === "pigeons" ? l.category_type === "Pigeon" : l.category_type !== "Pigeon")), [db.listings, tab]);
+  const marketplaceCategories: { value: MarketplaceCategory; label: string }[] = [
+    { value: "all", label: "All Listings" },
+    ...CATEGORY_OPTIONS,
+  ];
+
+  const pool = useMemo(
+    () => db.listings.filter((l) => isVisible(l) && (category === "all" || l.category_type === category)),
+    [db.listings, category],
+  );
   const breeds = useMemo(() => Array.from(new Set(pool.map((l) => l.breed_type))).sort(), [pool]);
-  const filtered = useMemo(() => pool.filter((l) => (state === "All states" || l.state === state) && (breed === "All breeds" || l.breed_type === breed) && (q.trim() === "" || `${l.custom_bird_name} ${l.breed_type}`.toLowerCase().includes(q.toLowerCase()))).sort((a, b) => Number(b.is_featured ?? false) - Number(a.is_featured ?? false) || Number(b.is_verified_seller ?? false) - Number(a.is_verified_seller ?? false) || b.creation_timestamp - a.creation_timestamp), [pool, state, breed, q]);
+  const filtered = useMemo(
+    () =>
+      pool
+        .filter(
+          (l) =>
+            (state === "All states" || l.state === state) &&
+            (breed === "All breeds" || l.breed_type === breed) &&
+            (q.trim() === "" || `${l.custom_bird_name} ${l.breed_type}`.toLowerCase().includes(q.toLowerCase())),
+        )
+        .sort(
+          (a, b) =>
+            Number(b.is_featured ?? false) - Number(a.is_featured ?? false) ||
+            Number(b.is_verified_seller ?? false) - Number(a.is_verified_seller ?? false) ||
+            b.creation_timestamp - a.creation_timestamp,
+        ),
+    [pool, state, breed, q],
+  );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pageCount);
   const rows = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
-  function switchTab(next: "pigeons" | "others") { setTab(next); setBreed("All breeds"); setPage(1); }
-  const categoriesInOthers: Category[] = ["Chicken", "Dog", "Horse"];
+  function switchCategory(next: MarketplaceCategory) {
+    setCategory(next);
+    setBreed("All breeds");
+    setPage(1);
+  }
 
   return (
     <div>
@@ -56,18 +85,30 @@ function Marketplace() {
         <img src={heroPigeon} alt="Racing homer pigeon in a Nigerian loft" width={1024} height={768} onError={onImageError()} className="absolute inset-0 size-full object-cover opacity-25" />
         <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
           <Badge variant="secondary" className="mb-4 gap-1"><ShieldCheck className="size-3" /> Delivery-fraud-proof escrow</Badge>
-          <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-primary md:text-5xl">Nigeria&rsquo;s #1 Trusted Marketplace for Verified Pigeon Breeders &amp; Buyers</h1>
-          <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">Buy, sell, and trade high-quality pigeons with 100% DOA protection through PigeonShield Escrow.</p>
+          <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-primary md:text-5xl">Nigeria&rsquo;s trusted marketplace for verified animal sellers &amp; buyers</h1>
+          <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">Buy, sell, and trade pigeons, chickens, dogs, horses and other supported animals with 100% DOA protection through PigeonShield Escrow.</p>
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex flex-wrap gap-2">
-          <Button variant={tab === "pigeons" ? "default" : "outline"} onClick={() => switchTab("pigeons")}>Pigeons (Flagship)</Button>
-          <Button variant={tab === "others" ? "default" : "outline"} onClick={() => switchTab("others")}>Other Livestock &amp; Guard Animals</Button>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Browse by animal category">
+          {marketplaceCategories.map((option) => (
+            <Button
+              key={option.value}
+              variant={category === option.value ? "default" : "outline"}
+              onClick={() => switchCategory(option.value)}
+              aria-pressed={category === option.value}
+            >
+              {option.label}
+            </Button>
+          ))}
         </div>
-        {tab === "others" ? <p className="mt-3 text-sm text-muted-foreground">Secondary categories unlocked: {categoriesInOthers.join(", ")}.</p> : null}
+        <p className="mt-3 text-sm text-muted-foreground">
+          {category === "all"
+            ? "All currently live listings are shown by default. Choose a category above to narrow the marketplace."
+            : `Showing ${CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category} only.`}
+        </p>
         <div className="mt-6 grid gap-3 md:grid-cols-4">
-          <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search bird name or breed" className="pl-9" /></div>
+          <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search animal name or breed" className="pl-9" /></div>
           <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64"><SelectItem value="All states">All states</SelectItem>{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
           <Combobox value={breed} options={["All breeds", ...breeds]} onChange={(v) => { setBreed(v); setPage(1); }} allowCustom placeholder="All breeds" searchPlaceholder="Search or type a breed..." />
         </div>
