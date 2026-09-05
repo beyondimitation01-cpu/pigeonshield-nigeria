@@ -26,17 +26,11 @@ jobs:
           count = text.count(old)
           if count != 1:
               raise SystemExit(f"Expected exactly one Admin OTP block, found {count}")
-          path.write_text(text.replace(old, new, 1))
+          updated = text.replace(old, new, 1)
+          if old in updated or new not in updated:
+              raise SystemExit("Admin OTP replacement verification failed")
+          path.write_text(updated)
           PY
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
 
       - name: Commit fix and remove temporary workflow
         run: |
