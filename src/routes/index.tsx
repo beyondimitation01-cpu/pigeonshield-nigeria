@@ -4,7 +4,7 @@ import { ShieldCheck, Search, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ListingCard } from "@/components/site/ListingCard";
 import { Combobox } from "@/components/site/Combobox";
 import { useStore } from "@/lib/store";
@@ -43,7 +43,7 @@ function Marketplace() {
   const [page, setPage] = useState(1);
 
   const marketplaceCategories: { value: MarketplaceCategory; label: string }[] = [
-    { value: "all", label: "All Listings" },
+    { value: "all", label: "All animals" },
     ...CATEGORY_OPTIONS,
   ];
 
@@ -90,21 +90,25 @@ function Marketplace() {
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Browse by animal category">
-          {marketplaceCategories.map((option) => (
-            <Button
-              key={option.value}
-              variant={category === option.value ? "default" : "outline"}
-              onClick={() => switchCategory(option.value)}
-              aria-pressed={category === option.value}
-            >
-              {option.label}
-            </Button>
-          ))}
+        <div className="max-w-sm">
+          <label className="mb-2 block text-sm font-medium" htmlFor="marketplace-category">Browse by animal</label>
+          <Select value={category} onValueChange={(value) => switchCategory(value as MarketplaceCategory)}>
+            <SelectTrigger id="marketplace-category" aria-label="Browse by animal category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectLabel>Animal category</SelectLabel>
+              {marketplaceCategories.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
           {category === "all"
-            ? "All currently live listings are shown by default. Choose a category above to narrow the marketplace."
+            ? "All currently live listings are shown by default. Choose an animal category to narrow the marketplace."
             : `Showing ${CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category} only.`}
         </p>
         <div className="mt-6 grid gap-3 md:grid-cols-4">
