@@ -9,7 +9,7 @@ import { getPublicStore, type PublicStoreData, type PublicStoreListing } from "@
 import { listingCover, onImageError } from "@/lib/listing-images";
 import { daysRemaining, ngn } from "@/lib/pigeon-data";
 
-type StoreListing = PublicStoreListing;
+type StoreListing = PublicStoreListing & { pricing_unit?: "listing" | "each" | "pair" };
 type StoreData = PublicStoreData;
 
 async function loadStore(username: string) {
@@ -87,30 +87,32 @@ function PublicStorePage() {
       {store.listings.length === 0 ? <Card className="mt-4 p-10 text-center text-muted-foreground">This store has no active listings right now.</Card> : (
         <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
           {store.listings.map((listing) => {
+            const item = listing as StoreListing;
+            const unit = item.pricing_unit === "pair" ? "per pair" : item.pricing_unit === "each" ? "each" : "per listing";
             const cover = listingCover({
-              id: listing.id,
-              category_type: listing.category_type as "Pigeon",
-              breeder_id: listing.breeder_id,
+              id: item.id,
+              category_type: item.category_type as "Pigeon",
+              breeder_id: item.breeder_id,
               breeder_handle: store.username,
-              custom_bird_name: listing.custom_bird_name,
-              breed_type: listing.breed_type,
-              gender: listing.gender as "Male",
-              price_ngn: listing.price_ngn,
-              images: listing.images,
+              custom_bird_name: item.custom_bird_name,
+              breed_type: item.breed_type,
+              gender: item.gender as "Male",
+              price_ngn: item.price_ngn,
+              images: item.images,
               pedigree_json: null,
-              vaccinated: listing.vaccinated,
-              state: listing.state,
-              description: listing.description,
-              batch_quantity: listing.batch_quantity,
+              vaccinated: item.vaccinated,
+              state: item.state,
+              description: item.description,
+              batch_quantity: item.batch_quantity,
               commission_override: null,
-              is_active: listing.is_active,
-              is_featured: listing.is_featured,
-              is_verified_seller: listing.is_verified_seller,
-              creation_timestamp: new Date(listing.creation_timestamp).getTime(),
-              expiry_date: new Date(listing.expiry_date).getTime(),
+              is_active: item.is_active,
+              is_featured: item.is_featured,
+              is_verified_seller: item.is_verified_seller,
+              creation_timestamp: new Date(item.creation_timestamp).getTime(),
+              expiry_date: new Date(item.expiry_date).getTime(),
             });
-            const key = listing.slug || listing.id;
-            return <Card key={listing.id} className="overflow-hidden p-0"><Link to="/listing/$id" params={{ id: key }} className="block"><div className="relative aspect-[4/3] overflow-hidden bg-muted"><img src={cover} alt={`${listing.breed_type} — ${listing.custom_bird_name}`} loading="lazy" decoding="async" onError={onImageError()} className="size-full object-cover" /><Badge className="absolute left-2 top-2">{listing.category_type}</Badge></div></Link><div className="space-y-2 p-3 sm:p-4"><Link to="/listing/$id" params={{ id: key }}><h3 className="line-clamp-2 font-semibold">{listing.custom_bird_name}</h3></Link><p className="text-xs text-muted-foreground">{listing.breed_type} · {listing.gender}</p><p className="text-lg font-bold">{ngn(listing.price_ngn)}</p><div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>{listing.state}</span><span>{daysRemaining(new Date(listing.expiry_date).getTime())}d</span></div></div></Card>;
+            const key = item.slug || item.id;
+            return <Card key={item.id} className="overflow-hidden p-0"><Link to="/listing/$id" params={{ id: key }} className="block"><div className="relative aspect-[4/3] overflow-hidden bg-muted"><img src={cover} alt={`${item.breed_type} — ${item.custom_bird_name}`} loading="lazy" decoding="async" onError={onImageError()} className="size-full object-cover" /><Badge className="absolute left-2 top-2">{item.category_type}</Badge></div></Link><div className="space-y-2 p-3 sm:p-4"><Link to="/listing/$id" params={{ id: key }}><h3 className="line-clamp-2 font-semibold">{item.custom_bird_name}</h3></Link><p className="text-xs text-muted-foreground">{item.breed_type} · {item.gender}</p><p className="text-lg font-bold">{ngn(item.price_ngn)} <span className="text-xs font-medium text-muted-foreground">{unit}</span></p><div className="flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>{item.state}</span><span>{unit === "per listing" ? `Qty ${item.batch_quantity}` : `${item.batch_quantity} ${item.pricing_unit === "pair" ? "pairs" : "units"}`}</span></div></div></Card>;
           })}
         </div>
       )}
