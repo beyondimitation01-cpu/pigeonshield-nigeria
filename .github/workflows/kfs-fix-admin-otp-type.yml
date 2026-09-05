@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   fix-and-verify:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ !contains(github.event.head_commit.message, 'Fix Admin magic-link token verification type') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,7 +38,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Commit and remove temporary workflow
+      - name: Commit fix and remove temporary workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
