@@ -8,7 +8,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ErrorInfo, type ReactNode } from "react";
+import { Component } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -23,6 +24,48 @@ import { OfflineBanner } from "@/components/site/OfflineBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { CanonicalHostGuard } from "@/components/site/CanonicalHostGuard";
 import { canonicalUrl } from "@/lib/site";
+
+class RootRuntimeErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[RootRuntimeErrorBoundary]", error, errorInfo);
+    reportLovableError(error, { boundary: "root_runtime_error_boundary" });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background px-4">
+          <div className="max-w-md text-center">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              This page didn't load
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Something went wrong while loading the page. Please try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function NotFoundComponent() {
   return (
@@ -146,24 +189,26 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <CanonicalHostGuard>
-          <StoreProvider>
-            {!isAdminRoute ? <Navbar /> : null}
-            {!isAdminRoute ? <OfflineBanner /> : null}
-            {!isAdminRoute ? <BroadcastBanner /> : null}
-            <div className={isAdminRoute ? "min-h-screen" : "min-h-screen pt-16"}>
-              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-              <Outlet />
-            </div>
-            {!isAdminRoute ? <Footer /> : null}
-            <AuthModal />
-            <AdminGesture />
-            <InstallPrompt />
-            <Toaster />
-          </StoreProvider>
-        </CanonicalHostGuard>
-      </AuthProvider>
+      <RootRuntimeErrorBoundary>
+        <AuthProvider>
+          <CanonicalHostGuard>
+            <StoreProvider>
+              {!isAdminRoute ? <Navbar /> : null}
+              {!isAdminRoute ? <OfflineBanner /> : null}
+              {!isAdminRoute ? <BroadcastBanner /> : null}
+              <div className={isAdminRoute ? "min-h-screen" : "min-h-screen pt-16"}>
+                {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                <Outlet />
+              </div>
+              {!isAdminRoute ? <Footer /> : null}
+              <AuthModal />
+              <AdminGesture />
+              <InstallPrompt />
+              <Toaster />
+            </StoreProvider>
+          </CanonicalHostGuard>
+        </AuthProvider>
+      </RootRuntimeErrorBoundary>
     </QueryClientProvider>
   );
 }
