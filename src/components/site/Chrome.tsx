@@ -102,8 +102,12 @@ const notificationCopy: Record<string, { title: string; body: string }> = {
 
 function getNotificationCopy(kind: string) {
   return notificationCopy[kind] ?? {
-    title: kind === "message" ? "New message" : "Marketplace update",
-    body: kind === "message" ? "You received a new marketplace message." : "Your order or transaction has an important update.",
+    title: kind === "message" ? "New message" : kind === "handover_pin_available" ? "Pickup verification PIN available" : "Marketplace update",
+    body: kind === "message"
+      ? "You received a new marketplace message."
+      : kind === "handover_pin_available"
+        ? "Your pickup verification PIN is now available. Open the order to view it and complete the existing handover process."
+        : "Your order or transaction has an important update.",
   };
 }
 
@@ -198,7 +202,6 @@ export function Navbar() {
             </DropdownMenu>
           )}
           {isLoading ? (
-            // Never guess: no session-dependent button until getSession() resolves.
             <div className="h-8 w-28 animate-pulse rounded-md bg-muted" aria-hidden />
           ) : isAuthenticated ? (
             <DropdownMenu>
