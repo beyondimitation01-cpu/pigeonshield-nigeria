@@ -702,7 +702,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return false;
         }
         const { error: otpError } = await supabase.auth.verifyOtp({
-          type: "magiclink",
+          type: "email",
           token_hash: data.tokenHash,
         });
         if (otpError) {
