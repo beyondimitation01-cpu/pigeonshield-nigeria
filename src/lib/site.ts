@@ -1,7 +1,7 @@
 /** Canonical public address of the app. */
 export const SITE_NAME = "PigeonShield Nigeria";
 export const SITE_SLUG = "pigeonshield-nigeria";
-export const SITE_URL = `https://${SITE_SLUG}.lovable.app`;
+export const SITE_URL = "https://pigeonshield-nigeria.vercel.app";
 
 /** Absolute canonical URL for a route path ("/", "/listing/123", …). */
 export function canonicalUrl(path = "/") {
