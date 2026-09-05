@@ -146,6 +146,11 @@ export function Navbar() {
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [locallyReadNotificationIds, setLocallyReadNotificationIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    setLocallyReadNotificationIds(new Set());
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -169,6 +174,7 @@ export function Navbar() {
   const activeNotifications = useMemo(() => {
     const cutoff = Date.now() - NOTIFICATION_RETENTION_MS;
     return db.notifications.filter((notification) => {
+      if (locallyReadNotificationIds.has(notification.id)) return false;
       if (!notification.read_at) return true;
       if (new Date(notification.read_at).getTime() >= cutoff) return true;
       const transaction = notification.transaction_id
@@ -176,7 +182,7 @@ export function Navbar() {
         : undefined;
       return isNotificationTaskUnresolved(notification, transaction);
     });
-  }, [db.notifications, db.transactions]);
+  }, [db.notifications, db.transactions, locallyReadNotificationIds]);
 
   const notificationGroups = useMemo(() => {
     type NotificationItem = (typeof activeNotifications)[number];
@@ -217,13 +223,20 @@ export function Navbar() {
   };
 
   const handleNotificationSelect = async (items: typeof activeNotifications) => {
-    const unreadItems = items.filter((item) => !item.read_at);
+    const unreadItems = items.filter((item) => !item.read_at && !locallyReadNotificationIds.has(item.id));
     if (unreadItems.length > 0) {
       const results = await Promise.allSettled(
         unreadItems.map((item) => markNotificationRead(item.id)),
       );
-      if (results.some((result) => result.status === "rejected")) {
+      const failed = results.some((result) => result.status === "rejected");
+      if (failed) {
         toast.error("Some notification read states could not be saved. Please try again.");
+      } else {
+        setLocallyReadNotificationIds((current) => {
+          const next = new Set(current);
+          for (const item of unreadItems) next.add(item.id);
+          return next;
+        });
       }
     }
 
@@ -276,7 +289,7 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
                   <Bell className="size-5" />
-                  {db.notifications.some((n) => !n.read_at) && (
+                  {activeNotifications.some((n) => !n.read_at) && (
                     <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
                   )}
                 </Button>
