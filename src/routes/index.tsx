@@ -71,7 +71,7 @@ function Marketplace() {
           <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64"><SelectItem value="All states">All states</SelectItem>{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
           <Combobox value={breed} options={["All breeds", ...breeds]} onChange={(v) => { setBreed(v); setPage(1); }} allowCustom placeholder="All breeds" searchPlaceholder="Search or type a breed..." />
         </div>
-        <div className="mt-3"><Button asChild variant="outline" size="sm"><Link to="/search" search={{ q: q.trim(), type: "all", page: 1 }}>Search all products &amp; stores</Link></Button></div>
+        <div className="mt-3"><Button asChild variant="outline" className="min-w-56 px-5 font-medium"><Link to="/search" search={{ q: q.trim(), type: "all", page: 1 }}>Search all products &amp; stores</Link></Button></div>
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{filtered.length} active listing{filtered.length === 1 ? "" : "s"} · 7-Day Expiry Window enforced</p>
           <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => { if (!requireAuth("Reporting a scam or issue requires an account.")) return; reportToAdmin("Marketplace feed report"); }}><Flag className="size-4" /> Report Scam or Issue to Admin</Button>
