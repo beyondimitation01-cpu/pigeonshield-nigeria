@@ -9,7 +9,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { AuthPending, AuthRequired } from "@/components/site/AuthGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useStore } from "@/lib/store";
-import { ngn, type EscrowTransaction, type DisputeStatus, type TxStatus } from "@/lib/pigeon-data";
+import { ngn, type EscrowTransaction, type TxStatus } from "@/lib/pigeon-data";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/transaction-history")({
@@ -24,10 +24,7 @@ export const Route = createFileRoute("/transaction-history")({
 
 const PAGE_SIZE = 20;
 const FETCH_SIZE = PAGE_SIZE + 1;
-const TERMINAL_STATUSES: TxStatus[] = ["Seller Paid", "Completed", "Refunded to Buyer"];
-
 type HistorySide = "purchase" | "sale";
-
 type HistoryRow = Pick<EscrowTransaction, "id" | "listing_name" | "buyer_id" | "breeder_id" | "amount_naira" | "calculated_commission" | "status" | "created_at" | "payout_paid_at" | "payout_reference">;
 
 function mapHistoryRow(row: Record<string, unknown>): HistoryRow {
