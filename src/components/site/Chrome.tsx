@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { ADMIN_OPAY } from "@/lib/pigeon-data";
 
 const NAV_LINKS = [
@@ -216,14 +217,14 @@ export function Navbar() {
   };
 
   const handleNotificationSelect = async (items: typeof activeNotifications) => {
-    const unreadIds = items.filter((item) => !item.read_at).map((item) => item.id);
-    if (unreadIds.length > 0) {
-      await Promise.all(
-        unreadIds.map((id) => supabase.rpc("mark_notification_read", { _notification_id: id })),
+    const unreadItems = items.filter((item) => !item.read_at);
+    if (unreadItems.length > 0) {
+      const results = await Promise.allSettled(
+        unreadItems.map((item) => markNotificationRead(item.id)),
       );
-      // The existing store RPC also refreshes the shared notification state.
-      // Reusing it once avoids adding a parallel refresh mechanism.
-      void markNotificationRead(unreadIds[0]);
+      if (results.some((result) => result.status === "rejected")) {
+        toast.error("Some notification read states could not be saved. Please try again.");
+      }
     }
 
     const notification = items[0];
