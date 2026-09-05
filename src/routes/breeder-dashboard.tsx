@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { referralLink } from "@/lib/site";
+import { referralLink, storeUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
@@ -55,6 +55,43 @@ function BreederDashboard() {
 
   const mine = db.listings.filter((l) => l.breeder_id === user.id);
   const mySales = db.transactions.filter((t) => t.breeder_id === user.id && !TERMINAL_STATUSES.has(t.status));
+  const publicUsername = user.public_handle || user.real_name;
+  const publicStoreUrl = publicUsername ? storeUrl(publicUsername) : null;
+
+  async function shareStore() {
+    if (!publicStoreUrl) {
+      toast.error("Your public store username is not available yet.");
+      return;
+    }
+    try {
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        await navigator.share({
+          title: `${user.real_name || publicUsername} Store`,
+          text: `View ${user.real_name || publicUsername} on PigeonShield Nigeria`,
+          url: publicStoreUrl,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(publicStoreUrl);
+      toast.success("Store link copied.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Could not share the store link.");
+    }
+  }
+
+  async function copyStoreLink() {
+    if (!publicStoreUrl) {
+      toast.error("Your public store username is not available yet.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(publicStoreUrl);
+      toast.success("Store link copied.");
+    } catch {
+      toast.error("Could not copy the store link.");
+    }
+  }
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -79,6 +116,20 @@ function BreederDashboard() {
     <main className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-bold tracking-tight">Breeder Dashboard</h1>
       <p className="mt-1 text-muted-foreground">Trading as <span className="font-semibold text-primary">{user.real_name || user.public_handle}</span></p>
+      <Card className="mt-6 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-semibold">My Public Store</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Share your seller store so buyers can see your active listings.</p>
+            {publicUsername ? <p className="mt-1 text-xs text-muted-foreground">/{"u/"}{publicUsername}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {publicUsername ? <Button asChild variant="outline"><Link to="/u/$username" params={{ username: publicUsername }}>View Store</Link></Button> : null}
+            <Button onClick={() => void shareStore()} disabled={!publicStoreUrl}><Share2 className="size-4" /> Share Store</Button>
+            <Button variant="secondary" onClick={() => void copyStoreLink()} disabled={!publicStoreUrl}><Copy className="size-4" /> Copy Store Link</Button>
+          </div>
+        </div>
+      </Card>
       <Tabs defaultValue="inventory" className="mt-8">
         <TabsList>
           <TabsTrigger value="inventory">Inventory &amp; Sales</TabsTrigger>
