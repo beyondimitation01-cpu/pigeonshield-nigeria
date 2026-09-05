@@ -152,14 +152,14 @@ Create a highly secure, fully operational hidden administrative workspace access
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://pigeonshield-nigeria.lovable.app
+**Live app**: https://pigeonshield-nigeria.vercel.app
 
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/8eac6302-743e-4773-b37c-f3de7c43aa2e).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Stay in sync**: every change made in Lovable is committed straight into this repository.
 - **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
