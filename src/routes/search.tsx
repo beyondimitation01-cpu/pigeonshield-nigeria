@@ -5,10 +5,10 @@ import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { canonicalUrl } from "@/lib/site";
 import { onImageError } from "@/lib/listing-images";
-import { searchMarketplace, type MarketplaceSearchRow } from "@/lib/marketplace-api";
+import { searchMarketplaceServer } from "@/lib/marketplace-search.functions";
+import type { MarketplaceSearchRow } from "@/lib/marketplace-api";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -45,16 +45,19 @@ function SearchPage() {
     setLoading(true);
     setError(null);
 
-    void searchMarketplace({
-      query: search.q,
-      kind: search.type,
-      limit: 21,
-      offset: (search.page - 1) * 20,
+    void searchMarketplaceServer({
+      data: {
+        query: search.q,
+        kind: search.type,
+        limit: 21,
+        offset: (search.page - 1) * 20,
+      },
     })
       .then((result) => {
         if (cancelled) return;
-        setRows(result.slice(0, 20));
-        setHasMore(result.length > 20);
+        const rows = result as MarketplaceSearchRow[];
+        setRows(rows.slice(0, 20));
+        setHasMore(rows.length > 20);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
