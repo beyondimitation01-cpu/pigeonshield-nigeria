@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { reportToAdmin } from "@/lib/report";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { CATEGORY_OPTIONS, isVisible, NIGERIAN_STATES, PAGE_SIZE, type Category } from "@/lib/pigeon-data";
+import { ANIMAL_CATEGORY_OPTIONS, animalCategoryLabel } from "@/lib/animal-categories";
 import heroPigeon from "@/assets/pigeon-racer.jpg";
 import { onImageError } from "@/lib/listing-images";
 import { SITE_URL, canonicalUrl } from "@/lib/site";
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/")({
   component: Marketplace,
 });
 
-type MarketplaceCategory = "all" | Category;
+type MarketplaceCategory = "all" | string;
 
 function Marketplace() {
   const { db } = useStore();
@@ -42,9 +43,9 @@ function Marketplace() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
 
-  const marketplaceCategories: { value: MarketplaceCategory; label: string }[] = [
+  const marketplaceCategories = [
     { value: "all", label: "All animals" },
-    ...CATEGORY_OPTIONS,
+    ...ANIMAL_CATEGORY_OPTIONS,
   ];
 
   const pool = useMemo(
@@ -92,7 +93,7 @@ function Marketplace() {
       <section className="mx-auto max-w-7xl px-4 py-8">
         <div className="max-w-sm">
           <label className="mb-2 block text-sm font-medium" htmlFor="marketplace-category">Browse by animal</label>
-          <Select value={category} onValueChange={(value) => switchCategory(value as MarketplaceCategory)}>
+          <Select value={category} onValueChange={switchCategory}>
             <SelectTrigger id="marketplace-category" aria-label="Browse by animal category">
               <SelectValue />
             </SelectTrigger>
@@ -108,7 +109,7 @@ function Marketplace() {
         <p className="mt-3 text-sm text-muted-foreground">
           {category === "all"
             ? "All currently live listings are shown by default. Choose an animal category to narrow the marketplace."
-            : `Showing ${CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category} only.`}
+            : `Showing ${animalCategoryLabel(category)} only.`}
         </p>
         <div className="mt-6 grid gap-3 md:grid-cols-4">
           <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search animal name or breed" className="pl-9" /></div>
