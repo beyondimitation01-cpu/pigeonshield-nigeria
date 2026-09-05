@@ -17,6 +17,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as PigeonBossAdminRouteImport } from './routes/pigeon-boss-admin'
+import { Route as TransactionHistoryRouteImport } from './routes/transaction-history'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as RefCodeRouteImport } from './routes/ref.$code'
@@ -62,6 +63,11 @@ const PigeonBossAdminRoute = PigeonBossAdminRouteImport.update({
   path: '/pigeon-boss-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransactionHistoryRoute = TransactionHistoryRouteImport.update({
+  id: '/transaction-history',
+  path: '/transaction-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/transaction-history': typeof TransactionHistoryRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/transaction-history': typeof TransactionHistoryRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/my-orders': typeof MyOrdersRoute
   '/pigeon-boss-admin': typeof PigeonBossAdminRoute
+  '/transaction-history': typeof TransactionHistoryRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/transaction-history'
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/transaction-history'
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/my-orders'
     | '/pigeon-boss-admin'
+    | '/transaction-history'
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   MyOrdersRoute: typeof MyOrdersRoute
   PigeonBossAdminRoute: typeof PigeonBossAdminRoute
+  TransactionHistoryRoute: typeof TransactionHistoryRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ListingIdRoute: typeof ListingIdRoute
   RefCodeRoute: typeof RefCodeRoute
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PigeonBossAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transaction-history': {
+      id: '/transaction-history'
+      path: '/transaction-history'
+      fullPath: '/transaction-history'
+      preLoaderRoute: typeof TransactionHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   MyOrdersRoute: MyOrdersRoute,
   PigeonBossAdminRoute: PigeonBossAdminRoute,
+  TransactionHistoryRoute: TransactionHistoryRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ListingIdRoute: ListingIdRoute,
