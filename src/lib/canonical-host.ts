@@ -1,8 +1,10 @@
 import { SITE_SLUG, SITE_URL } from "./site";
 
+const CANONICAL_HOST = new URL(SITE_URL).hostname;
+
 /** Hosts allowed to render the app without redirecting. */
 const ALLOWED_HOSTS = new Set([
-  `${SITE_SLUG}.lovable.app`,
+  CANONICAL_HOST,
   "localhost",
   "127.0.0.1",
   "0.0.0.0",
@@ -39,7 +41,7 @@ export function shouldRedirectToCanonical(): boolean {
   return !isCanonicalHost(host);
 }
 
-/** Wipe stale PWA state (service workers + caches + local auth) on old domains. */
+/** Remove stale PWA registrations/caches on a non-canonical app origin. */
 export async function purgeStaleClientState() {
   if (typeof window === "undefined") return;
   try {
@@ -58,12 +60,6 @@ export async function purgeStaleClientState() {
   } catch {
     /* ignore */
   }
-  try {
-    window.localStorage.clear();
-    window.sessionStorage.clear();
-  } catch {
-    /* ignore */
-  }
 }
 
 /** Absolute canonical URL preserving the current route, query and hash. */
@@ -72,7 +68,7 @@ export function canonicalTargetUrl() {
   return `${SITE_URL}${pathname}${search}${hash}`;
 }
 
-/** Clears stale state then hard-redirects to the canonical host. */
+/** Clears stale PWA state then hard-redirects to the canonical host. */
 export async function enforceCanonicalHost() {
   const target = canonicalTargetUrl();
   await purgeStaleClientState();
