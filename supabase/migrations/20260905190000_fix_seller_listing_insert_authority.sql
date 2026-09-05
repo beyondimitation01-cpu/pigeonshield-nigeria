@@ -105,12 +105,10 @@ revoke all on function private.prevent_seller_listing_privileged_changes() from 
 
 -- Remove the ambiguous combined trigger and install explicit operation-scoped
 -- triggers. The initialize trigger name sorts before the slug trigger, so the
--- database-generated listing id exists before slug generation on INSERT.
+-- listing id exists before slug generation on INSERT.
 drop trigger if exists protect_seller_listing_privileged_fields on public.listings;
 drop trigger if exists initialize_seller_listing_trg on public.listings;
 drop trigger if exists a_initialize_seller_listing_trg on public.listings;
-
-auto_explain: off;
 
 create trigger a_initialize_seller_listing_trg
 before insert on public.listings
