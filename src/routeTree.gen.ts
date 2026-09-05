@@ -21,6 +21,8 @@ import { Route as TransactionHistoryRouteImport } from './routes/transaction-his
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as RefCodeRouteImport } from './routes/ref.$code'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
 const IndexRoute = IndexRouteImport.update({
@@ -84,6 +86,16 @@ const RefCodeRoute = RefCodeRouteImport.update({
   path: '/ref/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -103,6 +115,8 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
+  '/search': typeof SearchRoute
+  '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesByTo {
@@ -118,6 +132,8 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
+  '/search': typeof SearchRoute
+  '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRoutesById {
@@ -134,6 +150,8 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/listing/$id': typeof ListingIdRoute
   '/ref/$code': typeof RefCodeRoute
+  '/search': typeof SearchRoute
+  '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
 }
 export interface FileRouteTypes {
@@ -151,6 +169,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
+    | '/search'
+    | '/u/$username'
     | '/.lovable/oauth/consent'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -166,6 +186,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
+    | '/search'
+    | '/u/$username'
     | '/.lovable/oauth/consent'
   id:
     | '__root__'
@@ -181,6 +203,8 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/listing/$id'
     | '/ref/$code'
+    | '/search'
+    | '/u/$username'
     | '/.lovable/oauth/consent'
   fileRoutesById: FileRoutesById
 }
@@ -197,6 +221,8 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ListingIdRoute: typeof ListingIdRoute
   RefCodeRoute: typeof RefCodeRoute
+  SearchRoute: typeof SearchRoute
+  UUsernameRoute: typeof UUsernameRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
 }
 
@@ -286,6 +312,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RefCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -310,6 +350,8 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ListingIdRoute: ListingIdRoute,
   RefCodeRoute: RefCodeRoute,
+  SearchRoute: SearchRoute,
+  UUsernameRoute: UUsernameRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
 }
 export const routeTree = rootRouteImport
