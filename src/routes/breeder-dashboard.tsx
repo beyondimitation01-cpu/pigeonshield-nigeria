@@ -39,13 +39,16 @@ export const Route = createFileRoute("/breeder-dashboard")({
 
 const TERMINAL_STATUSES = new Set(["Seller Paid", "Completed", "Refunded to Buyer"]);
 
+type PricingUnit = "each" | "pair";
+
 function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
-  const { db, user, addListing, deleteListing, authReady } = useStore();
+  const { db, user, deleteListing, authReady } = useStore();
   const [editingPhotos, setEditingPhotos] = useState<string | null>(null);
   const [category, setCategory] = useState<Category>("Pigeon");
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
+  const [pricingUnit, setPricingUnit] = useState<PricingUnit>("each");
   const [state, setState] = useState("Lagos");
   const [vaccinated, setVaccinated] = useState(true);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
@@ -97,19 +100,41 @@ function BreederDashboard() {
     e.preventDefault();
     const form = e.currentTarget;
     const f = new FormData(form);
-    void addListing({
+    const price = Number(f.get("price") ?? 0);
+    const quantity = Number(f.get("qty") ?? 1);
+    if (!Number.isSafeInteger(price) || price < 1000) {
+      toast.error("Enter a valid price of at least ₦1,000.");
+      return;
+    }
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+      toast.error("Enter a valid quantity of at least 1.");
+      return;
+    }
+    void supabase.from("listings").insert({
       category_type: category,
-      custom_bird_name: String(f.get("name") ?? ""),
+      breeder_id: user.id,
+      breeder_handle: user.public_handle,
+      custom_bird_name: String(f.get("name") ?? "").trim(),
       breed_type: breed,
       gender,
-      price_ngn: Number(f.get("price") ?? 0),
+      price_ngn: price,
+      pricing_unit: pricingUnit,
       images: photos.map((p) => p.url),
       pedigree_json: null,
       vaccinated,
       state,
-      description: String(f.get("description") ?? ""),
-      batch_quantity: Number(f.get("qty") ?? 1),
-    }).then(() => { form.reset(); setPhotos([]); toast.success("Listing published — live for 7 days."); }).catch((err: unknown) => { toast.error(err instanceof Error ? err.message : "Could not publish listing."); });
+      description: String(f.get("description") ?? "").trim(),
+      batch_quantity: quantity,
+      is_active: true,
+      creation_timestamp: new Date().toISOString(),
+      expiry_date: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+    } as never).then(({ error }) => {
+      if (error) throw new Error(error.message);
+    }).then(() => { form.reset(); setPhotos([]); setPricingUnit("each"); toast.success("Listing published — live for 7 days."); }).catch((err: unknown) => { toast.error(err instanceof Error ? err.message : "Could not publish listing."); });
+  }
+
+  function unitLabel(unit: string | undefined) {
+    return unit === "pair" ? "per pair" : unit === "each" ? "each" : "per listing";
   }
 
   return (
@@ -149,9 +174,11 @@ function BreederDashboard() {
                   <div className="space-y-1.5"><Label htmlFor="breed-combo">Breed</Label><Combobox id="breed-combo" value={breed} options={BREEDS_BY_CATEGORY[category]} onChange={setBreed} allowCustom placeholder="Select or type a breed" searchPlaceholder="Search or type a breed..." /></div>
                   <div className="space-y-1.5"><Label>Gender</Label><Select value={gender} onValueChange={(v) => setGender(v as typeof gender)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Pair">Pair</SelectItem></SelectContent></Select></div>
                   <div className="space-y-1.5"><Label>State</Label><Select value={state} onValueChange={setState}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
-                  <div className="space-y-1.5"><Label htmlFor="price">Price (₦)</Label><Input id="price" name="price" type="number" min={1000} required defaultValue={150000} /></div>
-                  <div className="space-y-1.5"><Label htmlFor="qty">Batch quantity</Label><Input id="qty" name="qty" type="number" min={1} required defaultValue={1} /></div>
+                  <div className="space-y-1.5"><Label htmlFor="pricing-unit">Price per</Label><Select value={pricingUnit} onValueChange={(v) => setPricingUnit(v as PricingUnit)}><SelectTrigger id="pricing-unit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="each">Each</SelectItem><SelectItem value="pair">Pair</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-1.5"><Label htmlFor="price">Price per {pricingUnit === "pair" ? "pair" : "unit"} (₦)</Label><Input id="price" name="price" type="number" min={1000} required defaultValue={150000} /><p className="text-xs text-muted-foreground">Enter the amount for one {pricingUnit === "pair" ? "pair" : "animal"}.</p></div>
+                  <div className="space-y-1.5"><Label htmlFor="qty">Available {pricingUnit === "pair" ? "pairs" : "units"}</Label><Input id="qty" name="qty" type="number" min={1} required defaultValue={1} /></div>
                 </div>
+                <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">Example: ₦8,000 {pricingUnit === "pair" ? "per pair" : "each"}. Buyers can choose how many units to purchase.</div>
                 <div className="space-y-1.5"><Label>Listing photos</Label><PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} /></div>
                 <div className="space-y-1.5"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" required rows={3} placeholder="Bloodline, age, race record..." /></div>
                 <label className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={vaccinated} onCheckedChange={(v) => setVaccinated(v === true)} /> Vaccinated / health certified</label>
@@ -161,7 +188,7 @@ function BreederDashboard() {
             <div className="space-y-6">
               <Card className="p-5">
                 <h2 className="font-semibold">My listings ({mine.length})</h2>
-                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.breed_type} · {ngn(l.price_ngn)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
+                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.breed_type} · {ngn(l.price_ngn)} {unitLabel((l as typeof l & { pricing_unit?: string }).pricing_unit)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
               </Card>
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-semibold"><Package className="size-4 text-primary" /> Escrow sales ({mySales.length})</h2><Button asChild size="sm" variant="ghost"><a href="/my-orders">Transaction history</a></Button></div>
