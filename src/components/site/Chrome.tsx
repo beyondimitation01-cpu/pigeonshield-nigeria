@@ -146,10 +146,76 @@ export function Navbar() {
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [locallyReadNotificationIds, setLocallyReadNotificationIds] = useState<Set<string>>(() => new Set());
+  const [notificationReadAt, setNotificationReadAt] = useState<Map<string, number | null>>(() => new Map());
+  const [notificationReadStateLoaded, setNotificationReadStateLoaded] = useState(false);
 
   useEffect(() => {
-    setLocallyReadNotificationIds(new Set());
+    setNotificationReadAt(new Map());
+    setNotificationReadStateLoaded(false);
+    if (!user) return;
+
+    let cancelled = false;
+
+    const syncNotificationReadState = async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, read_at")
+        .eq("recipient_id", user.id);
+      if (cancelled) return;
+      if (error) {
+        console.warn("Notification read-state sync failed:", error.message);
+        setNotificationReadStateLoaded(true);
+        return;
+      }
+
+      const next = new Map<string, number | null>();
+      for (const row of data ?? []) {
+        next.set(String(row.id), row.read_at ? new Date(row.read_at).getTime() : null);
+      }
+      setNotificationReadAt(next);
+      setNotificationReadStateLoaded(true);
+    };
+
+    void syncNotificationReadState();
+
+    const channel = supabase
+      .channel(`notification-read-state-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const id = String((payload.old as { id?: string }).id ?? "");
+            if (!id) return;
+            setNotificationReadAt((current) => {
+              const next = new Map(current);
+              next.delete(id);
+              return next;
+            });
+            return;
+          }
+
+          const row = payload.new as { id?: string; read_at?: string | null };
+          if (!row.id) return;
+          setNotificationReadAt((current) => {
+            const next = new Map(current);
+            next.set(String(row.id), row.read_at ? new Date(row.read_at).getTime() : null);
+            return next;
+          });
+          setNotificationReadStateLoaded(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -171,10 +237,16 @@ export function Navbar() {
     return () => window.clearInterval(interval);
   }, [user]);
 
+  const notificationsWithReadState = useMemo(() => {
+    return db.notifications.map((notification) => ({
+      ...notification,
+      read_at: notificationReadAt.get(notification.id) ?? null,
+    }));
+  }, [db.notifications, notificationReadAt]);
+
   const activeNotifications = useMemo(() => {
     const cutoff = Date.now() - NOTIFICATION_RETENTION_MS;
-    return db.notifications.filter((notification) => {
-      if (locallyReadNotificationIds.has(notification.id)) return false;
+    return notificationsWithReadState.filter((notification) => {
       if (!notification.read_at) return true;
       if (new Date(notification.read_at).getTime() >= cutoff) return true;
       const transaction = notification.transaction_id
@@ -182,7 +254,7 @@ export function Navbar() {
         : undefined;
       return isNotificationTaskUnresolved(notification, transaction);
     });
-  }, [db.notifications, db.transactions, locallyReadNotificationIds]);
+  }, [db.transactions, notificationsWithReadState]);
 
   const notificationGroups = useMemo(() => {
     type NotificationItem = (typeof activeNotifications)[number];
@@ -223,7 +295,7 @@ export function Navbar() {
   };
 
   const handleNotificationSelect = async (items: typeof activeNotifications) => {
-    const unreadItems = items.filter((item) => !item.read_at && !locallyReadNotificationIds.has(item.id));
+    const unreadItems = items.filter((item) => !item.read_at);
     if (unreadItems.length > 0) {
       const results = await Promise.allSettled(
         unreadItems.map((item) => markNotificationRead(item.id)),
@@ -232,9 +304,10 @@ export function Navbar() {
       if (failed) {
         toast.error("Some notification read states could not be saved. Please try again.");
       } else {
-        setLocallyReadNotificationIds((current) => {
-          const next = new Set(current);
-          for (const item of unreadItems) next.add(item.id);
+        const readAt = Date.now();
+        setNotificationReadAt((current) => {
+          const next = new Map(current);
+          for (const item of unreadItems) next.set(item.id, readAt);
           return next;
         });
       }
@@ -289,7 +362,7 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
                   <Bell className="size-5" />
-                  {activeNotifications.some((n) => !n.read_at) && (
+                  {notificationReadStateLoaded && activeNotifications.some((n) => !n.read_at) && (
                     <span className="absolute right-1 top-1 size-2 rounded-full bg-destructive" />
                   )}
                 </Button>
