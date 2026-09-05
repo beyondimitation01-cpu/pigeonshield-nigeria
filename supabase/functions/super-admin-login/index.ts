@@ -89,39 +89,10 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false }, 500);
     }
 
-    // Security notification is deliberately best-effort. A notification
-    // failure must never roll back or invalidate the newly-created Admin
-    // session. The recipient is resolved from the existing Admin role model;
-    // no Admin user ID is hardcoded and no secret/session data is included.
-    try {
-      const notificationEventKey = `admin:god-mode-login:${crypto.randomUUID()}`;
-      const notification = await admin.from("notifications").insert(
-        (await admin
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin"))
-          .data
-          ?.map(({ user_id }) => ({
-            recipient_id: user_id,
-            message_id: null,
-            listing_id: null,
-            transaction_id: null,
-            kind: "admin_login",
-            title: "New Admin Login",
-            body: "A new login to your Admin account was detected.",
-            event_key: `${notificationEventKey}:${user_id}`,
-          })) ?? [],
-      );
-
-      if (notification.error) {
-        console.warn("Admin login notification failed:", notification.error.message);
-      }
-    } catch (notificationError) {
-      console.warn(
-        "Admin login notification failed:",
-        notificationError instanceof Error ? notificationError.message : "unknown error",
-      );
-    }
+    // God Mode login is an authentication event, not an operational task.
+    // Do not turn ordinary God Mode login activity into a Normal Admin
+    // notification. Important operational events are emitted by the relevant
+    // transaction/admin workflows instead.
 
     const link = await admin.auth.admin.generateLink({
       type: "magiclink",
