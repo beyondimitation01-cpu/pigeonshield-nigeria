@@ -41,11 +41,54 @@ const TERMINAL_STATUSES = new Set(["Seller Paid", "Completed", "Refunded to Buye
 
 type PricingUnit = "each" | "pair";
 
+type SellerCategoryOption = { value: string; label: string };
+
+const SELLER_CATEGORY_OPTIONS: SellerCategoryOption[] = [
+  ...CATEGORY_OPTIONS,
+  { value: "Cat", label: "Cats" },
+  { value: "Goat", label: "Goats" },
+  { value: "Sheep", label: "Sheep" },
+  { value: "Cattle", label: "Cattle" },
+  { value: "Pig", label: "Pigs" },
+  { value: "Rabbit", label: "Rabbits" },
+  { value: "Turkey", label: "Turkeys" },
+  { value: "Duck", label: "Ducks" },
+  { value: "Guinea Fowl", label: "Guinea Fowl" },
+  { value: "Quail", label: "Quails" },
+  { value: "Goose", label: "Geese" },
+  { value: "Peacock", label: "Peacocks" },
+  { value: "Ostrich", label: "Ostriches" },
+  { value: "Donkey", label: "Donkeys" },
+  { value: "Camel", label: "Camels" },
+  { value: "Grasscutter", label: "Grasscutters" },
+  { value: "Snail", label: "Snails" },
+  { value: "Fish", label: "Fish" },
+  { value: "Guinea Pig", label: "Guinea Pigs" },
+  { value: "Other Bird", label: "Other Birds" },
+];
+
+function categoryBreeds(category: string) {
+  return BREEDS_BY_CATEGORY[category as Category] ?? [];
+}
+
+function canonicalSellerCategory(input: string) {
+  const trimmed = input.trim();
+  if (!trimmed) return "Pigeon";
+  const match = SELLER_CATEGORY_OPTIONS.find(
+    (option) => option.value.toLowerCase() === trimmed.toLowerCase() || option.label.toLowerCase() === trimmed.toLowerCase(),
+  );
+  return match?.value ?? trimmed;
+}
+
+function categoryLabel(category: string) {
+  return SELLER_CATEGORY_OPTIONS.find((option) => option.value === category)?.label ?? category;
+}
+
 function BreederDashboard() {
   const authed = useRequireAuth("Breeder Dashboard");
   const { db, user, deleteListing, authReady } = useStore();
   const [editingPhotos, setEditingPhotos] = useState<string | null>(null);
-  const [category, setCategory] = useState<Category>("Pigeon");
+  const [category, setCategory] = useState<string>("Pigeon");
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
   const [pricingUnit, setPricingUnit] = useState<PricingUnit>("each");
@@ -118,15 +161,16 @@ function BreederDashboard() {
       toast.error("Enter a valid quantity of at least 1.");
       return;
     }
+    if (!category.trim()) {
+      toast.error("Select or enter an animal category.");
+      return;
+    }
     setPublishing(true);
     try {
-      // Only seller-product fields belong in this INSERT. Ownership, verification,
-      // lifecycle, timestamps, expiry and other privileged fields are established
-      // by the database trigger and must never be client-authored.
       const { error } = await supabase.from("listings").insert({
-        category_type: category,
+        category_type: canonicalSellerCategory(category),
         custom_bird_name: name,
-        breed_type: breed,
+        breed_type: breed.trim(),
         gender,
         price_ngn: price,
         pricing_unit: pricingUnit,
@@ -139,6 +183,8 @@ function BreederDashboard() {
       } as never);
       if (error) throw new Error(error.message);
       form.reset();
+      setCategory("Pigeon");
+      setBreed(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
       setPhotos([]);
       setPricingUnit("each");
       toast.success("Listing published — live for 7 days.");
@@ -186,8 +232,8 @@ function BreederDashboard() {
               <form onSubmit={submit} className="mt-4 space-y-3">
                 <div className="space-y-1.5"><Label htmlFor="name">Custom animal name</Label><Input id="name" name="name" required placeholder="Kano Thunder" /></div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5"><Label htmlFor="category-combo">Category</Label><Combobox id="category-combo" value={CATEGORY_OPTIONS.find((c) => c.value === category)?.label ?? category} options={CATEGORY_OPTIONS.map((c) => c.label)} searchPlaceholder="Search category..." onChange={(label) => { const c = (CATEGORY_OPTIONS.find((o) => o.label === label)?.value ?? "Pigeon") as Category; setCategory(c); setBreed(BREEDS_BY_CATEGORY[c][0] ?? ""); }} /></div>
-                  <div className="space-y-1.5"><Label htmlFor="breed-combo">Breed</Label><Combobox id="breed-combo" value={breed} options={BREEDS_BY_CATEGORY[category]} onChange={setBreed} allowCustom placeholder="Select or type a breed" searchPlaceholder="Search or type a breed..." /></div>
+                  <div className="space-y-1.5"><Label htmlFor="category-combo">Category</Label><Combobox id="category-combo" value={categoryLabel(category)} options={SELLER_CATEGORY_OPTIONS.map((c) => c.label)} allowCustom placeholder="Search or type an animal" searchPlaceholder="Search or type an animal..." onChange={(input) => { const next = canonicalSellerCategory(input); setCategory(next); setBreed(categoryBreeds(next)[0] ?? ""); }} /></div>
+                  <div className="space-y-1.5"><Label htmlFor="breed-combo">Breed</Label><Combobox id="breed-combo" value={breed} options={categoryBreeds(category)} onChange={setBreed} allowCustom placeholder="Select or type a breed" searchPlaceholder="Search or type a breed..." /></div>
                   <div className="space-y-1.5"><Label>Gender</Label><Select value={gender} onValueChange={(v) => setGender(v as typeof gender)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Pair">Pair</SelectItem></SelectContent></Select></div>
                   <div className="space-y-1.5"><Label>State</Label><Select value={state} onValueChange={setState}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-1.5"><Label htmlFor="pricing-unit">Price per</Label><Select value={pricingUnit} onValueChange={(v) => setPricingUnit(v as PricingUnit)}><SelectTrigger id="pricing-unit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="each">Each</SelectItem><SelectItem value="pair">Pair</SelectItem></SelectContent></Select></div>
@@ -204,7 +250,7 @@ function BreederDashboard() {
             <div className="space-y-6">
               <Card className="p-5">
                 <h2 className="font-semibold">My listings ({mine.length})</h2>
-                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.breed_type} · {ngn(l.price_ngn)} {unitLabel((l as typeof l & { pricing_unit?: string }).pricing_unit)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
+                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.category_type} · {l.breed_type} · {ngn(l.price_ngn)} {unitLabel((l as typeof l & { pricing_unit?: string }).pricing_unit)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button><Badge variant={l.is_active ? "default" : "destructive"}>{l.is_active ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
               </Card>
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-semibold"><Package className="size-4 text-primary" /> Escrow sales ({mySales.length})</h2><Button asChild size="sm" variant="ghost"><a href="/my-orders">Transaction history</a></Button></div>
