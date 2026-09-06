@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { NIGERIAN_STATES, TERMS_TEXT } from "@/lib/pigeon-data";
 import { canonicalUrl } from "@/lib/site";
+import { classifyPasswordResetError, passwordResetErrorMessage } from "@/lib/auth-errors";
 
 export function AuthModal() {
   const { authGate, closeAuth, openAuth, login, register, user, updateProfile } = useStore();
@@ -120,14 +121,14 @@ export function AuthModal() {
         redirectTo: canonicalUrl("/update-password"),
       });
       if (resetError) {
-        setError("We could not send the reset email right now. Please try again shortly.");
+        setError(passwordResetErrorMessage(classifyPasswordResetError(resetError)));
         return;
       }
       // Keep this response deliberately generic so it does not reveal whether
       // an account exists for the submitted email address.
       setResetSent(true);
-    } catch {
-      setError("We could not send the reset email right now. Please try again shortly.");
+    } catch (resetError) {
+      setError(passwordResetErrorMessage(classifyPasswordResetError(resetError)));
     } finally {
       setResetPending(false);
     }
