@@ -28,17 +28,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    // Live listener: keeps user/session in sync across login, token refresh, and logout.
+    // Live listener: keeps user/session in sync across login, token refresh,
+    // password recovery, profile updates, and logout.
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
       // Mark every authoritative auth event. The getSession request below may
-      // have started before a login completed, so its eventual result must not
-      // be allowed to replace this newer state.
+      // have started before a login/recovery completed, so its eventual result
+      // must not be allowed to replace this newer state.
       authEventRevision.current += 1;
       if (
         event === "SIGNED_IN" ||
         event === "TOKEN_REFRESHED" ||
         event === "USER_UPDATED" ||
+        event === "PASSWORD_RECOVERY" ||
         event === "INITIAL_SESSION"
       ) {
         setSession(nextSession);
@@ -58,8 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error("[AuthContext] getSession error:", error);
         }
-        // Ignore a stale startup response when SIGNED_IN, SIGNED_OUT, token
-        // refresh, or INITIAL_SESSION has already supplied newer auth state.
+        // Ignore a stale startup response when an authoritative auth event has
+        // already supplied newer auth state.
         if (authEventRevision.current === revisionAtRequestStart) {
           setSession(data.session);
           setUser(data.session?.user ?? null);
