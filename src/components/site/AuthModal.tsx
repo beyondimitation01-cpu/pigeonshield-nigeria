@@ -12,6 +12,7 @@ import { useStore } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
 import { NIGERIAN_STATES, TERMS_TEXT } from "@/lib/pigeon-data";
+import { canonicalUrl } from "@/lib/site";
 
 export function AuthModal() {
   const { authGate, closeAuth, openAuth, login, register, user, updateProfile } = useStore();
@@ -22,6 +23,9 @@ export function AuthModal() {
   const [invite, setInvite] = useState("");
   const [photoStep, setPhotoStep] = useState(false);
   const [loft, setLoft] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
   const mode = authGate.mode;
 
   // A visitor who arrived through /ref/CODE has the inviter code stashed.
@@ -30,6 +34,14 @@ export function AuthModal() {
     if (typeof window === "undefined") return;
     setInvite(window.localStorage.getItem("pigeonshield.ref") ?? "");
   }, [authGate.open]);
+
+  useEffect(() => {
+    if (authGate.mode !== "login") {
+      setResetMode(false);
+      setResetSent(false);
+      setResetPending(false);
+    }
+  }, [authGate.mode]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -93,6 +105,32 @@ export function AuthModal() {
     }
   }
 
+  async function requestPasswordReset(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (resetPending) return;
+    const f = new FormData(e.currentTarget);
+    const email = String(f.get("reset_email") ?? "").trim();
+    if (!email) return;
+
+    setError(null);
+    setResetSent(false);
+    setResetPending(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: canonicalUrl("/update-password"),
+      });
+      if (resetError) {
+        setError("We could not send the reset email right now. Please try again shortly.");
+        return;
+      }
+      // Keep this response deliberately generic so it does not reveal whether
+      // an account exists for the submitted email address.
+      setResetSent(true);
+    } finally {
+      setResetPending(false);
+    }
+  }
+
   /** Client-side transition back to where the guest was blocked — never a hard reload. */
   function goToIntendedRoute() {
     let target = "/";
@@ -114,7 +152,7 @@ export function AuthModal() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-primary">
             <ShieldCheck className="size-5" />
-            {mode === "login" ? "Log in to PigeonShield" : "Create your breeder account"}
+            {resetMode ? "Reset your PigeonShield password" : mode === "login" ? "Log in to PigeonShield" : "Create your breeder account"}
           </DialogTitle>
         </DialogHeader>
 
@@ -140,6 +178,47 @@ export function AuthModal() {
             >
               Continue to marketplace
             </Button>
+          </div>
+        ) : resetMode && mode === "login" ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enter the email address connected to your account. We will send a secure password-reset link when available.
+            </p>
+            <form onSubmit={requestPasswordReset} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="reset_email">Email</Label>
+                <Input
+                  id="reset_email"
+                  name="reset_email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.ng"
+                />
+              </div>
+              {resetSent ? (
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground" role="status">
+                  If an account is registered with that email address, a password-reset message has been sent. Check your inbox and spam folder.
+                </div>
+              ) : null}
+              {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+              <Button type="submit" className="w-full" size="lg" disabled={resetPending}>
+                {resetPending ? "Sending reset link…" : "Send reset link"}
+              </Button>
+            </form>
+            <div className="text-center text-sm text-muted-foreground">
+              <button
+                type="button"
+                className="font-semibold text-primary underline"
+                onClick={() => {
+                  setResetMode(false);
+                  setResetSent(false);
+                  setError(null);
+                }}
+              >
+                Back to log in
+              </button>
+            </div>
           </div>
         ) : (
         <>
@@ -173,6 +252,22 @@ export function AuthModal() {
             <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" required minLength={6} />
           </div>
+
+          {mode === "login" ? (
+            <div className="text-right">
+              <button
+                type="button"
+                className="text-sm font-semibold text-primary underline"
+                onClick={() => {
+                  setResetMode(true);
+                  setResetSent(false);
+                  setError(null);
+                }}
+              >
+                Forgot your password?
+              </button>
+            </div>
+          ) : null}
 
           {mode === "register" ? (
             <>
