@@ -36,12 +36,12 @@ export function AuthModal() {
   }, [authGate.open]);
 
   useEffect(() => {
-    if (authGate.mode !== "login") {
+    if (!authGate.open || authGate.mode !== "login") {
       setResetMode(false);
       setResetSent(false);
       setResetPending(false);
     }
-  }, [authGate.mode]);
+  }, [authGate.open, authGate.mode]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -126,6 +126,8 @@ export function AuthModal() {
       // Keep this response deliberately generic so it does not reveal whether
       // an account exists for the submitted email address.
       setResetSent(true);
+    } catch {
+      setError("We could not send the reset email right now. Please try again shortly.");
     } finally {
       setResetPending(false);
     }
