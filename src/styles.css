@@ -141,6 +141,57 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+/* Homepage-only palette: keep the rest of the application on its existing theme. */
+body:has(.pigeonshield-homepage) {
+  --background: oklch(0.988 0.004 250);
+  --foreground: oklch(0.205 0.026 250);
+  --card-foreground: oklch(0.205 0.026 250);
+  --popover-foreground: oklch(0.205 0.026 250);
+  --primary: oklch(0.45 0.18 250);
+  --primary-foreground: oklch(0.985 0.01 250);
+  --primary-glow: oklch(0.70 0.14 250);
+  --secondary: oklch(0.955 0.018 250);
+  --secondary-foreground: oklch(0.34 0.11 250);
+  --muted: oklch(0.962 0.008 250);
+  --muted-foreground: oklch(0.47 0.035 250);
+  --accent: oklch(0.965 0.015 250);
+  --accent-foreground: oklch(0.30 0.10 250);
+  --border: oklch(0.90 0.014 250);
+  --input: oklch(0.89 0.014 250);
+  --ring: oklch(0.45 0.18 250);
+  --sidebar: oklch(0.99 0.004 250);
+  --sidebar-foreground: oklch(0.205 0.026 250);
+  --sidebar-primary: oklch(0.45 0.18 250);
+  --sidebar-primary-foreground: oklch(0.985 0.01 250);
+  --sidebar-accent: oklch(0.955 0.018 250);
+  --sidebar-accent-foreground: oklch(0.34 0.11 250);
+  --sidebar-border: oklch(0.90 0.014 250);
+  --sidebar-ring: oklch(0.45 0.18 250);
+}
+
+.dark body:has(.pigeonshield-homepage) {
+  --background: oklch(0.19 0.035 250);
+  --foreground: oklch(0.97 0.008 250);
+  --card: oklch(0.245 0.04 250);
+  --card-foreground: oklch(0.97 0.008 250);
+  --popover: oklch(0.245 0.04 250);
+  --popover-foreground: oklch(0.97 0.008 250);
+  --primary: oklch(0.70 0.14 250);
+  --primary-foreground: oklch(0.17 0.04 250);
+  --primary-glow: oklch(0.79 0.12 250);
+  --secondary: oklch(0.30 0.045 250);
+  --secondary-foreground: oklch(0.97 0.008 250);
+  --muted: oklch(0.30 0.04 250);
+  --muted-foreground: oklch(0.75 0.025 250);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.70 0.14 250);
+  --sidebar: oklch(0.208 0.045 250);
+  --sidebar-primary: oklch(0.70 0.14 250);
+  --sidebar-accent: oklch(0.279 0.045 250);
+  --sidebar-ring: oklch(0.70 0.14 250);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
