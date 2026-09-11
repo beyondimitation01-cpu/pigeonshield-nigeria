@@ -81,7 +81,7 @@ function Marketplace() {
   }
 
   return (
-    <div>
+    <div className="pigeonshield-homepage">
       <section className="relative overflow-hidden border-b border-border">
         <img src={heroPigeon} alt="Racing homer pigeon in a Nigerian loft" width={1024} height={768} onError={onImageError()} className="absolute inset-0 size-full object-cover opacity-25" />
         <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
