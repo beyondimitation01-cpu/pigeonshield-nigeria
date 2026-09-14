@@ -119,7 +119,7 @@ function Marketplace() {
         <div className="mt-3"><Button asChild variant="outline" className="min-w-56 px-5 font-medium"><Link to="/search" search={{ q: q.trim(), type: "all", page: 1 }}>Search all products &amp; stores</Link></Button></div>
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{filtered.length} active listing{filtered.length === 1 ? "" : "s"} · 7-Day Expiry Window enforced</p>
-          <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => { if (!requireAuth("Reporting a scam or issue requires an account.")) return; reportToAdmin("Marketplace feed report"); }}><Flag className="size-4" /> Report Scam or Issue to Admin</Button>
+          <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => { if (!requireAuth("Reporting a scam or issue requires an account.")) return; reportToAdmin("Marketplace feed report"); }}><Flag className="size-4" /> Report Scam or Issue to Admin</Button>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">{rows.map((l) => <ListingCard key={l.id} listing={l} />)}</div>
         {filtered.length === 0 ? <p className="py-16 text-center text-muted-foreground">No live listings match these filters.</p> : null}
