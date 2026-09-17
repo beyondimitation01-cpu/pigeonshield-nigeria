@@ -25,7 +25,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const { db } = useStore();
   const { requireAuth } = useAuthGuard();
   const seller = listing.breeder_id ? db.sellers[listing.breeder_id] : undefined;
-  const listingKey = listing.slug || listing.id;
+  const listingKey = (listing as { slug?: string | null }).slug || listing.id;
 
   return (
     <Card className="group flex h-full flex-col overflow-hidden p-0 transition-shadow hover:shadow-lg">
