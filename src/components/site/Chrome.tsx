@@ -315,6 +315,7 @@ export function Navbar() {
     }
 
     const notification = items[0];
+    if (!notification) return;
     const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
     const isAdminNotification = notification.kind.startsWith("admin_");
 
