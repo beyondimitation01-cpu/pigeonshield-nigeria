@@ -29,7 +29,7 @@ class RootRuntimeErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean }
 > {
-  state = { hasError: false };
+  override state = { hasError: false };
 
   static getDerivedStateFromError() {
     return { hasError: true };
@@ -40,7 +40,7 @@ class RootRuntimeErrorBoundary extends Component<
     reportLovableError(error, { boundary: "root_runtime_error_boundary" });
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background px-4">

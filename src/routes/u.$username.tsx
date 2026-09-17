@@ -43,12 +43,13 @@ function PublicStorePage() {
   const storeUrl = canonicalUrl(`/u/${encodeURIComponent(store.username)}`);
 
   async function shareStore() {
+    const nav: Navigator | undefined = typeof navigator === "undefined" ? undefined : navigator;
     try {
-      if (typeof navigator !== "undefined" && "share" in navigator) {
-        await navigator.share({ title: `@${store.username} Store`, text: `View @${store.username} on PigeonShield Nigeria`, url: storeUrl });
+      if (nav && typeof nav.share === "function") {
+        await nav.share({ title: `@${store.username} Store`, text: `View @${store.username} on PigeonShield Nigeria`, url: storeUrl });
         return;
       }
-      await navigator.clipboard.writeText(storeUrl);
+      await nav?.clipboard.writeText(storeUrl);
       toast.success("Store link copied.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

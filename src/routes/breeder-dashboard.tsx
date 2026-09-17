@@ -110,16 +110,18 @@ function BreederDashboard() {
       toast.error("Your public store username is not available yet.");
       return;
     }
+    const nav: Navigator | undefined = typeof navigator === "undefined" ? undefined : navigator;
+    const displayName = user?.real_name || publicUsername;
     try {
-      if (typeof navigator !== "undefined" && "share" in navigator) {
-        await navigator.share({
-          title: `${user.real_name || publicUsername} Store`,
-          text: `View ${user.real_name || publicUsername} on PigeonShield Nigeria`,
+      if (nav && typeof nav.share === "function") {
+        await nav.share({
+          title: `${displayName} Store`,
+          text: `View ${displayName} on PigeonShield Nigeria`,
           url: publicStoreUrl,
         });
         return;
       }
-      await navigator.clipboard.writeText(publicStoreUrl);
+      await nav?.clipboard.writeText(publicStoreUrl);
       toast.success("Store link copied.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
