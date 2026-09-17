@@ -27,7 +27,8 @@ export const Route = createFileRoute("/search")({
       { property: "og:title", content: "Marketplace Search — PigeonShield Nigeria" },
     ],
     links: [{ rel: "canonical", href: canonicalUrl(`/search?q=${encodeURIComponent(search.q)}&type=${search.type}&page=${search.page}`) }],
-  }),
+    };
+  },
   component: SearchPage,
 });
 
