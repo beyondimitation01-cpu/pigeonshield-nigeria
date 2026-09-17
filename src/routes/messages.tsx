@@ -57,7 +57,7 @@ function MessagesPage() {
   }, [db.conversations, db.listings, user, listingParam]);
 
   const selectedId = active ?? conversationParam ?? null;
-  const current = selectedId ? conversations.find((c) => c.id === selectedId && c.otherId !== user.id) : undefined;
+  const current = selectedId ? conversations.find((c) => c.id === selectedId && c.otherId !== user?.id) : undefined;
   const other = current ? db.users.find((u) => u.id === current.otherId) ?? db.sellers[current.otherId] : undefined;
   const thread = current
     ? db.messages.filter((m) => m.conversation_id === current.id).sort((a, b) => a.created_at - b.created_at)

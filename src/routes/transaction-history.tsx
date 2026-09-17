@@ -59,7 +59,7 @@ function TransactionHistory() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("get_transaction_history_page", {
+      const { data, error } = await (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("get_transaction_history_page", {
         _direction: side,
         _limit: FETCH_SIZE,
         _offset: (page - 1) * PAGE_SIZE,

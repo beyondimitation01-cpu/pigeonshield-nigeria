@@ -18,14 +18,17 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/search")({
   validateSearch: searchSchema,
-  head: ({ search }) => ({
+  head: ({ match }) => {
+    const search = match.search;
+    return {
     meta: [
       { title: search.q ? `Search: ${search.q} — PigeonShield Nigeria` : "Marketplace Search — PigeonShield Nigeria" },
       { name: "description", content: "Search active PigeonShield Nigeria marketplace listings and public seller stores." },
       { property: "og:title", content: "Marketplace Search — PigeonShield Nigeria" },
     ],
     links: [{ rel: "canonical", href: canonicalUrl(`/search?q=${encodeURIComponent(search.q)}&type=${search.type}&page=${search.page}`) }],
-  }),
+    };
+  },
   component: SearchPage,
 });
 

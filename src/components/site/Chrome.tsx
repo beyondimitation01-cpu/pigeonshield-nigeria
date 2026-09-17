@@ -115,7 +115,7 @@ function getNotificationCopy(kind: string) {
   };
 }
 
-function isNotificationTaskUnresolved(notification: { kind: string; transaction_id?: string | null }, transaction: { status: string; payout_paid_at?: string | null; payout_paid_by?: string | null } | undefined) {
+function isNotificationTaskUnresolved(notification: { kind: string; transaction_id?: string | null }, transaction: { status: string; payout_paid_at?: string | number | null; payout_paid_by?: string | null } | undefined) {
   if (!transaction) return true;
 
   switch (notification.kind) {
@@ -249,10 +249,11 @@ export function Navbar() {
     return notificationsWithReadState.filter((notification) => {
       if (!notification.read_at) return true;
       if (new Date(notification.read_at).getTime() >= cutoff) return true;
-      const transaction = notification.transaction_id
-        ? db.transactions.find((tx) => tx.id === notification.transaction_id)
+      const transactionId = (notification as { transaction_id?: string | null }).transaction_id ?? null;
+      const transaction = transactionId
+        ? db.transactions.find((tx) => tx.id === transactionId)
         : undefined;
-      return isNotificationTaskUnresolved(notification, transaction);
+      return isNotificationTaskUnresolved({ kind: notification.kind, transaction_id: transactionId }, transaction);
     });
   }, [db.transactions, notificationsWithReadState]);
 
@@ -314,6 +315,7 @@ export function Navbar() {
     }
 
     const notification = items[0];
+    if (!notification) return;
     const isMessage = notification.kind === "message" || Boolean(notification.message_id && notification.message_id !== "null");
     const isAdminNotification = notification.kind.startsWith("admin_");
 
@@ -378,6 +380,7 @@ export function Navbar() {
                   <div className="max-h-[min(70vh,34rem)] overflow-y-auto">
                     {notificationGroups.map((group) => {
                       const notification = group.items[0];
+                      if (!notification) return null;
                       const copy = getNotificationCopy(notification.kind);
                       const unreadCount = group.items.filter((item) => !item.read_at).length;
                       const totalCount = group.items.length;

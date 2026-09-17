@@ -110,16 +110,18 @@ function BreederDashboard() {
       toast.error("Your public store username is not available yet.");
       return;
     }
+    const nav: Navigator | undefined = typeof navigator === "undefined" ? undefined : navigator;
+    const displayName = user?.real_name || publicUsername;
     try {
-      if (typeof navigator !== "undefined" && "share" in navigator) {
-        await navigator.share({
-          title: `${user.real_name || publicUsername} Store`,
-          text: `View ${user.real_name || publicUsername} on PigeonShield Nigeria`,
+      if (nav && typeof nav.share === "function") {
+        await nav.share({
+          title: `${displayName} Store`,
+          text: `View ${displayName} on PigeonShield Nigeria`,
           url: publicStoreUrl,
         });
         return;
       }
-      await navigator.clipboard.writeText(publicStoreUrl);
+      await nav?.clipboard.writeText(publicStoreUrl);
       toast.success("Store link copied.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -283,7 +285,7 @@ function AccountPanel() {
   }
   async function deleteAccount() {
     setDeleting(true);
-    try { const { error } = await supabase.rpc("delete_my_account"); if (error) throw new Error(error.message); await supabase.auth.signOut(); toast.success("Your account has been permanently deleted."); window.location.assign("/"); }
+    try { const { error } = await (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("delete_my_account"); if (error) throw new Error(error.message); await supabase.auth.signOut(); toast.success("Your account has been permanently deleted."); window.location.assign("/"); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Could not delete your account. Your account was not changed."); }
     finally { setDeleting(false); }
   }

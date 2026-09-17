@@ -64,14 +64,15 @@ export function CheckoutModal({
         setLoadingPricing(false);
         return;
       }
-      const nextUnit = String((data as Record<string, unknown>)["pricing_unit"] ?? "listing") as PricingUnit;
-      const nextPrice = Number((data as Record<string, unknown>)["price_ngn"] ?? listing.price_ngn);
-      const nextQty = Math.max(1, Number((data as Record<string, unknown>)["batch_quantity"] ?? 1));
+      const row = data as unknown as Record<string, unknown>;
+      const nextUnit = String(row["pricing_unit"] ?? "listing") as PricingUnit;
+      const nextPrice = Number(row["price_ngn"] ?? listing.price_ngn);
+      const nextQty = Math.max(1, Number(row["batch_quantity"] ?? 1));
       setPricingUnit(nextUnit === "each" || nextUnit === "pair" ? nextUnit : "listing");
       setUnitPrice(nextPrice);
       setAvailableQty(nextUnit === "listing" ? 1 : nextQty);
       setQuantity(1);
-      if ((data as Record<string, unknown>)["is_active"] !== true) toast.error("This listing is no longer available.");
+      if (row["is_active"] !== true) toast.error("This listing is no longer available.");
       setLoadingPricing(false);
     });
     return () => { cancelled = true; };

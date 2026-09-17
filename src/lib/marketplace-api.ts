@@ -47,8 +47,8 @@ type UntypedRpc = (fn: string, args: Record<string, unknown>) => Promise<{ data:
 const rpc = (supabase.rpc as unknown as UntypedRpc);
 
 function getPublicSupabaseRpcUrl(functionName: string) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-  const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+  const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] as string | undefined;
+  const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] as string | undefined;
 
   if (!supabaseUrl || !publishableKey) {
     throw new Error("Marketplace public data is not configured.");

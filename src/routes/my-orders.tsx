@@ -75,8 +75,8 @@ function MyOrders() {
       const activeQuery = supabase.from("transactions").select(TRANSACTION_SELECT).not("status", "in", `(${TERMINAL_STATUSES.map((status) => `"${status}"`).join(",")})`).or(`buyer_id.eq.${user.id},breeder_id.eq.${user.id}`).order("created_at", { ascending: false });
       const [activeResult, purchaseHistoryResult, salesHistoryResult] = await Promise.all([
         activeQuery,
-        supabase.rpc("get_transaction_history_page", { _direction: "purchase", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
-        supabase.rpc("get_transaction_history_page", { _direction: "sale", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
+        (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("get_transaction_history_page", { _direction: "purchase", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
+        (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("get_transaction_history_page", { _direction: "sale", _limit: HISTORY_FETCH_SIZE, _offset: 0 }),
       ]);
       if (activeResult.error) throw activeResult.error;
       if (purchaseHistoryResult.error) throw purchaseHistoryResult.error;

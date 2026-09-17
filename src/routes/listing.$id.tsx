@@ -41,7 +41,7 @@ function ListingDetail() {
   const [checkout, setCheckout] = useState(false);
   const [revealedPhone, setRevealedPhone] = useState("");
   const [pricingUnit, setPricingUnit] = useState<PricingUnit>("listing");
-  const listing = db.listings.find((l) => l.id === id || l.slug === id);
+  const listing = db.listings.find((l) => l.id === id || (l as { slug?: string | null }).slug === id);
   const breederId = listing?.breeder_id ?? "";
 
   useEffect(() => {
