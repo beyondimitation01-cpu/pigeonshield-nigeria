@@ -35,7 +35,7 @@ class RootRuntimeErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[RootRuntimeErrorBoundary]", error, errorInfo);
     reportLovableError(error, { boundary: "root_runtime_error_boundary" });
   }
