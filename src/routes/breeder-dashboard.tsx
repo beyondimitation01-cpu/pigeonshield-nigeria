@@ -285,7 +285,7 @@ function AccountPanel() {
   }
   async function deleteAccount() {
     setDeleting(true);
-    try { const { error } = await supabase.rpc("delete_my_account"); if (error) throw new Error(error.message); await supabase.auth.signOut(); toast.success("Your account has been permanently deleted."); window.location.assign("/"); }
+    try { const { error } = await (supabase.rpc as unknown as (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)("delete_my_account"); if (error) throw new Error(error.message); await supabase.auth.signOut(); toast.success("Your account has been permanently deleted."); window.location.assign("/"); }
     catch (err) { toast.error(err instanceof Error ? err.message : "Could not delete your account. Your account was not changed."); }
     finally { setDeleting(false); }
   }
