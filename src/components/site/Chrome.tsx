@@ -380,6 +380,7 @@ export function Navbar() {
                   <div className="max-h-[min(70vh,34rem)] overflow-y-auto">
                     {notificationGroups.map((group) => {
                       const notification = group.items[0];
+                      if (!notification) return null;
                       const copy = getNotificationCopy(notification.kind);
                       const unreadCount = group.items.filter((item) => !item.read_at).length;
                       const totalCount = group.items.length;
