@@ -115,7 +115,7 @@ function getNotificationCopy(kind: string) {
   };
 }
 
-function isNotificationTaskUnresolved(notification: { kind: string; transaction_id?: string | null }, transaction: { status: string; payout_paid_at?: string | null; payout_paid_by?: string | null } | undefined) {
+function isNotificationTaskUnresolved(notification: { kind: string; transaction_id?: string | null }, transaction: { status: string; payout_paid_at?: string | number | null; payout_paid_by?: string | null } | undefined) {
   if (!transaction) return true;
 
   switch (notification.kind) {
