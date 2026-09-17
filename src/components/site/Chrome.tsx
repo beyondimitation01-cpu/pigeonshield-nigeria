@@ -249,10 +249,11 @@ export function Navbar() {
     return notificationsWithReadState.filter((notification) => {
       if (!notification.read_at) return true;
       if (new Date(notification.read_at).getTime() >= cutoff) return true;
-      const transaction = notification.transaction_id
-        ? db.transactions.find((tx) => tx.id === notification.transaction_id)
+      const transactionId = (notification as { transaction_id?: string | null }).transaction_id ?? null;
+      const transaction = transactionId
+        ? db.transactions.find((tx) => tx.id === transactionId)
         : undefined;
-      return isNotificationTaskUnresolved(notification, transaction);
+      return isNotificationTaskUnresolved({ kind: notification.kind, transaction_id: transactionId }, transaction);
     });
   }, [db.transactions, notificationsWithReadState]);
 
