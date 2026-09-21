@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.pigeonshield_nigeria.twa",
+      "sha256_cert_fingerprints": [
+        "C0:59:16:45:C8:6A:1F:F8:C1:ED:07:10:E5:C7:77:73:62:F4:C0:AA:A4:C5:17:8E:49:34:88:55:10:24:22:38"
+      ]
+    }
+  }
+]
