@@ -82,17 +82,18 @@ function Marketplace() {
 
   return (
     <div className="pigeonshield-homepage">
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="relative overflow-hidden border-b border-primary/20 bg-gradient-to-br from-primary/15 via-primary/5 to-background">
         <img src={heroPigeon} alt="Racing homer pigeon in a Nigerian loft" width={1024} height={768} onError={onImageError()} className="absolute inset-0 size-full object-cover opacity-25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/25 via-transparent to-primary/10" aria-hidden="true" />
         <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24">
-          <Badge variant="secondary" className="mb-4 gap-1"><ShieldCheck className="size-3" /> Delivery-fraud-proof escrow</Badge>
+          <Badge variant="secondary" className="mb-4 gap-1 border border-primary/30 bg-primary/10 text-primary"><ShieldCheck className="size-3" /> Delivery-fraud-proof escrow</Badge>
           <h1 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight text-primary md:text-5xl">Nigeria&rsquo;s trusted marketplace for verified animal sellers &amp; buyers</h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground md:text-lg">Buy, sell, and trade pigeons, chickens, dogs, horses and other supported animals with 100% DOA protection through PigeonShield Escrow.</p>
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-4 py-8">
         <div className="max-w-sm">
-          <label className="mb-2 block text-sm font-medium" htmlFor="marketplace-category">Browse by animal</label>
+          <label className="mb-2 block text-sm font-medium text-primary" htmlFor="marketplace-category">Browse by animal</label>
           <Select value={category} onValueChange={switchCategory}>
             <SelectTrigger id="marketplace-category" aria-label="Browse by animal category">
               <SelectValue />
@@ -112,13 +113,13 @@ function Marketplace() {
             : `Showing ${animalCategoryLabel(category)} only.`}
         </p>
         <div className="mt-6 grid gap-3 md:grid-cols-4">
-          <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search animal name or breed" className="pl-9" /></div>
+          <div className="relative md:col-span-2"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary" /><Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Search animal name or breed" className="pl-9 border-primary/25 focus-visible:border-primary" /></div>
           <Select value={state} onValueChange={(v) => { setState(v); setPage(1); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64"><SelectItem value="All states">All states</SelectItem>{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
           <Combobox value={breed} options={["All breeds", ...breeds]} onChange={(v) => { setBreed(v); setPage(1); }} allowCustom placeholder="All breeds" searchPlaceholder="Search or type a breed..." />
         </div>
         <div className="mt-3"><Button asChild variant="outline" className="min-w-56 px-5 font-medium"><Link to="/search" search={{ q: q.trim(), type: "all", page: 1 }}>Search all products &amp; stores</Link></Button></div>
         <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{filtered.length} active listing{filtered.length === 1 ? "" : "s"} · 7-Day Expiry Window enforced</p>
+          <p className="text-sm text-muted-foreground"><span className="font-semibold text-primary">{filtered.length} active listing{filtered.length === 1 ? "" : "s"}</span> · 7-Day Expiry Window enforced</p>
           <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10" onClick={() => { if (!requireAuth("Reporting a scam or issue requires an account.")) return; reportToAdmin("Marketplace feed report"); }}><Flag className="size-4" /> Report Scam or Issue to Admin</Button>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">{rows.map((l) => <ListingCard key={l.id} listing={l} />)}</div>
