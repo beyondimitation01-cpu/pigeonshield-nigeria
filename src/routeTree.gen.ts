@@ -25,6 +25,7 @@ import { Route as ListingIdRouteImport } from './routes/listing.$id'
 import { Route as RefCodeRouteImport } from './routes/ref.$code'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
+import { Route as ApiPublicThetaRouteImport } from './routes/api/public/theta'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -107,6 +108,11 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicThetaRoute = ApiPublicThetaRouteImport.update({
+  id: '/api/public/theta',
+  path: '/api/public/theta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/ref/$code': typeof RefCodeRoute
   '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/theta': typeof ApiPublicThetaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/ref/$code': typeof RefCodeRoute
   '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/theta': typeof ApiPublicThetaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/ref/$code': typeof RefCodeRoute
   '/u/$username': typeof UUsernameRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
+  '/api/public/theta': typeof ApiPublicThetaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -182,6 +191,7 @@ export interface FileRouteTypes {
     | '/ref/$code'
     | '/u/$username'
     | '/.lovable/oauth/consent'
+    | '/api/public/theta'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/ref/$code'
     | '/u/$username'
     | '/.lovable/oauth/consent'
+    | '/api/public/theta'
   id:
     | '__root__'
     | '/'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/ref/$code'
     | '/u/$username'
     | '/.lovable/oauth/consent'
+    | '/api/public/theta'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   RefCodeRoute: typeof RefCodeRoute
   UUsernameRoute: typeof UUsernameRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
+  ApiPublicThetaRoute: typeof ApiPublicThetaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/theta': {
+      id: '/api/public/theta'
+      path: '/api/public/theta'
+      fullPath: '/api/public/theta'
+      preLoaderRoute: typeof ApiPublicThetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -374,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefCodeRoute: RefCodeRoute,
   UUsernameRoute: UUsernameRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
+  ApiPublicThetaRoute: ApiPublicThetaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
