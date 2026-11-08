@@ -141,6 +141,21 @@ function isNotificationTaskUnresolved(notification: { kind: string; transaction_
   }
 }
 
+function NigeriaFlag() {
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      className="inline-block h-3 w-[18px] shrink-0 rounded-[2px] ring-1 ring-border"
+      role="img"
+      aria-label="Nigeria"
+    >
+      <rect width="6" height="12" fill="#0D5C3A" />
+      <rect x="6" width="6" height="12" fill="#ffffff" />
+      <rect x="12" width="6" height="12" fill="#0D5C3A" />
+    </svg>
+  );
+}
+
 export function Navbar() {
   const { isLoading, isAuthenticated } = useAuth();
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
@@ -353,7 +368,9 @@ export function Navbar() {
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
         <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-primary">
           <ShieldCheck className="size-5" />
-          <span>PigeonShield 🇳🇬</span>
+          <span className="flex items-center gap-1.5">
+            PigeonShield <NigeriaFlag />
+          </span>
         </Link>
 
         <div className="hidden items-center gap-6 lg:flex">{links}</div>
@@ -487,7 +504,9 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted-foreground">
         <div className="grid gap-8 md:grid-cols-3">
           <div>
-            <p className="font-bold text-primary">PigeonShield 🇳🇬</p>
+            <p className="flex items-center gap-1.5 font-bold text-primary">
+              PigeonShield <NigeriaFlag />
+            </p>
             <p className="mt-2 max-w-sm">
               Nigeria's anonymous, escrow-protected livestock marketplace. Flagship pigeon trading with
               DOA refund protection and secure 4-digit pickup PIN handover.
