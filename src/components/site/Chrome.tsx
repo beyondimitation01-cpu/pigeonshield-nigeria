@@ -353,7 +353,9 @@ export function Navbar() {
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
         <Link to="/" className="flex items-center gap-2 font-bold tracking-tight text-primary">
           <ShieldCheck className="size-5" />
-          <span>PigeonShield 🇳🇬</span>
+          <span className="flex items-center gap-1.5">
+            PigeonShield <NigeriaFlag />
+          </span>
         </Link>
 
         <div className="hidden items-center gap-6 lg:flex">{links}</div>
@@ -487,7 +489,9 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-10 text-sm text-muted-foreground">
         <div className="grid gap-8 md:grid-cols-3">
           <div>
-            <p className="font-bold text-primary">PigeonShield 🇳🇬</p>
+            <p className="flex items-center gap-1.5 font-bold text-primary">
+              PigeonShield <NigeriaFlag />
+            </p>
             <p className="mt-2 max-w-sm">
               Nigeria's anonymous, escrow-protected livestock marketplace. Flagship pigeon trading with
               DOA refund protection and secure 4-digit pickup PIN handover.
