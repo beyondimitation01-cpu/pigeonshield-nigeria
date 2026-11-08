@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Escrow e2e tests live in tests/e2e and run against the real backend with E2E_* test-account env vars; they skip when those are absent, so CI without accounts stays green.
