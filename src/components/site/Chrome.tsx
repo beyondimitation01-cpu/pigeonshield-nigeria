@@ -141,6 +141,21 @@ function isNotificationTaskUnresolved(notification: { kind: string; transaction_
   }
 }
 
+function NigeriaFlag() {
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      className="inline-block h-3 w-[18px] shrink-0 rounded-[2px] ring-1 ring-border"
+      role="img"
+      aria-label="Nigeria"
+    >
+      <rect width="6" height="12" fill="#0D5C3A" />
+      <rect x="6" width="6" height="12" fill="#ffffff" />
+      <rect x="12" width="6" height="12" fill="#0D5C3A" />
+    </svg>
+  );
+}
+
 export function Navbar() {
   const { isLoading, isAuthenticated } = useAuth();
   const { user, openAuth, logout, db, markNotificationRead } = useStore();
