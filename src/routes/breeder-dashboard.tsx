@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { referralLink, storeUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
 import { listingCover, onImageError } from "@/lib/listing-images";
+import { listingDescriptionWithAge, type AgeUnit } from "@/lib/listing-details";
 import { canRenewSellerListing, sellerListingStatus, type ListingStatus } from "@/lib/seller-dashboard";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
@@ -96,6 +97,7 @@ function BreederDashboard() {
   const [breed, setBreed] = useState<string>(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
   const [gender, setGender] = useState<"Male" | "Female" | "Pair">("Male");
   const [pricingUnit, setPricingUnit] = useState<PricingUnit>("each");
+  const [ageUnit, setAgeUnit] = useState<AgeUnit>("months");
   const [state, setState] = useState("Lagos");
   const [vaccinated, setVaccinated] = useState(true);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
@@ -164,7 +166,13 @@ function BreederDashboard() {
     const price = Number(f.get("price") ?? 0);
     const quantity = Number(f.get("qty") ?? 1);
     const name = String(f.get("name") ?? "").trim();
-    const description = String(f.get("description") ?? "").trim();
+    let description = String(f.get("description") ?? "").trim();
+    try {
+      description = listingDescriptionWithAge(description, String(f.get("age") ?? ""), ageUnit);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Enter a valid age.");
+      return;
+    }
     if (!name) {
       toast.error("Enter a custom animal name.");
       return;
@@ -203,6 +211,7 @@ function BreederDashboard() {
       setBreed(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
       setPhotos([]);
       setPricingUnit("each");
+      setAgeUnit("months");
       setFilter("All");
       setQuery("");
       setTab("inventory");
@@ -233,7 +242,7 @@ function BreederDashboard() {
       </div>
       <Tabs value={tab} onValueChange={setTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
-          {[['inventory', 'Listings'], ['sales', 'Sales'], ['create', 'New listing'], ['refer', 'Refer & Boost'], ['account', 'Account']].map(([value, label]) => <TabsTrigger key={value} value={value} className="shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm">{label}</TabsTrigger>)}
+          {([['inventory', 'Listings'], ['sales', 'Sales'], ['create', 'New listing'], ['refer', 'Refer & Boost'], ['account', 'Account']] as const).map(([value, label]) => <TabsTrigger key={value} value={value} className="shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm">{label}</TabsTrigger>)}
         </TabsList>
         <TabsContent value="account" className="mt-6"><AccountPanel /></TabsContent>
         <TabsContent value="refer" className="mt-6"><ReferBoost /></TabsContent>
@@ -244,6 +253,8 @@ function BreederDashboard() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5"><Label htmlFor="category-combo">Category</Label><Combobox id="category-combo" value={categoryLabel(category)} options={SELLER_CATEGORY_OPTIONS.map((c) => c.label)} allowCustom placeholder="Search or type an animal" searchPlaceholder="Search or type an animal..." onChange={(input) => { const next = canonicalSellerCategory(input); setCategory(next); setBreed(categoryBreeds(next)[0] ?? ""); }} /></div>
                   <div className="space-y-1.5"><Label htmlFor="breed-combo">Breed</Label><Combobox id="breed-combo" value={breed} options={categoryBreeds(category)} onChange={setBreed} allowCustom placeholder="Select or type a breed" searchPlaceholder="Search or type a breed..." /></div>
+                  <div className="space-y-1.5"><Label htmlFor="age">{category === "Pigeon" ? "Pigeon age" : "Animal age"} (optional)</Label><Input id="age" name="age" type="number" min="0.1" step="any" placeholder="e.g. 6" inputMode="decimal" /></div>
+                  <div className="space-y-1.5"><Label htmlFor="age-unit">Age in</Label><Select value={ageUnit} onValueChange={(value) => setAgeUnit(value as AgeUnit)}><SelectTrigger id="age-unit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="weeks">Weeks</SelectItem><SelectItem value="months">Months</SelectItem><SelectItem value="years">Years</SelectItem></SelectContent></Select></div>
                   <div className="space-y-1.5"><Label>Gender</Label><Select value={gender} onValueChange={(v) => setGender(v as typeof gender)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Male">Male</SelectItem><SelectItem value="Female">Female</SelectItem><SelectItem value="Pair">Pair</SelectItem></SelectContent></Select></div>
                   <div className="space-y-1.5"><Label>State</Label><Select value={state} onValueChange={setState}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="max-h-64">{NIGERIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-1.5"><Label htmlFor="pricing-unit">Price per</Label><Select value={pricingUnit} onValueChange={(v) => setPricingUnit(v as PricingUnit)}><SelectTrigger id="pricing-unit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="each">Each</SelectItem><SelectItem value="pair">Pair</SelectItem></SelectContent></Select></div>
@@ -252,7 +263,7 @@ function BreederDashboard() {
                 </div>
                 <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">Example: ₦8,000 {pricingUnit === "pair" ? "per pair" : "each"}. Buyers can choose how many units to purchase.</div>
                 <div className="space-y-1.5"><Label>Listing photos</Label><PhotoUploader userId={user.id} photos={photos} onChange={setPhotos} /></div>
-                <div className="space-y-1.5"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" required rows={3} placeholder="Bloodline, age, race record..." /></div>
+                <div className="space-y-1.5"><Label htmlFor="description">Listing details</Label><Textarea id="description" name="description" required rows={5} placeholder="Health, bloodline, ring number, race record and delivery arrangements..." /></div>
                 <label className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={vaccinated} onCheckedChange={(v) => setVaccinated(v === true)} /> Vaccinated / health certified</label>
                 <Button type="submit" className="w-full" disabled={publishing}>{publishing ? "Publishing..." : "Publish listing (7-day lifespan)"}</Button>
               </form>
