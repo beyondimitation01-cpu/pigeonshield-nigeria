@@ -10,3 +10,5 @@
 <!-- LOVABLE:END -->
 
 - Escrow e2e tests live in tests/e2e and run against the real backend with E2E_* test-account env vars; they skip when those are absent, so CI without accounts stays green.
+- Seller dashboard status classification lives in a browser-safe tested helper so filters, counts and renewal eligibility agree.
+- Store breeder-entered animal age as a leading description line so existing listing reads display it without a database migration.
