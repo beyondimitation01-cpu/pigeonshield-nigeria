@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus, RefreshCw } from "lucide-react";
+import { Trash2, PlusCircle, Package, Share2, Copy, Gift, ImagePlus, RefreshCw, Search, ArrowUpRight, Clock, CheckCircle2, Truck, Wallet, AlertTriangle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { AvatarUploader } from "@/components/site/AvatarUploader";
@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { referralLink, storeUrl } from "@/lib/site";
 import { supabase } from "@/integrations/supabase/client";
+import { listingCover, onImageError } from "@/lib/listing-images";
+import { canRenewSellerListing, sellerListingStatus, type ListingStatus } from "@/lib/seller-dashboard";
 import { useStore } from "@/lib/store";
 import { PhotoUploader, type UploadedPhoto } from "@/components/site/PhotoUploader";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -29,9 +31,11 @@ export const Route = createFileRoute("/breeder-dashboard")({
   head: () => ({
     meta: [
       { title: "Breeder Dashboard — Manage Your PigeonShield Listings" },
-      { name: "description", content: "Create escrow-protected pigeon and livestock listings, track 7-day expiry countdowns and manage your anonymous breeder inventory." },
+      { name: "description", content: "Create escrow-protected pigeon and livestock listings, track 7-day expiry countdowns and manage your seller inventory." },
       { property: "og:title", content: "Breeder Dashboard — PigeonShield Nigeria" },
-      { property: "og:description", content: "Publish listings and track escrow sales anonymously." },
+      { property: "og:description", content: "Manage livestock listings, renew expired stock and follow escrow sales." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: GuardedBreederDashboard,
@@ -96,12 +100,22 @@ function BreederDashboard() {
   const [vaccinated, setVaccinated] = useState(true);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [publishing, setPublishing] = useState(false);
+  const [tab, setTab] = useState("inventory");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ListingStatus | "All">("All");
+  const [renewing, setRenewing] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(timer); }, []);
 
   if (!authReady) return <AuthPending />;
   if (!authed || !user) return <AuthRequired title="Breeder Dashboard" description="Log in to manage your listings." />;
 
   const mine = db.listings.filter((l) => l.breeder_id === user.id);
   const mySales = db.transactions.filter((t) => t.breeder_id === user.id && !TERMINAL_STATUSES.has(t.status));
+  const counts = { Active: 0, Expired: 0, "Sold / retired": 0 };
+  mine.forEach((listing) => { counts[sellerListingStatus(listing, now)] += 1; });
+  const visibleListings = mine.filter((listing) => (filter === "All" || sellerListingStatus(listing, now) === filter) && `${listing.custom_bird_name} ${listing.breed_type} ${listing.category_type} ${listing.state}`.toLowerCase().includes(query.toLowerCase().trim())).sort((a, b) => b.creation_timestamp - a.creation_timestamp);
+  const pendingPayout = mySales.reduce((total, sale) => total + sale.amount_naira - sale.calculated_commission, 0);
   const publicUsername = user.public_handle || user.real_name;
   const publicStoreUrl = publicUsername ? storeUrl(publicUsername) : null;
 
@@ -189,6 +203,9 @@ function BreederDashboard() {
       setBreed(BREEDS_BY_CATEGORY.Pigeon[0] ?? "");
       setPhotos([]);
       setPricingUnit("each");
+      setFilter("All");
+      setQuery("");
+      setTab("inventory");
       toast.success("Listing published — live for 7 days.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Could not publish listing.");
@@ -202,35 +219,26 @@ function BreederDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight">Breeder Dashboard</h1>
-      <p className="mt-1 text-muted-foreground">Trading as <span className="font-semibold text-primary">{user.real_name || user.public_handle}</span></p>
-      <Card className="mt-6 p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <h2 className="font-semibold">My Public Store</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Share your seller store so buyers can see your active listings.</p>
-            {publicUsername ? <p className="mt-1 text-xs text-muted-foreground">/{"u/"}{publicUsername}</p> : null}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {publicUsername ? <Button asChild variant="outline"><Link to="/u/$username" params={{ username: publicUsername }}>View Store</Link></Button> : null}
-            <Button onClick={() => void shareStore()} disabled={!publicStoreUrl}><Share2 className="size-4" /> Share Store</Button>
-            <Button variant="secondary" onClick={() => void copyStoreLink()} disabled={!publicStoreUrl}><Copy className="size-4" /> Copy Store Link</Button>
-          </div>
-        </div>
-      </Card>
-      <Tabs defaultValue="inventory" className="mt-8">
-        <TabsList>
-          <TabsTrigger value="inventory">Inventory &amp; Sales</TabsTrigger>
-          <TabsTrigger value="refer"><Share2 className="size-4" /> Refer &amp; Boost</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10 [&_h1]:tracking-normal [&_h2]:tracking-normal [&_h3]:tracking-normal">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div><p className="text-xs font-semibold uppercase tracking-widest text-primary">PigeonShield Nigeria · Seller workspace</p><h1 className="mt-2 text-3xl font-bold">Seller dashboard</h1><p className="mt-1 text-sm text-muted-foreground">{user.loft_name || user.real_name || user.public_handle}</p></div>
+        <Button onClick={() => setTab("create")} size="lg" className="self-start"><PlusCircle /> New listing</Button>
+      </div>
+      <div className="mt-7 grid grid-cols-2 divide-x divide-border border-y border-border bg-card sm:grid-cols-4">
+        {[{ label: "Active listings", value: counts.Active, icon: CheckCircle2, status: "Active" as const }, { label: "Needs renewal", value: counts.Expired, icon: Clock, status: "Expired" as const }, { label: "Ongoing sales", value: mySales.length, icon: Truck }, { label: "Pending payout", value: ngn(pendingPayout), icon: Wallet }].map((stat) => <div key={stat.label} className="min-w-0 p-4 sm:p-5"><div className="flex items-center gap-2 text-xs text-muted-foreground"><stat.icon className="size-4 shrink-0 text-primary" />{stat.label}</div><p className="mt-2 break-words text-xl font-bold sm:text-2xl">{stat.value}</p>{stat.status ? <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-xs" onClick={() => { setTab("inventory"); setFilter(stat.status ?? "All"); setQuery(""); }}>View listings <ArrowUpRight /></Button> : <Button asChild variant="link" size="sm" className="mt-1 h-auto p-0 text-xs"><Link to="/my-orders">View orders <ArrowUpRight /></Link></Button>}</div>)}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-4">
+        <div className="min-w-0"><span className="text-sm font-semibold">My public store</span>{publicUsername ? <p className="break-all text-xs text-muted-foreground">/u/{publicUsername}</p> : null}</div>
+        <div className="flex flex-wrap gap-2">{publicUsername ? <Button asChild size="sm" variant="ghost"><Link to="/u/$username" params={{ username: publicUsername }}>View store <ArrowUpRight /></Link></Button> : null}<Button size="sm" variant="outline" onClick={() => void shareStore()} disabled={!publicStoreUrl}><Share2 /> Share store</Button><Button size="icon" variant="ghost" title="Copy store link" aria-label="Copy store link" onClick={() => void copyStoreLink()} disabled={!publicStoreUrl}><Copy /></Button></div>
+      </div>
+      <Tabs value={tab} onValueChange={setTab} className="mt-6">
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
+          {[['inventory', 'Listings'], ['sales', 'Sales'], ['create', 'New listing'], ['refer', 'Refer & Boost'], ['account', 'Account']].map(([value, label]) => <TabsTrigger key={value} value={value} className="shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm">{label}</TabsTrigger>)}
         </TabsList>
         <TabsContent value="account" className="mt-6"><AccountPanel /></TabsContent>
         <TabsContent value="refer" className="mt-6"><ReferBoost /></TabsContent>
-        <TabsContent value="inventory" className="mt-6">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
-            <Card className="p-5">
-              <h2 className="flex items-center gap-2 font-semibold"><PlusCircle className="size-4 text-primary" /> Create new listing</h2>
+        <TabsContent value="create" className="mt-6">
+          <section className="max-w-2xl"><h2 className="text-xl font-semibold">New listing</h2><p className="mt-1 text-sm text-muted-foreground">Listing duration: 7 days</p>
               <form onSubmit={submit} className="mt-4 space-y-3">
                 <div className="space-y-1.5"><Label htmlFor="name">Custom animal name</Label><Input id="name" name="name" required placeholder="Kano Thunder" /></div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -248,19 +256,23 @@ function BreederDashboard() {
                 <label className="flex cursor-pointer items-center gap-2 text-sm"><Checkbox checked={vaccinated} onCheckedChange={(v) => setVaccinated(v === true)} /> Vaccinated / health certified</label>
                 <Button type="submit" className="w-full" disabled={publishing}>{publishing ? "Publishing..." : "Publish listing (7-day lifespan)"}</Button>
               </form>
-            </Card>
-            <div className="space-y-6">
-              <Card className="p-5">
-                <h2 className="font-semibold">My listings ({mine.length})</h2>
-                <div className="mt-4 space-y-3">{mine.length === 0 ? <p className="text-sm text-muted-foreground">No listings yet.</p> : mine.map((l) => <div key={l.id} className="space-y-3 rounded-md border border-border p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate font-medium">{l.custom_bird_name}</p><p className="text-xs text-muted-foreground">{l.category_type} · {l.breed_type} · {ngn(l.price_ngn)} {unitLabel((l as typeof l & { pricing_unit?: string }).pricing_unit)} · Qty {l.batch_quantity}</p></div><div className="flex items-center gap-2"><Button size="icon" variant="ghost" aria-label="Edit listing photos" onClick={() => setEditingPhotos(editingPhotos === l.id ? null : l.id)}><ImagePlus className="size-4" /></Button>{l.is_active && l.expiry_date <= Date.now() && l.batch_quantity > 0 ? <Button size="sm" variant="outline" onClick={async () => { try { await renewListing(l.id); toast.success("Listing renewed for 7 more days."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not renew listing."); } }}><RefreshCw className="size-4" /> Renew listing</Button> : null}<Badge variant={l.is_active && l.expiry_date > Date.now() ? "default" : "destructive"}>{!l.is_active ? "Sold / retired" : l.expiry_date > Date.now() ? `${daysRemaining(l.expiry_date)}d left` : "Expired"}</Badge><ConfirmActionDialog title="Confirm Delete" description={`Are you sure you want to delete ${l.custom_bird_name}? This action cannot be undone.`} confirmLabel="Confirm Delete" onConfirm={async () => { try { await deleteListing(l.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" aria-label="Delete listing"><Trash2 className="size-4 text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === l.id ? <ListingPhotoEditor listingId={l.id} userId={user.id} images={l.images} /> : null}</div>)}</div>
-              </Card>
-              <Card className="p-5">
-                <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-semibold"><Package className="size-4 text-primary" /> Escrow sales ({mySales.length})</h2><Button asChild size="sm" variant="ghost"><a href="/my-orders">Transaction history</a></Button></div>
-                <p className="mt-1 text-xs text-muted-foreground">Only sales that still require action appear here. Final sales remain preserved in Transaction History.</p>
-                <div className="mt-4 space-y-3">{mySales.length === 0 ? <p className="text-sm text-muted-foreground">No active sales.</p> : mySales.map((t) => <div key={t.id} className="rounded-md border border-border p-3 text-sm"><div className="flex items-center justify-between gap-2"><span className="font-medium">{t.listing_name}</span><Badge variant="outline">{t.status}</Badge></div><p className="mt-1 text-xs text-muted-foreground">Payout {ngn(t.amount_naira - t.calculated_commission)} · commission {ngn(t.calculated_commission)}</p></div>)}</div>
-              </Card>
-            </div>
+          </section>
+        </TabsContent>
+        <TabsContent value="inventory" className="mt-6">
+          {counts.Expired > 0 ? <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-l-4 border-gold bg-gold/10 p-4"><div><p className="flex items-center gap-2 text-sm font-semibold"><Clock className="size-4" />{counts.Expired} expired {counts.Expired === 1 ? "listing" : "listings"}</p><p className="mt-1 text-xs text-muted-foreground">Hidden from the marketplace until renewed.</p></div><Button size="sm" variant="outline" onClick={() => { setFilter("Expired"); setQuery(""); }}>View expired</Button></div> : null}
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><h2 className="text-xl font-semibold">My listings <span className="text-sm font-normal text-muted-foreground">({mine.length})</span></h2><div className="relative sm:w-72"><Search className="absolute left-3 top-3 size-4 text-muted-foreground" /><Input aria-label="Search your listings" placeholder="Search name, breed or location" value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" /></div></div>
+          <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Listing status filters">{(["All", "Active", "Expired", "Sold / retired"] as const).map((status) => <Button key={status} size="sm" variant={filter === status ? "default" : "outline"} aria-pressed={filter === status} onClick={() => setFilter(status)}>{status} <span className="opacity-70">{status === "All" ? mine.length : counts[status]}</span></Button>)}</div>
+          <div className="mt-5 space-y-3">
+            {visibleListings.length === 0 ? <div className="border-y border-dashed border-border py-16 text-center"><Package className="mx-auto size-9 text-muted-foreground" /><h3 className="mt-4 font-semibold">{mine.length ? "No matching listings" : "Your first listing starts here"}</h3><p className="mt-1 text-sm text-muted-foreground">{mine.length ? "Try another search or listing status." : "No animals listed yet."}</p><Button className="mt-5" variant={mine.length ? "outline" : "default"} onClick={() => { if (mine.length) { setQuery(""); setFilter("All"); } else setTab("create"); }}>{mine.length ? "Clear filters" : "New listing"}</Button></div> : visibleListings.map((listing) => {
+              const status = sellerListingStatus(listing, now);
+              return <article key={listing.id} className="rounded-lg border border-border bg-card p-4"><div className="flex items-start gap-3 sm:gap-5"><Link to="/listing/$id" params={{ id: listing.id }} className="shrink-0"><img src={listingCover(listing)} onError={onImageError()} loading="lazy" alt={listing.custom_bird_name} className="size-20 rounded-md object-cover sm:size-24" /></Link><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><Link to="/listing/$id" params={{ id: listing.id }} className="break-words font-semibold hover:text-primary">{listing.custom_bird_name}</Link><p className="mt-1 text-xs text-muted-foreground">{listing.category_type} · {listing.breed_type} · {listing.state}</p></div><Badge variant="outline" className={status === "Active" ? "border-primary/30 bg-primary/10 text-primary" : status === "Expired" ? "border-gold/40 bg-gold/15 text-gold-foreground" : "bg-muted text-muted-foreground"}>{status}</Badge></div><p className="mt-2 text-base font-bold">{ngn(listing.price_ngn)} <span className="text-xs font-normal text-muted-foreground">{unitLabel((listing as typeof listing & { pricing_unit?: string }).pricing_unit)}</span></p><div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{listing.batch_quantity} available</span><span>{status === "Active" ? `${daysRemaining(listing.expiry_date)} days left · Ends ${new Date(listing.expiry_date).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : status === "Expired" ? `Expired ${new Date(listing.expiry_date).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}` : "Not on marketplace"}</span></div></div></div>
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3"><Button size="sm" variant="ghost" onClick={() => setEditingPhotos(editingPhotos === listing.id ? null : listing.id)} aria-expanded={editingPhotos === listing.id}><ImagePlus />{editingPhotos === listing.id ? "Close photos" : "Edit photos"}</Button><div className="flex items-center gap-2">{canRenewSellerListing(listing, now) ? <Button size="sm" disabled={renewing !== null} onClick={async () => { setRenewing(listing.id); try { await renewListing(listing.id); setNow(Date.now()); toast.success("Listing renewed for 7 more days."); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not renew listing."); } finally { setRenewing(null); } }}><RefreshCw className={renewing === listing.id ? "animate-spin motion-reduce:animate-none" : ""} />{renewing === listing.id ? "Renewing…" : "Renew · 7 days"}</Button> : null}<ConfirmActionDialog title="Delete listing?" description={`Delete ${listing.custom_bird_name}? This cannot be undone.`} confirmLabel="Delete listing" onConfirm={async () => { try { await deleteListing(listing.id); toast.success("Listing deleted."); return true; } catch (error) { toast.error(error instanceof Error ? error.message : "Could not delete listing."); return false; } }}><Button size="icon" variant="ghost" title={`Delete ${listing.custom_bird_name}`} aria-label={`Delete ${listing.custom_bird_name}`}><Trash2 className="text-destructive" /></Button></ConfirmActionDialog></div></div>{editingPhotos === listing.id ? <ListingPhotoEditor listingId={listing.id} userId={user.id} images={listing.images} /> : null}</article>;
+            })}
           </div>
+        </TabsContent>
+        <TabsContent value="sales" className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Ongoing sales <span className="text-sm font-normal text-muted-foreground">({mySales.length})</span></h2><Button asChild variant="outline" size="sm"><Link to="/my-orders">Manage orders <ArrowUpRight /></Link></Button></div>
+          <div className="mt-5 space-y-3">{mySales.length === 0 ? <div className="border-y border-dashed border-border py-16 text-center"><Wallet className="mx-auto size-9 text-muted-foreground" /><h3 className="mt-4 font-semibold">No ongoing sales</h3><Button asChild variant="link" className="mt-3"><Link to="/transaction-history">View transaction history <ArrowUpRight /></Link></Button></div> : mySales.map((sale) => <article key={sale.id} className="rounded-lg border border-border bg-card p-4 sm:p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="break-words font-semibold">{sale.listing_name}</h3><p className="mt-1 text-xs text-muted-foreground">{new Date(sale.created_at).toLocaleDateString("en-NG")} · Order {sale.id.slice(0, 8)}</p></div><Badge variant={sale.status === "Disputed" ? "destructive" : "outline"}>{sale.status}</Badge></div><div className="mt-4 grid grid-cols-2 gap-4 border-y border-border py-3"><div><p className="text-xs text-muted-foreground">Expected payout</p><p className="mt-1 break-words font-semibold">{ngn(sale.amount_naira - sale.calculated_commission)}</p></div><div><p className="text-xs text-muted-foreground">Commission</p><p className="mt-1 break-words text-sm">{ngn(sale.calculated_commission)}</p></div></div><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="flex items-center gap-2 text-sm text-muted-foreground">{sale.status === "Disputed" ? <AlertTriangle className="size-4 shrink-0 text-destructive" /> : <Clock className="size-4 shrink-0" />}{sale.status === "Escrow Funded" ? "Payment secured · Ready to dispatch" : sale.status === "In Transit" ? "On the way · Awaiting buyer receipt" : sale.status === "Disputed" ? "Dispute open · Check delivery proof" : sale.status === "Ready for Admin Payout" || sale.status === "Delivered" ? "Delivery confirmed · Awaiting admin payout" : "Awaiting payment verification"}</p><Button asChild size="sm" variant="outline"><Link to="/my-orders">Open orders <ArrowUpRight /></Link></Button></div></article>)}</div>
         </TabsContent>
       </Tabs>
     </main>
