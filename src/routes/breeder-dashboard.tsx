@@ -242,7 +242,7 @@ function BreederDashboard() {
       </div>
       <Tabs value={tab} onValueChange={setTab} className="mt-6">
         <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-border bg-transparent p-0">
-          {[['inventory', 'Listings'], ['sales', 'Sales'], ['create', 'New listing'], ['refer', 'Refer & Boost'], ['account', 'Account']].map(([value, label]) => <TabsTrigger key={value} value={value} className="shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm">{label}</TabsTrigger>)}
+          {([['inventory', 'Listings'], ['sales', 'Sales'], ['create', 'New listing'], ['refer', 'Refer & Boost'], ['account', 'Account']] as const).map(([value, label]) => <TabsTrigger key={value} value={value} className="shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none sm:px-5 sm:text-sm">{label}</TabsTrigger>)}
         </TabsList>
         <TabsContent value="account" className="mt-6"><AccountPanel /></TabsContent>
         <TabsContent value="refer" className="mt-6"><ReferBoost /></TabsContent>
